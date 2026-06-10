@@ -7,6 +7,10 @@ app.use(require("cors")());
 
 // ─── Redis Client (Upstash) ──────────────────────────────────────────────────
 function getKV() {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return null;
+  }
+
   return new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
@@ -68,22 +72,53 @@ function absDiff(a, b) {
   return Math.abs(a - b);
 }
 
+function userKey(name) {
+  return String(name || "").trim().toLowerCase();
+}
+
+function normalizeUsers(value) {
+  if (!value) return [];
+
+  let users = value;
+  if (typeof users === "string") {
+    try {
+      users = JSON.parse(users);
+    } catch {
+      return [];
+    }
+  }
+
+  return Array.isArray(users)
+    ? users.filter((u) => u && typeof u.name === "string" && typeof u.password === "string")
+    : [];
+}
+
 // Keep only last ~22 business days (≈ 1 month)
 const MAX_DAYS = 22;
 
 async function getUsers(kv) {
-  const stored = await kv.get("users");
-  const extra = stored ? stored : [];
-  // Merge preset + extra (extra can override if same name — won't happen in practice)
-  const allNames = new Set(PRESET_USERS.map((u) => u.name.toLowerCase()));
-  const filtered = extra.filter((u) => !allNames.has(u.name.toLowerCase()));
+  let extra = [];
+
+  if (kv) {
+    try {
+      extra = normalizeUsers(await kv.get("users"));
+    } catch {
+      extra = [];
+    }
+  }
+
+  // Merge preset + extra. Preset users always win on duplicate names.
+  const allNames = new Set(PRESET_USERS.map((u) => userKey(u.name)));
+  const filtered = extra.filter((u) => !allNames.has(userKey(u.name)));
   return [...PRESET_USERS, ...filtered];
 }
 
 async function saveExtraUsers(kv, users) {
+  if (!kv) throw new Error("Redis nao configurado. Defina UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN.");
+
   // Only save non-preset users
-  const presetNames = new Set(PRESET_USERS.map((u) => u.name.toLowerCase()));
-  const extra = users.filter((u) => !presetNames.has(u.name.toLowerCase()));
+  const presetNames = new Set(PRESET_USERS.map((u) => userKey(u.name)));
+  const extra = normalizeUsers(users).filter((u) => !presetNames.has(userKey(u.name)));
   await kv.set("users", extra);
 }
 
