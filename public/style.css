@@ -1,0 +1,463 @@
+/* ═══════════════════════════════════════
+   WINDOWS 95 - LUIZ OS
+═══════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+:root {
+  --win-bg:      #008080;   /* classic teal desktop */
+  --win-gray:    #c0c0c0;
+  --win-dark:    #808080;
+  --win-darker:  #404040;
+  --win-black:   #000000;
+  --win-white:   #ffffff;
+  --win-blue:    #000080;
+  --win-blue-hi: #0000aa;
+  --win-red:     #800000;
+  --win-yellow:  #ffff00;
+  --shadow-out:  inset -1px -1px var(--win-black), inset 1px 1px var(--win-white), inset -2px -2px var(--win-dark), inset 2px 2px var(--win-gray);
+  --shadow-in:   inset 1px 1px var(--win-black), inset -1px -1px var(--win-white), inset 2px 2px var(--win-dark), inset -2px -2px var(--win-gray);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'MS Sans Serif', 'Trebuchet MS', sans-serif;
+  font-size: 12px;
+  background: var(--win-bg);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  user-select: none;
+}
+
+/* ─── TASKBAR ─────────────────────────────── */
+.taskbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 34px;
+  background: var(--win-gray);
+  box-shadow: var(--shadow-out);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  z-index: 1000;
+}
+
+.start-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--win-gray);
+  border: none;
+  box-shadow: var(--shadow-out);
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  height: 28px;
+  min-width: 80px;
+}
+.start-btn:active { box-shadow: var(--shadow-in); }
+.start-logo { font-size: 16px; }
+
+.taskbar-apps {
+  display: flex;
+  flex: 1;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.taskbar-app-btn {
+  background: var(--win-gray);
+  border: none;
+  box-shadow: var(--shadow-in);
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+  height: 26px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.taskbar-app-btn:hover { background: #d4d0c8; }
+
+.taskbar-clock {
+  background: var(--win-gray);
+  box-shadow: var(--shadow-in);
+  padding: 2px 8px;
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  min-width: 50px;
+  text-align: center;
+  height: 26px;
+  display: flex;
+  align-items: center;
+}
+
+/* ─── START MENU ──────────────────────────── */
+.start-menu {
+  position: fixed;
+  bottom: 34px;
+  left: 2px;
+  width: 200px;
+  background: var(--win-gray);
+  box-shadow: var(--shadow-out);
+  z-index: 1001;
+  border: 2px solid var(--win-white);
+  border-right-color: var(--win-black);
+  border-bottom-color: var(--win-black);
+}
+
+.start-menu-header {
+  background: linear-gradient(to bottom, #000080, #1084d0);
+  color: white;
+  padding: 6px 10px;
+  font-weight: bold;
+  font-size: 14px;
+  letter-spacing: 1px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  float: left;
+}
+
+.start-menu-items {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.start-menu-items button {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+.start-menu-items button:hover {
+  background: var(--win-blue);
+  color: white;
+}
+.start-menu-items hr {
+  border: none;
+  border-top: 1px solid var(--win-dark);
+  margin: 2px 8px;
+}
+
+/* ─── DESKTOP ─────────────────────────────── */
+.desktop {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  bottom: 34px;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  padding: 12px;
+  pointer-events: all;
+}
+
+.desktop-icon {
+  width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px;
+  border: 1px solid transparent;
+}
+.desktop-icon:hover { border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.1); }
+.desktop-icon:active { background: rgba(0,0,128,0.5); }
+
+.icon-img { font-size: 32px; line-height: 1; }
+.icon-label {
+  color: white;
+  font-size: 11px;
+  text-align: center;
+  text-shadow: 1px 1px 1px black;
+  word-break: break-word;
+}
+
+/* ─── WIN95 WINDOWS ───────────────────────── */
+.win95-window {
+  position: absolute;
+  background: var(--win-gray);
+  box-shadow: var(--shadow-out);
+  border: 2px solid var(--win-white);
+  border-right-color: var(--win-black);
+  border-bottom-color: var(--win-black);
+  min-width: 280px;
+  z-index: 100;
+}
+
+.win95-window.active { z-index: 500; }
+
+.win95-titlebar {
+  background: linear-gradient(to right, var(--win-blue), var(--win-blue-hi));
+  color: white;
+  padding: 3px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: move;
+  user-select: none;
+}
+
+.win95-title {
+  font-weight: bold;
+  font-size: 12px;
+  flex: 1;
+  padding: 0 4px;
+}
+
+.win95-controls {
+  display: flex;
+  gap: 2px;
+}
+
+.win95-btn-ctrl {
+  width: 18px;
+  height: 16px;
+  background: var(--win-gray);
+  border: none;
+  box-shadow: var(--shadow-out);
+  cursor: pointer;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  color: black;
+  padding: 0;
+}
+.win95-btn-ctrl:active { box-shadow: var(--shadow-in); }
+
+.win95-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* ─── FORM ELEMENTS ───────────────────────── */
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.field-group label {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.field-group input,
+.field-group select {
+  background: white;
+  border: none;
+  box-shadow: var(--shadow-in);
+  padding: 3px 5px;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.field-group input:focus,
+.field-group select:focus {
+  outline: 1px dotted black;
+  outline-offset: -2px;
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.win95-action-btn {
+  background: var(--win-gray);
+  border: none;
+  box-shadow: var(--shadow-out);
+  padding: 4px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  min-width: 90px;
+}
+.win95-action-btn:active { box-shadow: var(--shadow-in); }
+.win95-action-btn:hover { background: #d4d0c8; }
+
+/* ─── MESSAGES ────────────────────────────── */
+.win95-msg {
+  font-size: 12px;
+  min-height: 16px;
+}
+.win95-msg.ok  { color: #006400; font-weight: bold; }
+.win95-msg.err { color: #800000; font-weight: bold; }
+
+.win95-status-bar {
+  background: #ffffe1;
+  border: none;
+  box-shadow: var(--shadow-in);
+  padding: 4px 8px;
+  font-size: 12px;
+  display: none;
+}
+.win95-status-bar.show { display: block; }
+.win95-status-bar.closed { color: #800000; font-weight: bold; }
+.win95-status-bar.open   { color: #006400; font-weight: bold; }
+
+/* ─── USER PHOTO ──────────────────────────── */
+.user-photo-area {
+  display: flex;
+  justify-content: center;
+  padding: 4px;
+}
+.user-photo-area img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  box-shadow: var(--shadow-in);
+  border: 1px solid var(--win-dark);
+}
+
+/* ─── TABLES ──────────────────────────────── */
+.win95-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.win95-table th {
+  background: var(--win-blue);
+  color: white;
+  padding: 3px 8px;
+  text-align: left;
+  font-weight: bold;
+  border: 1px solid var(--win-black);
+}
+.win95-table td {
+  padding: 3px 8px;
+  border: 1px solid var(--win-dark);
+  background: white;
+}
+.win95-table tr:nth-child(even) td { background: #f0f0f0; }
+
+.rank-gold   td:first-child::before { content: "🥇 "; }
+.rank-silver td:first-child::before { content: "🥈 "; }
+.rank-bronze td:first-child::before { content: "🥉 "; }
+
+/* ─── ACCORDION / HISTORY ─────────────────── */
+.history-day {
+  margin-bottom: 6px;
+  box-shadow: var(--shadow-out);
+}
+.history-day-header {
+  background: var(--win-gray);
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  box-shadow: var(--shadow-out);
+}
+.history-day-header:hover { background: #d4d0c8; }
+.history-day-body {
+  background: white;
+  padding: 6px;
+  display: none;
+}
+.history-day-body.open { display: block; }
+
+/* ─── LOADING ─────────────────────────────── */
+.loading {
+  font-style: italic;
+  color: var(--win-dark);
+  text-align: center;
+  padding: 8px;
+}
+
+/* ─── SECTION LABELS ──────────────────────── */
+.section-label {
+  font-weight: bold;
+  font-size: 11px;
+  color: var(--win-darker);
+  padding: 2px 0;
+  border-bottom: 1px solid var(--win-dark);
+  margin-bottom: 4px;
+}
+
+/* ─── SCROLLBAR WIN95 ─────────────────────── */
+::-webkit-scrollbar { width: 16px; }
+::-webkit-scrollbar-track { background: var(--win-gray); box-shadow: var(--shadow-in); }
+::-webkit-scrollbar-thumb { background: var(--win-gray); box-shadow: var(--shadow-out); }
+::-webkit-scrollbar-button { background: var(--win-gray); box-shadow: var(--shadow-out); height: 16px; }
+
+/* ─── TODAY PANEL ─────────────────────────── */
+.today-arrival-box {
+  background: #000080;
+  color: white;
+  padding: 8px 12px;
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  box-shadow: var(--shadow-in);
+}
+
+.no-data {
+  color: var(--win-dark);
+  font-style: italic;
+  text-align: center;
+  padding: 8px;
+}
+
+/* ─── OVERALL RANK ────────────────────────── */
+.rank-podium {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+.rank-medal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+}
+.rank-medal-icon { font-size: 24px; }
+
+/* ─── DIALOG ──────────────────────────────── */
+.win95-dialog {
+  box-shadow: 4px 4px 0 black;
+}
+
+/* ─── ADMIN RESULT ────────────────────────── */
+.admin-rankings {
+  margin-top: 8px;
+}
+
+/* ─── TOOLTIP / INFO BAR ──────────────────── */
+.info-box {
+  background: #ffffe1;
+  box-shadow: var(--shadow-in);
+  padding: 5px 8px;
+  font-size: 11px;
+  color: #333;
+  border-left: 3px solid var(--win-blue);
+}

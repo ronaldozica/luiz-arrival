@@ -1,0 +1,11 @@
+Coloque aqui as fotos dos usuários com os seguintes nomes de arquivo:
+
+- ronaldo.jpg
+- jorge.jpg
+- alexandre.jpg
+- joaopaulo.jpg
+- julio.jpg
+- pedro.jpg
+
+Formatos suportados: .jpg, .jpeg, .png, .gif, .webp
+Tamanho recomendado: 100x100 pixels ou maior (será exibido em 64x64px com object-fit: cover).
