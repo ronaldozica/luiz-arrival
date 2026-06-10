@@ -283,6 +283,93 @@ body {
   outline-offset: -2px;
 }
 
+.password-field {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.password-field input {
+  flex: 1;
+  min-width: 0;
+}
+
+.password-toggle {
+  width: 28px;
+  min-width: 28px;
+  background: var(--win-gray);
+  border: none;
+  box-shadow: var(--shadow-out);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle:active,
+.password-toggle.active {
+  box-shadow: var(--shadow-in);
+}
+
+.time-picker {
+  display: grid;
+  grid-template-columns: 28px 1fr 28px 32px;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.time-picker input {
+  text-align: center;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+}
+
+.time-step-btn,
+.time-clock-btn,
+.time-options button {
+  background: var(--win-gray);
+  border: none;
+  box-shadow: var(--shadow-out);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.time-step-btn,
+.time-clock-btn {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.time-step-btn:active,
+.time-clock-btn:active,
+.time-options button:active {
+  box-shadow: var(--shadow-in);
+}
+
+.time-options {
+  display: none;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.time-options.show {
+  display: grid;
+}
+
+.time-options button {
+  padding: 4px 0;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+}
+
 .btn-row {
   display: flex;
   gap: 8px;

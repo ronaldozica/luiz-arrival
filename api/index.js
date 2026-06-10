@@ -123,11 +123,15 @@ async function saveExtraUsers(kv, users) {
 }
 
 async function getDayData(kv, dateKey) {
+  if (!kv) return { guesses: [], arrival: null };
+
   const data = await kv.get(`day:${dateKey}`);
   return data || { guesses: [], arrival: null };
 }
 
 async function setDayData(kv, dateKey, data) {
+  if (!kv) throw new Error("Redis nao configurado. Defina UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN.");
+
   await kv.set(`day:${dateKey}`, data);
 
   // Maintain index of all day keys

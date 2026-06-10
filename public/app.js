@@ -28,9 +28,20 @@ function openWindow(id) {
   const w = document.getElementById(id);
   if (!w) return;
   w.style.display = "block";
+  if (id === "win-guess") {
+    centerWindow(w);
+    checkTodayStatus();
+  }
   delete minimizedWindows[id];
   bringToFront(w);
   updateTaskbar();
+}
+
+function centerWindow(w) {
+  const taskbarHeight = 34;
+  const availableHeight = window.innerHeight - taskbarHeight;
+  w.style.left = `${Math.max(0, Math.round((window.innerWidth - w.offsetWidth) / 2))}px`;
+  w.style.top = `${Math.max(0, Math.round((availableHeight - w.offsetHeight) / 2))}px`;
 }
 
 function closeWindow(id) {
@@ -167,20 +178,78 @@ async function checkTodayStatus() {
     const res = await fetch(`${API}/today`);
     const data = await res.json();
     const banner = document.getElementById("guess-status-banner");
+    const currentTime = data.currentTime || getBrasiliaTime();
+    const bettingOpen = Boolean(res.ok && data.bettingOpen);
+
     if (data.arrival) {
       banner.textContent = `⛔ Luiz chegou às ${data.arrival}! Apostas encerradas.`;
       banner.className = "win95-status-bar show closed";
-    } else if (!data.bettingOpen) {
-      banner.textContent = `⛔ Apostas encerradas (passou das 10h). Horário atual: ${data.currentTime}.`;
+    } else if (!bettingOpen) {
+      banner.textContent = `⛔ Apostas encerradas (passou das 10h). Horário atual: ${currentTime}.`;
       banner.className = "win95-status-bar show closed";
     } else {
-      banner.textContent = `✅ Apostas abertas! Horário atual: ${data.currentTime}.`;
+      banner.textContent = `✅ Apostas abertas! Horário atual: ${currentTime}.`;
       banner.className = "win95-status-bar show open";
     }
-  } catch {}
+    setGuessFormOpen(bettingOpen);
+  } catch {
+    const banner = document.getElementById("guess-status-banner");
+    if (banner) {
+      banner.textContent = `⛔ Apostas indisponíveis no momento. Horário atual: ${getBrasiliaTime()}.`;
+      banner.className = "win95-status-bar show closed";
+    }
+    setGuessFormOpen(false);
+  }
+}
+
+function setGuessFormOpen(isOpen) {
+  const timeGroup = document.getElementById("guess-time-group");
+  const submitRow = document.getElementById("guess-submit-row");
+  const timeInput = document.getElementById("guess-time");
+  const timeOptions = document.getElementById("guess-time-options");
+
+  if (timeGroup) timeGroup.style.display = isOpen ? "flex" : "none";
+  if (submitRow) submitRow.style.display = isOpen ? "flex" : "none";
+  if (timeInput) timeInput.disabled = !isOpen;
+  if (!isOpen && timeOptions) timeOptions.classList.remove("show");
+}
+
+function setGuessTime(time) {
+  const input = document.getElementById("guess-time");
+  const options = document.getElementById("guess-time-options");
+  if (!input) return;
+
+  input.value = clampTime(time);
+  if (options) options.classList.remove("show");
+}
+
+function adjustGuessTime(deltaMinutes) {
+  const input = document.getElementById("guess-time");
+  if (!input || input.disabled) return;
+
+  const mins = timeToMinutes(input.value || "09:00");
+  input.value = minutesToTime(clampMinutes(mins + deltaMinutes));
+}
+
+function normalizeGuessTime() {
+  const input = document.getElementById("guess-time");
+  if (!input) return;
+
+  input.value = clampTime(input.value || "09:00");
+}
+
+function openGuessTimeOptions() {
+  const input = document.getElementById("guess-time");
+  const options = document.getElementById("guess-time-options");
+  if (!input || input.disabled || !options) return;
+
+  normalizeGuessTime();
+  options.classList.toggle("show");
 }
 
 async function submitGuess() {
+  normalizeGuessTime();
+
   const name = document.getElementById("guess-user-select").value;
   const password = document.getElementById("guess-password").value;
   const time = document.getElementById("guess-time").value;
@@ -413,6 +482,69 @@ function showMsg(el, text, type) {
   setTimeout(() => { if (el.textContent === text) el.textContent = ""; }, 5000);
 }
 
+function getBrasiliaTime() {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const brt = new Date(utc - 3 * 3600000);
+  const h = String(brt.getHours()).padStart(2, "0");
+  const m = String(brt.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+function timeToMinutes(value) {
+  const raw = String(value).trim();
+  let hours;
+  let minutes;
+
+  if (raw.includes(":")) {
+    const [h, m = "0"] = raw.split(":");
+    hours = Number(h);
+    minutes = Number(m);
+  } else {
+    const digits = raw.replace(/\D/g, "");
+    if (!digits) return 9 * 60;
+
+    if (digits.length <= 2) {
+      hours = Number(digits);
+      minutes = 0;
+    } else {
+      hours = Number(digits.slice(0, -2));
+      minutes = Number(digits.slice(-2));
+    }
+  }
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return 9 * 60;
+
+  return hours * 60 + Math.max(0, Math.min(59, minutes));
+}
+
+function minutesToTime(totalMinutes) {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function clampMinutes(minutes) {
+  const min = 6 * 60;
+  const max = 13 * 60;
+  return Math.max(min, Math.min(max, minutes));
+}
+
+function clampTime(value) {
+  return minutesToTime(clampMinutes(timeToMinutes(value)));
+}
+
+function togglePassword(inputId, button) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+
+  const shouldShow = input.type === "password";
+  input.type = shouldShow ? "text" : "password";
+  button.setAttribute("aria-label", shouldShow ? "Ocultar senha" : "Mostrar senha");
+  button.title = shouldShow ? "Ocultar senha" : "Mostrar senha";
+  button.classList.toggle("active", shouldShow);
+}
+
 function escHtml(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
@@ -461,6 +593,7 @@ function renderGuessesTable(guesses) {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 loadUsers();
 checkTodayStatus();
+centerWindow(document.getElementById("win-guess"));
 // Auto-refresh today status every 60 seconds
 setInterval(checkTodayStatus, 60000);
 updateTaskbar();

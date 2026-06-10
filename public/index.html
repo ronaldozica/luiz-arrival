@@ -84,15 +84,30 @@
 
     <div class="field-group">
       <label>Senha:</label>
-      <input type="password" id="guess-password" placeholder="Sua senha" />
+      <div class="password-field">
+        <input type="password" id="guess-password" placeholder="Sua senha" />
+        <button type="button" class="password-toggle" onclick="togglePassword('guess-password', this)" aria-label="Mostrar senha" title="Mostrar senha">&#128065;</button>
+      </div>
     </div>
 
-    <div class="field-group">
+    <div class="field-group" id="guess-time-group">
       <label>Que horas o Luiz vai chegar?</label>
-      <input type="time" id="guess-time" value="09:00" min="06:00" max="13:00" />
+      <div class="time-picker">
+        <button type="button" class="time-step-btn" onclick="adjustGuessTime(-5)" aria-label="Diminuir 5 minutos" title="Diminuir 5 minutos">-</button>
+        <input type="text" id="guess-time" value="09:00" inputmode="numeric" maxlength="5" placeholder="HH:MM" onblur="normalizeGuessTime()" />
+        <button type="button" class="time-step-btn" onclick="adjustGuessTime(5)" aria-label="Aumentar 5 minutos" title="Aumentar 5 minutos">+</button>
+        <button type="button" class="time-clock-btn" onclick="openGuessTimeOptions()" aria-label="Escolher horario" title="Escolher horario">&#128337;</button>
+      </div>
+      <div class="time-options" id="guess-time-options">
+        <button type="button" onclick="setGuessTime('08:00')">08:00</button>
+        <button type="button" onclick="setGuessTime('08:30')">08:30</button>
+        <button type="button" onclick="setGuessTime('09:00')">09:00</button>
+        <button type="button" onclick="setGuessTime('09:30')">09:30</button>
+        <button type="button" onclick="setGuessTime('10:00')">10:00</button>
+      </div>
     </div>
 
-    <div class="btn-row">
+    <div class="btn-row" id="guess-submit-row">
       <button class="win95-action-btn" onclick="submitGuess()">📨 Apostar!</button>
     </div>
 
@@ -172,7 +187,10 @@
     </div>
     <div class="field-group">
       <label>Senha:</label>
-      <input type="password" id="reg-password" placeholder="Escolha uma senha" />
+      <div class="password-field">
+        <input type="password" id="reg-password" placeholder="Escolha uma senha" />
+        <button type="button" class="password-toggle" onclick="togglePassword('reg-password', this)" aria-label="Mostrar senha" title="Mostrar senha">&#128065;</button>
+      </div>
     </div>
     <div class="btn-row">
       <button class="win95-action-btn" onclick="registerUser()">✅ Criar Conta</button>
@@ -197,7 +215,10 @@
       <p style="color:#800000;font-weight:bold">⚠️ Área Restrita</p>
       <div class="field-group">
         <label>Senha Admin:</label>
-        <input type="password" id="admin-password" placeholder="Senha secreta" />
+        <div class="password-field">
+          <input type="password" id="admin-password" placeholder="Senha secreta" />
+          <button type="button" class="password-toggle" onclick="togglePassword('admin-password', this)" aria-label="Mostrar senha" title="Mostrar senha">&#128065;</button>
+        </div>
       </div>
       <div class="btn-row">
         <button class="win95-action-btn" onclick="adminLogin()">🔓 Entrar</button>
