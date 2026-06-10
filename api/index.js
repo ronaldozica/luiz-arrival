@@ -1,15 +1,15 @@
 const express = require("express");
-const { createClient } = require("@vercel/kv");
+const { Redis } = require("@upstash/redis");
 const app = express();
 
 app.use(express.json());
 app.use(require("cors")());
 
-// ─── KV Client ───────────────────────────────────────────────────────────────
+// ─── Redis Client (Upstash) ──────────────────────────────────────────────────
 function getKV() {
-  return createClient({
-    url: process.env.KV_REST_API_URL,
-    token: process.env.KV_REST_API_TOKEN,
+  return new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
   });
 }
 
