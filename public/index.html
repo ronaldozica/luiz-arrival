@@ -8,6 +8,23 @@
 </head>
 <body>
 
+<!-- LOADING OVERLAY -->
+<div id="global-loading" style="display:none">
+  <div class="loading-hourglass">⏳</div>
+  <div class="loading-text">Aguarde...</div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="context-menu" class="ctx-menu" style="display:none">
+  <div class="ctx-section-label">Plano de Fundo</div>
+  <button class="ctx-wallpaper-item" data-wp="padrao"  onclick="applyWallpaper('padrao')">Padrão</button>
+  <button class="ctx-wallpaper-item" data-wp="windows" onclick="applyWallpaper('windows')">Windows</button>
+  <button class="ctx-wallpaper-item" data-wp="michaelsoft" onclick="applyWallpaper('michaelsoft')">Michaelsoft</button>
+  <button class="ctx-wallpaper-item" data-wp="luiz"    onclick="applyWallpaper('luiz')">Luiz</button>
+  <div class="ctx-section-label">Pastas</div>
+  <button class="ctx-wallpaper-item" onclick="resetIconPositions()">Redefinir posição das pastas</button>
+</div>
+
 <!-- TASKBAR -->
 <div class="taskbar">
   <button class="start-btn" onclick="toggleStartMenu()">
@@ -19,9 +36,7 @@
 
 <!-- START MENU -->
 <div class="start-menu" id="start-menu" style="display:none">
-  <div class="start-menu-header">
-    <span>LuizOS 95</span>
-  </div>
+  <div class="start-menu-header"><span>LuizOS 95</span></div>
   <div class="start-menu-items">
     <button onclick="openWindow('win-guess'); closeStartMenu()">🎯 Fazer Aposta</button>
     <button onclick="openWindow('win-today'); closeStartMenu(); loadToday()">📋 Apostas de Hoje</button>
@@ -35,31 +50,29 @@
 
 <!-- DESKTOP ICONS -->
 <div class="desktop">
-  <div class="desktop-icon" ondblclick="openWindow('win-guess')">
+  <div class="desktop-icon" data-icon-id="icon-guess"    data-action="openWindow('win-guess')">
     <div class="icon-img">🎯</div>
     <div class="icon-label">Fazer Aposta</div>
   </div>
-  <div class="desktop-icon" ondblclick="openWindow('win-today'); loadToday()">
+  <div class="desktop-icon" data-icon-id="icon-today"    data-action="openWindow('win-today'); loadToday()">
     <div class="icon-img">📋</div>
     <div class="icon-label">Apostas de Hoje</div>
   </div>
-  <div class="desktop-icon" ondblclick="openWindow('win-history'); loadHistory()">
+  <div class="desktop-icon" data-icon-id="icon-history"  data-action="openWindow('win-history'); loadHistory()">
     <div class="icon-img">📅</div>
     <div class="icon-label">Histórico</div>
   </div>
-  <div class="desktop-icon" ondblclick="openWindow('win-rank'); loadOverallRank()">
+  <div class="desktop-icon" data-icon-id="icon-rank"     data-action="openWindow('win-rank'); loadOverallRank()">
     <div class="icon-img">🏆</div>
     <div class="icon-label">Ranking Geral</div>
   </div>
-  <div class="desktop-icon" ondblclick="openWindow('win-register')">
+  <div class="desktop-icon" data-icon-id="icon-register" data-action="openWindow('win-register')">
     <div class="icon-img">👤</div>
     <div class="icon-label">Novo Usuário</div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     WINDOW: FAZER APOSTA
-══════════════════════════════════════════ -->
+<!-- ══ WINDOW: FAZER APOSTA ══ -->
 <div class="win95-window" id="win-guess" style="left:80px;top:60px;width:400px">
   <div class="win95-titlebar" onmousedown="startDrag(event,'win-guess')">
     <span class="win95-title">🎯 Fazer Aposta</span>
@@ -85,18 +98,18 @@
     <div class="field-group">
       <label>Senha:</label>
       <div class="password-field">
-        <input type="password" id="guess-password" placeholder="Sua senha" />
-        <button type="button" class="password-toggle" onclick="togglePassword('guess-password', this)" aria-label="Mostrar senha" title="Mostrar senha">&#128065;</button>
+        <input type="password" id="guess-password" placeholder="Sua senha" onchange="updateGuessFormForUser()" />
+        <button type="button" class="password-toggle" onclick="togglePassword('guess-password', this)" title="Mostrar senha">&#128065;</button>
       </div>
     </div>
 
     <div class="field-group" id="guess-time-group">
       <label>Que horas o Luiz vai chegar?</label>
       <div class="time-picker">
-        <button type="button" class="time-step-btn" onclick="adjustGuessTime(-5)" aria-label="Diminuir 5 minutos" title="Diminuir 5 minutos">-</button>
+        <button type="button" class="time-step-btn" onclick="adjustGuessTime(-5)">-</button>
         <input type="text" id="guess-time" value="09:00" inputmode="numeric" maxlength="5" placeholder="HH:MM" onblur="normalizeGuessTime()" />
-        <button type="button" class="time-step-btn" onclick="adjustGuessTime(5)" aria-label="Aumentar 5 minutos" title="Aumentar 5 minutos">+</button>
-        <button type="button" class="time-clock-btn" onclick="openGuessTimeOptions()" aria-label="Escolher horario" title="Escolher horario">&#128337;</button>
+        <button type="button" class="time-step-btn" onclick="adjustGuessTime(5)">+</button>
+        <button type="button" class="time-clock-btn" onclick="openGuessTimeOptions()">&#128337;</button>
       </div>
       <div class="time-options" id="guess-time-options">
         <button type="button" onclick="setGuessTime('08:00')">08:00</button>
@@ -115,9 +128,7 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     WINDOW: APOSTAS DE HOJE
-══════════════════════════════════════════ -->
+<!-- ══ WINDOW: APOSTAS DE HOJE ══ -->
 <div class="win95-window" id="win-today" style="left:120px;top:100px;width:480px;display:none">
   <div class="win95-titlebar" onmousedown="startDrag(event,'win-today')">
     <span class="win95-title">📋 Apostas de Hoje</span>
@@ -127,15 +138,11 @@
     </div>
   </div>
   <div class="win95-body">
-    <div id="today-content">
-      <div class="loading">Carregando...</div>
-    </div>
+    <div id="today-content"><div class="loading">Carregando...</div></div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     WINDOW: HISTÓRICO
-══════════════════════════════════════════ -->
+<!-- ══ WINDOW: HISTÓRICO ══ -->
 <div class="win95-window" id="win-history" style="left:160px;top:80px;width:520px;display:none">
   <div class="win95-titlebar" onmousedown="startDrag(event,'win-history')">
     <span class="win95-title">📅 Histórico de Chegadas</span>
@@ -145,15 +152,11 @@
     </div>
   </div>
   <div class="win95-body">
-    <div id="history-content">
-      <div class="loading">Carregando...</div>
-    </div>
+    <div id="history-content"><div class="loading">Carregando...</div></div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     WINDOW: RANKING GERAL
-══════════════════════════════════════════ -->
+<!-- ══ WINDOW: RANKING GERAL ══ -->
 <div class="win95-window" id="win-rank" style="left:200px;top:60px;width:460px;display:none">
   <div class="win95-titlebar" onmousedown="startDrag(event,'win-rank')">
     <span class="win95-title">🏆 Ranking Geral</span>
@@ -163,15 +166,11 @@
     </div>
   </div>
   <div class="win95-body">
-    <div id="rank-content">
-      <div class="loading">Carregando...</div>
-    </div>
+    <div id="rank-content"><div class="loading">Carregando...</div></div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     WINDOW: NOVO USUÁRIO
-══════════════════════════════════════════ -->
+<!-- ══ WINDOW: NOVO USUÁRIO ══ -->
 <div class="win95-window" id="win-register" style="left:250px;top:120px;width:360px;display:none">
   <div class="win95-titlebar" onmousedown="startDrag(event,'win-register')">
     <span class="win95-title">👤 Novo Usuário</span>
@@ -189,7 +188,7 @@
       <label>Senha:</label>
       <div class="password-field">
         <input type="password" id="reg-password" placeholder="Escolha uma senha" />
-        <button type="button" class="password-toggle" onclick="togglePassword('reg-password', this)" aria-label="Mostrar senha" title="Mostrar senha">&#128065;</button>
+        <button type="button" class="password-toggle" onclick="togglePassword('reg-password', this)" title="Mostrar senha">&#128065;</button>
       </div>
     </div>
     <div class="btn-row">
@@ -199,9 +198,7 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     WINDOW: ADMIN
-══════════════════════════════════════════ -->
+<!-- ══ WINDOW: ADMIN ══ -->
 <div class="win95-window" id="win-admin" style="left:300px;top:80px;width:380px;display:none">
   <div class="win95-titlebar" onmousedown="startDrag(event,'win-admin')">
     <span class="win95-title">🔒 Painel Admin</span>
@@ -217,7 +214,7 @@
         <label>Senha Admin:</label>
         <div class="password-field">
           <input type="password" id="admin-password" placeholder="Senha secreta" />
-          <button type="button" class="password-toggle" onclick="togglePassword('admin-password', this)" aria-label="Mostrar senha" title="Mostrar senha">&#128065;</button>
+          <button type="button" class="password-toggle" onclick="togglePassword('admin-password', this)" title="Mostrar senha">&#128065;</button>
         </div>
       </div>
       <div class="btn-row">
@@ -225,7 +222,6 @@
       </div>
       <div class="win95-msg" id="admin-login-msg"></div>
     </div>
-
     <div id="admin-panel" style="display:none">
       <p><strong>Registrar chegada do Luiz</strong></p>
       <div class="field-group">
@@ -244,19 +240,6 @@
       <div id="admin-result"></div>
     </div>
   </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     WINDOW: RESULTADO (popup)
-══════════════════════════════════════════ -->
-<div class="win95-window win95-dialog" id="win-result" style="left:50%;top:50%;transform:translate(-50%,-50%);width:360px;display:none;z-index:9999">
-  <div class="win95-titlebar">
-    <span class="win95-title" id="result-title">Resultado</span>
-    <div class="win95-controls">
-      <button class="win95-btn-ctrl" onclick="closeWindow('win-result')">✕</button>
-    </div>
-  </div>
-  <div class="win95-body" id="result-body"></div>
 </div>
 
 <script src="app.js"></script>

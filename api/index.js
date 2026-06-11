@@ -1,10 +1,10 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') });
 
-import express, { json } from "express";
-import { Redis } from "@upstash/redis";
+const express = require("express");
+const { Redis } = require("@upstash/redis");
 const app = express();
 
-app.use(json());
+app.use(express.json());
 app.use(require("cors")());
 
 // ─── Redis Client (Upstash) ──────────────────────────────────────────────────
@@ -16,21 +16,19 @@ function getKV() {
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-console.log(ADMIN_PASSWORD);
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 
 const PRESET_USERS = [
-  { name: "Ronaldo", password: "rolando", photo: "ronaldo.jpg" },
-  { name: "Jorge", password: "jog", photo: "jorge.jpg" },
-  { name: "Alexandre", password: "rock", photo: "alexandre.jpg" },
+  { name: "Ronaldo",    password: "rolando",   photo: "ronaldo.jpg"   },
+  { name: "Jorge",      password: "jog",       photo: "jorge.jpg"     },
+  { name: "Alexandre",  password: "rock",      photo: "alexandre.jpg" },
   { name: "João Paulo", password: "joaoPedro", photo: "joaopaulo.jpg" },
-  { name: "Julio", password: "julho", photo: "julio.jpg" },
-  { name: "Pedro", password: "pedrao", photo: "pedro.jpg" },
+  { name: "Julio",      password: "julho",     photo: "julio.jpg"     },
+  { name: "Pedro",      password: "pedrao",    photo: "pedro.jpg"     },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function getBrasiliaDate() {
-  // UTC-3
   const now = new Date();
   const offset = -3 * 60;
   const local = new Date(now.getTime() + (offset + now.getTimezoneOffset()) * 60000);
@@ -40,8 +38,8 @@ function getBrasiliaDate() {
 function todayKey() {
   const d = getBrasiliaDate();
   const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
+  const mm   = String(d.getMonth() + 1).padStart(2, "0");
+  const dd   = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
 
@@ -67,55 +65,33 @@ function minutesToTimeStr(mins) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-function absDiff(a, b) {
-  return Math.abs(a - b);
-}
-
-function userKey(name) {
-  return String(name || "").trim().toLowerCase();
-}
+function absDiff(a, b) { return Math.abs(a - b); }
+function userKey(name) { return String(name || "").trim().toLowerCase(); }
 
 function normalizeUsers(value) {
   if (!value) return [];
-
   let users = value;
   if (typeof users === "string") {
-    try {
-      users = JSON.parse(users);
-    } catch {
-      return [];
-    }
+    try { users = JSON.parse(users); } catch { return []; }
   }
-
   return Array.isArray(users)
     ? users.filter((u) => u && typeof u.name === "string" && typeof u.password === "string")
     : [];
 }
 
-// Keep only last ~22 business days (≈ 1 month)
 const MAX_DAYS = 22;
 
 async function getUsers(kv) {
   let extra = [];
-
   if (kv) {
-    try {
-      extra = normalizeUsers(await kv.get("users"));
-    } catch {
-      extra = [];
-    }
+    try { extra = normalizeUsers(await kv.get("users")); } catch { extra = []; }
   }
-
-  // Merge preset + extra. Preset users always win on duplicate names.
   const allNames = new Set(PRESET_USERS.map((u) => userKey(u.name)));
   const filtered = extra.filter((u) => !allNames.has(userKey(u.name)));
   return [...PRESET_USERS, ...filtered];
 }
 
 async function saveExtraUsers(kv, users) {
-  if (!kv) throw new Error("Redis nao configurado. Defina UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN.");
-
-  // Only save non-preset users
   const presetNames = new Set(PRESET_USERS.map((u) => userKey(u.name)));
   const extra = normalizeUsers(users).filter((u) => !presetNames.has(userKey(u.name)));
   await kv.set("users", extra);
@@ -123,28 +99,20 @@ async function saveExtraUsers(kv, users) {
 
 async function getDayData(kv, dateKey) {
   if (!kv) return { guesses: [], arrival: null };
-
   const data = await kv.get(`day:${dateKey}`);
   return data || { guesses: [], arrival: null };
 }
 
 async function setDayData(kv, dateKey, data) {
-  if (!kv) throw new Error("Redis nao configurado. Defina UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN.");
-
   await kv.set(`day:${dateKey}`, data);
-
-  // Maintain index of all day keys
   let index = (await kv.get("days_index")) || [];
   if (!index.includes(dateKey)) {
     index.push(dateKey);
     index.sort();
-    // Keep only last MAX_DAYS weekdays
     const weekdays = index.filter(isWeekday);
     if (weekdays.length > MAX_DAYS) {
       const toRemove = weekdays.slice(0, weekdays.length - MAX_DAYS);
-      for (const k of toRemove) {
-        await kv.del(`day:${k}`);
-      }
+      for (const k of toRemove) await kv.del(`day:${k}`);
       index = index.filter((d) => !toRemove.includes(d));
     }
     await kv.set("days_index", index);
@@ -153,57 +121,49 @@ async function setDayData(kv, dateKey, data) {
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
-// GET /api/users — list users (names + photo filenames, no passwords)
+// GET /api/users
 app.get("/api/users", async (req, res) => {
   try {
     const kv = getKV();
     const users = await getUsers(kv);
     res.json(users.map((u) => ({ name: u.name, photo: u.photo || null })));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/login — validate user credentials
+// POST /api/login
 app.post("/api/login", async (req, res) => {
   try {
     const { name, password } = req.body;
     const kv = getKV();
     const users = await getUsers(kv);
     const user = users.find(
-      (u) => u.name.toLowerCase() === name.toLowerCase() && u.password === password
+      (u) => userKey(u.name) === userKey(name) && u.password === password
     );
     if (!user) return res.status(401).json({ error: "Nome ou senha incorretos." });
     res.json({ name: user.name, photo: user.photo || null });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/register — create new user
+// POST /api/register
 app.post("/api/register", async (req, res) => {
   try {
     const { name, password } = req.body;
     if (!name || !password) return res.status(400).json({ error: "Nome e senha são obrigatórios." });
-
     const kv = getKV();
     const users = await getUsers(kv);
-    const exists = users.find((u) => u.name.toLowerCase() === name.toLowerCase());
+    const exists = users.find((u) => userKey(u.name) === userKey(name));
     if (exists) return res.status(409).json({ error: "Usuário já existe." });
-
     const newUser = { name: name.trim(), password, photo: null };
-    const presetNames = new Set(PRESET_USERS.map((u) => u.name.toLowerCase()));
-    const extra = users.filter((u) => !presetNames.has(u.name.toLowerCase()));
+    const presetNames = new Set(PRESET_USERS.map((u) => userKey(u.name)));
+    const extra = users.filter((u) => !presetNames.has(userKey(u.name)));
     extra.push(newUser);
     await saveExtraUsers(kv, extra);
-
     res.json({ name: newUser.name, photo: null });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/today — get today's status (guesses + arrival, if set)
+// GET /api/today
+// Query param: ?viewer=<name>&password=<pass>  (optional — used to reveal own guess)
 app.get("/api/today", async (req, res) => {
   try {
     const kv = getKV();
@@ -211,107 +171,125 @@ app.get("/api/today", async (req, res) => {
     const day = await getDayData(kv, key);
     const nowMins = currentTimeMinutes();
     const cutoffMins = timeStrToMinutes("10:00");
-
-    // Betting is open if before 10h AND Luiz hasn't arrived
     const bettingOpen = !day.arrival && nowMins < cutoffMins;
+
+    // Validate viewer identity if provided
+    let viewerName = null;
+    const { viewer, password } = req.query;
+    if (viewer && password) {
+      const users = await getUsers(kv);
+      const user = users.find(
+        (u) => userKey(u.name) === userKey(viewer) && u.password === password
+      );
+      if (user) viewerName = user.name;
+    }
+
+    // Determine what guesses to expose
+    // - If arrival is set (game over): show all guesses/rankings
+    // - If betting open: only show viewer's own guess (hide count too — just "X já apostaram")
+    // - If past 10h but no arrival yet: show count only, not guesses
+    let exposedGuesses = [];
+    let hiddenCount = 0;
+    const viewerGuess = day.guesses.find(
+      (g) => viewerName && userKey(g.name) === userKey(viewerName)
+    );
+
+    if (day.arrival) {
+      // Game over — show everything
+      exposedGuesses = day.guesses;
+    } else if (bettingOpen) {
+      // Betting phase — only own guess visible
+      hiddenCount = day.guesses.filter(
+        (g) => !viewerName || userKey(g.name) !== userKey(viewerName)
+      ).length;
+      exposedGuesses = viewerGuess ? [viewerGuess] : [];
+    } else {
+      // After 10h, no arrival yet — show count, not times
+      hiddenCount = day.guesses.length;
+      exposedGuesses = [];
+    }
+
+    // Has the viewer already guessed today?
+    const viewerHasGuessed = !!viewerGuess;
 
     res.json({
       date: key,
-      guesses: day.guesses,
+      guesses: exposedGuesses,
+      hiddenCount,
+      viewerHasGuessed,
+      viewerGuess: viewerGuess || null,
       arrival: day.arrival || null,
+      rankings: day.rankings || null,
       bettingOpen,
       currentTime: minutesToTimeStr(nowMins),
     });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/guess — submit a guess
+// POST /api/guess
 app.post("/api/guess", async (req, res) => {
   try {
     const { name, password, time } = req.body;
-
-    // Validate user
     const kv = getKV();
     const users = await getUsers(kv);
     const user = users.find(
-      (u) => u.name.toLowerCase() === name.toLowerCase() && u.password === password
+      (u) => userKey(u.name) === userKey(name) && u.password === password
     );
     if (!user) return res.status(401).json({ error: "Nome ou senha incorretos." });
 
-    // Validate time format HH:MM
     if (!/^\d{2}:\d{2}$/.test(time)) return res.status(400).json({ error: "Horário inválido." });
 
     const key = todayKey();
-
-    // Check it's a weekday
     if (!isWeekday(key))
       return res.status(400).json({ error: "Apostas só são permitidas em dias úteis." });
 
     const day = await getDayData(kv, key);
-
-    // Check betting is still open
     const nowMins = currentTimeMinutes();
+
     if (day.arrival)
       return res.status(400).json({ error: "O Luiz já chegou! Apostas encerradas." });
     if (nowMins >= timeStrToMinutes("10:00"))
       return res.status(400).json({ error: "Apostas encerradas após 10h." });
 
-    // Check for duplicate guess from same user today
-    const existing = day.guesses.findIndex((g) => g.name.toLowerCase() === name.toLowerCase());
+    const existing = day.guesses.findIndex((g) => userKey(g.name) === userKey(name));
     if (existing >= 0) {
-      // Update existing guess
-      day.guesses[existing].time = time;
-      day.guesses[existing].updatedAt = new Date().toISOString();
-    } else {
-      day.guesses.push({ name: user.name, time, createdAt: new Date().toISOString() });
+      // ── BLOCK re-guess: only 1 guess per person per day ──
+      return res.status(409).json({ error: "Você já apostou hoje! Só é permitido um palpite por dia." });
     }
 
+    day.guesses.push({ name: user.name, time, createdAt: new Date().toISOString() });
     await setDayData(kv, key, day);
-    res.json({ success: true, guesses: day.guesses });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/admin/login — validate admin password
+// POST /api/admin/login
 app.post("/api/admin/login", async (req, res) => {
   try {
     const { password } = req.body;
     if (!password) return res.status(400).json({ error: "Senha é obrigatória." });
     if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: "Senha incorreta." });
     res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/admin/arrival — set Luiz's arrival time (admin only)
+// POST /api/admin/arrival
 app.post("/api/admin/arrival", async (req, res) => {
   try {
     const { password, time, date } = req.body;
     if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: "Senha incorreta." });
-
     if (!/^\d{2}:\d{2}$/.test(time)) return res.status(400).json({ error: "Horário inválido." });
 
     const kv = getKV();
     const key = date || todayKey();
     const day = await getDayData(kv, key);
-
     day.arrival = time;
 
-    // Calculate rankings
     if (day.guesses.length > 0) {
       const arrivalMins = timeStrToMinutes(time);
       const ranked = day.guesses
-        .map((g) => ({
-          ...g,
-          diff: absDiff(timeStrToMinutes(g.time), arrivalMins),
-        }))
+        .map((g) => ({ ...g, diff: absDiff(timeStrToMinutes(g.time), arrivalMins) }))
         .sort((a, b) => a.diff - b.diff);
-
-      // Assign positions (handle ties)
       let pos = 1;
       for (let i = 0; i < ranked.length; i++) {
         if (i > 0 && ranked[i].diff === ranked[i - 1].diff) {
@@ -321,7 +299,6 @@ app.post("/api/admin/arrival", async (req, res) => {
         }
         pos++;
       }
-
       day.rankings = ranked;
     } else {
       day.rankings = [];
@@ -329,18 +306,14 @@ app.post("/api/admin/arrival", async (req, res) => {
 
     await setDayData(kv, key, day);
     res.json({ success: true, arrival: time, rankings: day.rankings });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/history — list past days with results
+// GET /api/history
 app.get("/api/history", async (req, res) => {
   try {
     const kv = getKV();
     let index = (await kv.get("days_index")) || [];
-
-    // Only weekdays with arrival set
     const results = [];
     for (const dateKey of index.reverse()) {
       if (!isWeekday(dateKey)) continue;
@@ -355,47 +328,35 @@ app.get("/api/history", async (req, res) => {
       }
       if (results.length >= MAX_DAYS) break;
     }
-
     res.json(results);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/overall-rank — cumulative ranking across all stored days
+// GET /api/overall-rank
 app.get("/api/overall-rank", async (req, res) => {
   try {
     const kv = getKV();
     let index = (await kv.get("days_index")) || [];
-
-    const scores = {}; // name -> { points, wins, days }
-
+    const scores = {};
     for (const dateKey of index) {
       if (!isWeekday(dateKey)) continue;
       const day = await getDayData(kv, dateKey);
       if (!day.arrival || !day.rankings) continue;
-
       const total = day.rankings.length;
       for (const r of day.rankings) {
-        if (!scores[r.name]) scores[r.name] = { name: r.name, points: 0, wins: 0, days: 0, avgDiffMins: 0, totalDiff: 0 };
-        // Points: reverse rank (1st gets most points)
-        const pts = total - r.position + 1;
-        scores[r.name].points += pts;
+        if (!scores[r.name]) scores[r.name] = { name: r.name, points: 0, wins: 0, days: 0, totalDiff: 0 };
+        scores[r.name].points   += total - r.position + 1;
         scores[r.name].totalDiff += r.diff;
-        scores[r.name].days += 1;
+        scores[r.name].days     += 1;
         if (r.position === 1) scores[r.name].wins += 1;
       }
     }
-
     const ranked = Object.values(scores)
       .map((s) => ({ ...s, avgDiffMins: s.days > 0 ? Math.round(s.totalDiff / s.days) : 0 }))
       .sort((a, b) => b.points - a.points || a.avgDiffMins - b.avgDiffMins);
-
     res.json(ranked);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ─── Export for Vercel ────────────────────────────────────────────────────────
-export default app;
+module.exports = app;
