@@ -1,252 +1,293 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Que horas o Luiz chega? 🕐</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
-<!-- LOADING OVERLAY -->
-<div id="global-loading" style="display:none">
-  <div class="loading-hourglass">⏳</div>
-  <div class="loading-text">Aguarde...</div>
-</div>
-
-<!-- CONTEXT MENU -->
-<div id="context-menu" class="ctx-menu" style="display:none">
-  <div class="ctx-section-label">Plano de Fundo</div>
-  <button class="ctx-wallpaper-item" data-wp="padrao"  onclick="applyWallpaper('padrao')">Padrão</button>
-  <button class="ctx-wallpaper-item" data-wp="windows" onclick="applyWallpaper('windows')">Windows</button>
-  <button class="ctx-wallpaper-item" data-wp="michaelsoft" onclick="applyWallpaper('michaelsoft')">Michaelsoft</button>
-  <button class="ctx-wallpaper-item" data-wp="luiz"    onclick="applyWallpaper('luiz')">Luiz</button>
-  <button class="ctx-wallpaper-item" data-wp="custom"  onclick="openCustomColorPicker()">Personalizado</button>
-  <div class="ctx-section-label">Pastas</div>
-  <button class="ctx-wallpaper-item" onclick="resetIconPositions()">Redefinir posição das pastas</button>
-</div>
-
-<!-- Hidden color input for custom color -->
-<input type="color" id="custom-color-input" style="display:none" onchange="applyCustomColor()" />
-
-<!-- TASKBAR -->
-<div class="taskbar">
-  <button class="start-btn" onclick="toggleStartMenu()">
-    <span class="start-logo">🪟</span> <strong>Iniciar</strong>
-  </button>
-  <div class="taskbar-apps" id="taskbar-apps"></div>
-  <div class="taskbar-clock" id="taskbar-clock">00:00</div>
-</div>
-
-<!-- START MENU -->
-<div class="start-menu" id="start-menu" style="display:none">
-  <div class="start-menu-header"><span>LuizOS 95</span></div>
-  <div class="start-menu-items">
-    <button onclick="openWindow('win-guess'); closeStartMenu()">🎯 Fazer Aposta</button>
-    <button onclick="openWindow('win-today'); closeStartMenu(); loadToday()">📋 Apostas de Hoje</button>
-    <button onclick="openWindow('win-history'); closeStartMenu(); loadHistory()">📅 Histórico</button>
-    <button onclick="openWindow('win-rank'); closeStartMenu(); loadOverallRank()">🏆 Ranking Geral</button>
-    <button onclick="openWindow('win-register'); closeStartMenu()">👤 Novo Usuário</button>
-    <hr/>
-    <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
+  <!-- LOADING OVERLAY -->
+  <div id="global-loading" style="display:none">
+    <div class="loading-hourglass">⏳</div>
+    <div class="loading-text">Aguarde...</div>
   </div>
-</div>
 
-<!-- DESKTOP ICONS -->
-<div class="desktop">
-  <div class="desktop-icon" data-icon-id="icon-guess"    data-action="openWindow('win-guess')">
-    <div class="icon-img">🎯</div>
-    <div class="icon-label">Fazer Aposta</div>
+  <!-- CONTEXT MENU -->
+  <div id="context-menu" class="ctx-menu" style="display:none">
+    <div class="ctx-section-label">Plano de Fundo</div>
+    <button class="ctx-wallpaper-item" data-wp="padrao" onclick="applyWallpaper('padrao')">Padrão</button>
+    <button class="ctx-wallpaper-item" data-wp="windows" onclick="applyWallpaper('windows')">Windows</button>
+    <button class="ctx-wallpaper-item" data-wp="michaelsoft"
+      onclick="applyWallpaper('michaelsoft')">Michaelsoft</button>
+    <button class="ctx-wallpaper-item" data-wp="luiz" onclick="applyWallpaper('luiz')">Luiz</button>
+    <button class="ctx-wallpaper-item" data-wp="custom" onclick="openCustomColorPicker()">Personalizado</button>
+    <div class="ctx-section-label">Pastas</div>
+    <button class="ctx-wallpaper-item" onclick="resetIconPositions()">Redefinir posição das pastas</button>
   </div>
-  <div class="desktop-icon" data-icon-id="icon-today"    data-action="openWindow('win-today'); loadToday()">
-    <div class="icon-img">📋</div>
-    <div class="icon-label">Apostas de Hoje</div>
-  </div>
-  <div class="desktop-icon" data-icon-id="icon-history"  data-action="openWindow('win-history'); loadHistory()">
-    <div class="icon-img">📅</div>
-    <div class="icon-label">Histórico</div>
-  </div>
-  <div class="desktop-icon" data-icon-id="icon-rank"     data-action="openWindow('win-rank'); loadOverallRank()">
-    <div class="icon-img">🏆</div>
-    <div class="icon-label">Ranking Geral</div>
-  </div>
-  <div class="desktop-icon" data-icon-id="icon-register" data-action="openWindow('win-register')">
-    <div class="icon-img">👤</div>
-    <div class="icon-label">Novo Usuário</div>
-  </div>
-</div>
 
-<!-- ══ WINDOW: FAZER APOSTA ══ -->
-<div class="win95-window" id="win-guess" style="left:80px;top:60px;width:400px">
-  <div class="win95-titlebar" onmousedown="startDrag(event,'win-guess')">
-    <span class="win95-title">🎯 Fazer Aposta</span>
-    <div class="win95-controls">
-      <button class="win95-btn-ctrl" onclick="minimizeWindow('win-guess')">_</button>
-      <button class="win95-btn-ctrl" onclick="closeWindow('win-guess')">✕</button>
+  <!-- Hidden color input for custom color -->
+  <input type="color" id="custom-color-input" style="display:none" onchange="applyCustomColor()" />
+
+  <!-- TASKBAR -->
+  <div class="taskbar">
+    <button class="start-btn" onclick="toggleStartMenu()">
+      <span class="start-logo">🪟</span> <strong>Iniciar</strong>
+    </button>
+    <div class="taskbar-apps" id="taskbar-apps"></div>
+    <div class="taskbar-clock" id="taskbar-clock">00:00</div>
+  </div>
+
+  <!-- START MENU -->
+  <div class="start-menu" id="start-menu" style="display:none">
+    <div class="start-menu-header"><span>LuizOS 95</span></div>
+    <div class="start-menu-items">
+      <button onclick="openWindow('win-guess'); closeStartMenu()">🎯 Fazer Aposta</button>
+      <button onclick="openWindow('win-today'); closeStartMenu(); loadToday()">📋 Apostas de Hoje</button>
+      <button onclick="openWindow('win-history'); closeStartMenu(); loadHistory()">📅 Histórico</button>
+      <button onclick="openWindow('win-rank'); closeStartMenu(); loadOverallRank()">🏆 Ranking Geral</button>
+      <button onclick="openWindow('win-register'); closeStartMenu()">👤 Novo Usuário</button>
+      <hr />
+      <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
+      <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
     </div>
   </div>
-  <div class="win95-body">
-    <div class="win95-status-bar" id="guess-status-banner"></div>
-    <div class="guess-loading" id="guess-loading">⏳ Verificando se você pode apostar...</div>
 
-    <div class="field-group">
-      <label>Quem é você?</label>
-      <select id="guess-user-select" onchange="loadUserPhoto()">
-        <option value="">-- Selecione --</option>
-      </select>
+  <!-- DESKTOP ICONS -->
+  <div class="desktop">
+    <div class="desktop-icon" data-icon-id="icon-guess" data-action="openWindow('win-guess')">
+      <div class="icon-img">🎯</div>
+      <div class="icon-label">Fazer Aposta</div>
     </div>
-
-    <div class="user-photo-area" id="user-photo-area" style="display:none">
-      <img id="user-photo" src="" alt="Foto" />
+    <div class="desktop-icon" data-icon-id="icon-today" data-action="openWindow('win-today'); loadToday()">
+      <div class="icon-img">📋</div>
+      <div class="icon-label">Apostas de Hoje</div>
     </div>
+    <div class="desktop-icon" data-icon-id="icon-history" data-action="openWindow('win-history'); loadHistory()">
+      <div class="icon-img">📅</div>
+      <div class="icon-label">Histórico</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-rank" data-action="openWindow('win-rank'); loadOverallRank()">
+      <div class="icon-img">🏆</div>
+      <div class="icon-label">Ranking Geral</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-register" data-action="openWindow('win-register')">
+      <div class="icon-img">👤</div>
+      <div class="icon-label">Novo Usuário</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-snake" data-action="openWindow('win-snake'); initSnakeGame()">
+      <div class="icon-img">🐍</div>
+      <div class="icon-label">Snake 95</div>
+    </div>
+  </div>
 
-    <div class="field-group">
-      <label>Senha:</label>
-      <div class="password-field">
-        <input type="password" id="guess-password" placeholder="Sua senha" onchange="updateGuessFormForUser()" />
-        <button type="button" class="password-toggle" onclick="togglePassword('guess-password', this)" title="Mostrar senha">&#128065;</button>
+  <!-- ══ WINDOW: FAZER APOSTA ══ -->
+  <div class="win95-window" id="win-guess" style="left:80px;top:60px;width:400px">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-guess')">
+      <span class="win95-title">🎯 Fazer Aposta</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-guess')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-guess')">✕</button>
       </div>
     </div>
+    <div class="win95-body">
+      <div class="win95-status-bar" id="guess-status-banner"></div>
+      <div class="guess-loading" id="guess-loading">⏳ Verificando se você pode apostar...</div>
 
-    <div class="field-group" id="guess-time-group" style="display:none">
-      <label>Que horas o Luiz vai chegar?</label>
-      <div class="time-picker">
-        <button type="button" class="time-step-btn" onclick="adjustGuessTime(-5)">-</button>
-        <input type="text" id="guess-time" value="09:00" inputmode="numeric" maxlength="5" placeholder="HH:MM" onblur="normalizeGuessTime()" />
-        <button type="button" class="time-step-btn" onclick="adjustGuessTime(5)">+</button>
-        <button type="button" class="time-clock-btn" onclick="openGuessTimeOptions()">&#128337;</button>
-      </div>
-      <div class="time-options" id="guess-time-options">
-        <button type="button" onclick="setGuessTime('08:00')">08:00</button>
-        <button type="button" onclick="setGuessTime('08:30')">08:30</button>
-        <button type="button" onclick="setGuessTime('09:00')">09:00</button>
-        <button type="button" onclick="setGuessTime('09:30')">09:30</button>
-        <button type="button" onclick="setGuessTime('10:00')">10:00</button>
-      </div>
-    </div>
-
-    <div class="btn-row" id="guess-submit-row" style="display:none">
-      <button class="win95-action-btn" onclick="submitGuess()">📨 Apostar!</button>
-    </div>
-
-    <div class="win95-msg" id="guess-msg"></div>
-  </div>
-</div>
-
-<!-- ══ WINDOW: APOSTAS DE HOJE ══ -->
-<div class="win95-window" id="win-today" style="left:120px;top:100px;width:480px;display:none">
-  <div class="win95-titlebar" onmousedown="startDrag(event,'win-today')">
-    <span class="win95-title">📋 Apostas de Hoje</span>
-    <div class="win95-controls">
-      <button class="win95-btn-ctrl" onclick="minimizeWindow('win-today')">_</button>
-      <button class="win95-btn-ctrl" onclick="closeWindow('win-today')">✕</button>
-    </div>
-  </div>
-  <div class="win95-body">
-    <div id="today-content"><div class="loading">Carregando...</div></div>
-  </div>
-</div>
-
-<!-- ══ WINDOW: HISTÓRICO ══ -->
-<div class="win95-window" id="win-history" style="left:160px;top:80px;width:520px;display:none">
-  <div class="win95-titlebar" onmousedown="startDrag(event,'win-history')">
-    <span class="win95-title">📅 Histórico de Chegadas</span>
-    <div class="win95-controls">
-      <button class="win95-btn-ctrl" onclick="minimizeWindow('win-history')">_</button>
-      <button class="win95-btn-ctrl" onclick="closeWindow('win-history')">✕</button>
-    </div>
-  </div>
-  <div class="win95-body">
-    <div id="history-content"><div class="loading">Carregando...</div></div>
-  </div>
-</div>
-
-<!-- ══ WINDOW: RANKING GERAL ══ -->
-<div class="win95-window" id="win-rank" style="left:200px;top:60px;width:460px;display:none">
-  <div class="win95-titlebar" onmousedown="startDrag(event,'win-rank')">
-    <span class="win95-title">🏆 Ranking Geral</span>
-    <div class="win95-controls">
-      <button class="win95-btn-ctrl" onclick="minimizeWindow('win-rank')">_</button>
-      <button class="win95-btn-ctrl" onclick="closeWindow('win-rank')">✕</button>
-    </div>
-  </div>
-  <div class="win95-body">
-    <div id="rank-content"><div class="loading">Carregando...</div></div>
-  </div>
-</div>
-
-<!-- ══ WINDOW: NOVO USUÁRIO ══ -->
-<div class="win95-window" id="win-register" style="left:250px;top:120px;width:360px;display:none">
-  <div class="win95-titlebar" onmousedown="startDrag(event,'win-register')">
-    <span class="win95-title">👤 Novo Usuário</span>
-    <div class="win95-controls">
-      <button class="win95-btn-ctrl" onclick="minimizeWindow('win-register')">_</button>
-      <button class="win95-btn-ctrl" onclick="closeWindow('win-register')">✕</button>
-    </div>
-  </div>
-  <div class="win95-body">
-    <div class="field-group">
-      <label>Nome:</label>
-      <input type="text" id="reg-name" placeholder="Seu nome" />
-    </div>
-    <div class="field-group">
-      <label>Senha:</label>
-      <div class="password-field">
-        <input type="password" id="reg-password" placeholder="Escolha uma senha" />
-        <button type="button" class="password-toggle" onclick="togglePassword('reg-password', this)" title="Mostrar senha">&#128065;</button>
-      </div>
-    </div>
-    <div class="btn-row">
-      <button class="win95-action-btn" onclick="registerUser()">✅ Criar Conta</button>
-    </div>
-    <div class="win95-msg" id="reg-msg"></div>
-  </div>
-</div>
-
-<!-- ══ WINDOW: ADMIN ══ -->
-<div class="win95-window" id="win-admin" style="left:300px;top:80px;width:380px;display:none">
-  <div class="win95-titlebar" onmousedown="startDrag(event,'win-admin')">
-    <span class="win95-title">🔒 Painel Admin</span>
-    <div class="win95-controls">
-      <button class="win95-btn-ctrl" onclick="minimizeWindow('win-admin')">_</button>
-      <button class="win95-btn-ctrl" onclick="closeWindow('win-admin')">✕</button>
-    </div>
-  </div>
-  <div class="win95-body">
-    <div id="admin-login-panel">
-      <p style="color:#800000;font-weight:bold">⚠️ Área Restrita</p>
       <div class="field-group">
-        <label>Senha Admin:</label>
+        <label>Quem é você?</label>
+        <select id="guess-user-select" onchange="loadUserPhoto()">
+          <option value="">-- Selecione --</option>
+        </select>
+      </div>
+
+      <div class="user-photo-area" id="user-photo-area" style="display:none">
+        <img id="user-photo" src="" alt="Foto" />
+      </div>
+
+      <div class="field-group">
+        <label>Senha:</label>
         <div class="password-field">
-          <input type="password" id="admin-password" placeholder="Senha secreta" />
-          <button type="button" class="password-toggle" onclick="togglePassword('admin-password', this)" title="Mostrar senha">&#128065;</button>
+          <input type="password" id="guess-password" placeholder="Sua senha" onchange="updateGuessFormForUser()" />
+          <button type="button" class="password-toggle" onclick="togglePassword('guess-password', this)"
+            title="Mostrar senha">&#128065;</button>
+        </div>
+      </div>
+
+      <div class="field-group" id="guess-time-group" style="display:none">
+        <label>Que horas o Luiz vai chegar?</label>
+        <div class="time-picker">
+          <button type="button" class="time-step-btn" onclick="adjustGuessTime(-5)">-</button>
+          <input type="text" id="guess-time" value="09:00" inputmode="numeric" maxlength="5" placeholder="HH:MM"
+            onblur="normalizeGuessTime()" />
+          <button type="button" class="time-step-btn" onclick="adjustGuessTime(5)">+</button>
+          <button type="button" class="time-clock-btn" onclick="openGuessTimeOptions()">&#128337;</button>
+        </div>
+        <div class="time-options" id="guess-time-options">
+          <button type="button" onclick="setGuessTime('08:00')">08:00</button>
+          <button type="button" onclick="setGuessTime('08:30')">08:30</button>
+          <button type="button" onclick="setGuessTime('09:00')">09:00</button>
+          <button type="button" onclick="setGuessTime('09:30')">09:30</button>
+          <button type="button" onclick="setGuessTime('10:00')">10:00</button>
+        </div>
+      </div>
+
+      <div class="btn-row" id="guess-submit-row" style="display:none">
+        <button class="win95-action-btn" onclick="submitGuess()">📨 Apostar!</button>
+      </div>
+
+      <div class="win95-msg" id="guess-msg"></div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: APOSTAS DE HOJE ══ -->
+  <div class="win95-window" id="win-today" style="left:120px;top:100px;width:480px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-today')">
+      <span class="win95-title">📋 Apostas de Hoje</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-today')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-today')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body">
+      <div id="today-content">
+        <div class="loading">Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: HISTÓRICO ══ -->
+  <div class="win95-window" id="win-history" style="left:160px;top:80px;width:520px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-history')">
+      <span class="win95-title">📅 Histórico de Chegadas</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-history')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-history')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body">
+      <div id="history-content">
+        <div class="loading">Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: RANKING GERAL ══ -->
+  <div class="win95-window" id="win-rank" style="left:200px;top:60px;width:460px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-rank')">
+      <span class="win95-title">🏆 Ranking Geral</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-rank')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-rank')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body">
+      <div id="rank-content">
+        <div class="loading">Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: NOVO USUÁRIO ══ -->
+  <div class="win95-window" id="win-register" style="left:250px;top:120px;width:360px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-register')">
+      <span class="win95-title">👤 Novo Usuário</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-register')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-register')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body">
+      <div class="field-group">
+        <label>Nome:</label>
+        <input type="text" id="reg-name" placeholder="Seu nome" />
+      </div>
+      <div class="field-group">
+        <label>Senha:</label>
+        <div class="password-field">
+          <input type="password" id="reg-password" placeholder="Escolha uma senha" />
+          <button type="button" class="password-toggle" onclick="togglePassword('reg-password', this)"
+            title="Mostrar senha">&#128065;</button>
         </div>
       </div>
       <div class="btn-row">
-        <button class="win95-action-btn" onclick="adminLogin()">🔓 Entrar</button>
+        <button class="win95-action-btn" onclick="registerUser()">✅ Criar Conta</button>
       </div>
-      <div class="win95-msg" id="admin-login-msg"></div>
-    </div>
-    <div id="admin-panel" style="display:none">
-      <p><strong>Registrar chegada do Luiz</strong></p>
-      <div class="field-group">
-        <label>Data (deixe vazio para hoje):</label>
-        <input type="date" id="admin-date" />
-      </div>
-      <div class="field-group">
-        <label>Horário de chegada:</label>
-        <input type="time" id="admin-arrival-time" />
-      </div>
-      <div class="btn-row">
-        <button class="win95-action-btn" onclick="setArrival()">📍 Registrar Chegada</button>
-      </div>
-      <div class="win95-msg" id="admin-msg"></div>
-      <hr/>
-      <div id="admin-result"></div>
+      <div class="win95-msg" id="reg-msg"></div>
     </div>
   </div>
-</div>
 
-<script src="app.js"></script>
+  <!-- ══ WINDOW: ADMIN ══ -->
+  <div class="win95-window" id="win-admin" style="left:300px;top:80px;width:380px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-admin')">
+      <span class="win95-title">🔒 Painel Admin</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-admin')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-admin')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body">
+      <div id="admin-login-panel">
+        <p style="color:#800000;font-weight:bold">⚠️ Área Restrita</p>
+        <div class="field-group">
+          <label>Senha Admin:</label>
+          <div class="password-field">
+            <input type="password" id="admin-password" placeholder="Senha secreta" />
+            <button type="button" class="password-toggle" onclick="togglePassword('admin-password', this)"
+              title="Mostrar senha">&#128065;</button>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="win95-action-btn" onclick="adminLogin()">🔓 Entrar</button>
+        </div>
+        <div class="win95-msg" id="admin-login-msg"></div>
+      </div>
+      <div id="admin-panel" style="display:none">
+        <p><strong>Registrar chegada do Luiz</strong></p>
+        <div class="field-group">
+          <label>Data (deixe vazio para hoje):</label>
+          <input type="date" id="admin-date" />
+        </div>
+        <div class="field-group">
+          <label>Horário de chegada:</label>
+          <input type="time" id="admin-arrival-time" />
+        </div>
+        <div class="btn-row">
+          <button class="win95-action-btn" onclick="setArrival()">📍 Registrar Chegada</button>
+        </div>
+        <div class="win95-msg" id="admin-msg"></div>
+        <hr />
+        <div id="admin-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="win95-window" id="win-snake" style="left:150px;top:50px;width:420px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-snake')">
+      <span class="win95-title">🐍 Snake 95</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-snake')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-snake'); stopSnakeGame()">✕</button>
+      </div>
+    </div>
+    <div class="win95-body">
+      <div class="snake-header">
+        <span>Pontos: <span id="snake-score" style="color:var(--win-blue-hi)">0</span></span>
+      </div>
+      <div class="canvas-container">
+        <canvas id="snake-canvas" width="380" height="380"></canvas>
+      </div>
+      <div class="btn-row" style="justify-content: center; margin-top: 8px;">
+        <button class="win95-action-btn" id="snake-start-btn" onclick="startSnakeGame()">▶ Iniciar Novo Jogo</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="game.js"></script>
 </body>
+
 </html>

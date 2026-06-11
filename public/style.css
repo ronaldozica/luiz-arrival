@@ -660,3 +660,32 @@ body {
   font-weight: bold;
 }
 
+/* ─── SNAKE 95 ────────────────────────────── */
+.canvas-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid var(--win-gray);
+  box-shadow: var(--shadow-in);
+  background: var(--win-black);
+  width: 384px; /* 380px do canvas + 4px de bordas */
+  height: 384px;
+  margin: 0 auto;
+}
+
+#snake-canvas {
+  background-color: var(--win-black);
+  image-rendering: pixelated; /* Mantém os gráficos nítidos */
+}
+
+.snake-header {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 14px;
+  background: var(--win-gray);
+  padding: 4px 8px;
+  box-shadow: var(--shadow-in);
+  margin-bottom: 8px;
+}
