@@ -689,3 +689,91 @@ body {
   box-shadow: var(--shadow-in);
   margin-bottom: 8px;
 }
+
+/* ─── CAMPO MINADO 95 ─────────────────────── */
+.ms-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  background: var(--win-gray);
+  box-shadow: var(--shadow-in);
+  margin-bottom: 6px;
+  border: 2px solid transparent; /* Para manter o alinhamento */
+}
+
+.ms-counter {
+  background: black;
+  color: red;
+  font-family: 'VT323', 'Courier New', monospace; /* Fica perfeito se você usar a fonte VT323 que já importou */
+  font-size: 24px;
+  line-height: 1;
+  padding: 2px 4px;
+  box-shadow: inset 1px 1px var(--win-dark), inset -1px -1px rgba(255,255,255,0.2);
+  width: 48px;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.ms-face {
+  width: 26px;
+  height: 26px;
+  font-size: 16px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ms-board-container {
+  box-shadow: var(--shadow-in);
+  padding: 2px;
+  background: var(--win-gray);
+  display: inline-block;
+}
+
+.ms-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 20px);
+  grid-template-rows: repeat(9, 20px);
+  background: var(--win-gray);
+}
+
+.ms-cell {
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  background: var(--win-gray);
+  box-shadow: var(--shadow-out);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  cursor: default;
+  user-select: none;
+}
+
+.ms-cell:active:not(.revealed):not(.flagged) {
+  box-shadow: var(--shadow-in);
+}
+
+.ms-cell.revealed {
+  box-shadow: none;
+  border: 1px solid var(--win-dark);
+  border-right-color: var(--win-gray);
+  border-bottom-color: var(--win-gray);
+}
+
+/* Cores dos números clássicos */
+.ms-cell[data-value="1"] { color: blue; }
+.ms-cell[data-value="2"] { color: green; }
+.ms-cell[data-value="3"] { color: red; }
+.ms-cell[data-value="4"] { color: darkblue; }
+.ms-cell[data-value="5"] { color: darkred; }
+.ms-cell[data-value="6"] { color: darkcyan; }
+.ms-cell[data-value="7"] { color: black; }
+.ms-cell[data-value="8"] { color: gray; }
+
+.ms-cell.mine { background-color: red; } /* Mina que explodiu */

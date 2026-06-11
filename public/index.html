@@ -53,6 +53,7 @@
       <hr />
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
+      <button onclick="openWindow('win-minesweeper'); initMinesweeper(); closeStartMenu()">💣 Campo Minado</button>
     </div>
   </div>
 
@@ -81,6 +82,11 @@
     <div class="desktop-icon" data-icon-id="icon-snake" data-action="openWindow('win-snake'); initSnakeGame()">
       <div class="icon-img">🐍</div>
       <div class="icon-label">Snake 95</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-minesweeper"
+      data-action="openWindow('win-minesweeper'); initMinesweeper()">
+      <div class="icon-img">💣</div>
+      <div class="icon-label">Campo<br>Minado</div>
     </div>
   </div>
 
@@ -286,8 +292,32 @@
     </div>
   </div>
 
+  <div class="win95-window" id="win-minesweeper" style="left:180px;top:80px;width:230px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-minesweeper')">
+      <span class="win95-title">💣 Campo Minado</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-minesweeper')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-minesweeper'); stopMinesweeper()">✕</button>
+      </div>
+    </div>
+    <div class="win95-body" style="background: var(--win-gray); padding: 6px;">
+
+      <div class="ms-header">
+        <div class="ms-counter" id="ms-mine-count">010</div>
+        <button class="win95-btn-ctrl ms-face" id="ms-face" onclick="initMinesweeper()">🙂</button>
+        <div class="ms-counter" id="ms-timer">000</div>
+      </div>
+
+      <div class="ms-board-container">
+        <div class="ms-grid" id="ms-grid" oncontextmenu="return false;"></div>
+      </div>
+
+    </div>
+  </div>
+
   <script src="app.js"></script>
   <script src="game.js"></script>
+  <script src="minesweeper.js"></script>
 </body>
 
 </html>
