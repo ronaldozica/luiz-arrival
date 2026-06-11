@@ -427,14 +427,28 @@ async function registerUser() {
 }
 
 // ─── Admin ────────────────────────────────────────────────────────────────────
-function adminLogin() {
+async function adminLogin() {
   const pwd = document.getElementById("admin-password").value;
   const msg = document.getElementById("admin-login-msg");
   if (!pwd) { showMsg(msg, "Digite a senha.", "err"); return; }
-  adminPassword = pwd;
-  // Optimistic: show panel and verify on next action
-  document.getElementById("admin-login-panel").style.display = "none";
-  document.getElementById("admin-panel").style.display = "block";
+  
+  try {
+    const res = await fetch(`${API}/admin/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pwd }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      adminPassword = pwd;
+      document.getElementById("admin-login-panel").style.display = "none";
+      document.getElementById("admin-panel").style.display = "block";
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch (e) {
+    showMsg(msg, "Erro de conexão.", "err");
+  }
 }
 
 async function setArrival() {

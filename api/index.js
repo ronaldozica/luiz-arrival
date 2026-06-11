@@ -1,8 +1,10 @@
-const express = require("express");
-const { Redis } = require("@upstash/redis");
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') });
+
+import express, { json } from "express";
+import { Redis } from "@upstash/redis";
 const app = express();
 
-app.use(express.json());
+app.use(json());
 app.use(require("cors")());
 
 // ─── Redis Client (Upstash) ──────────────────────────────────────────────────
@@ -14,7 +16,8 @@ function getKV() {
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+console.log(ADMIN_PASSWORD);
 
 const PRESET_USERS = [
   { name: "Ronaldo", password: "rolando", photo: "ronaldo.jpg" },
@@ -272,6 +275,18 @@ app.post("/api/guess", async (req, res) => {
   }
 });
 
+// POST /api/admin/login — validate admin password
+app.post("/api/admin/login", async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: "Senha é obrigatória." });
+    if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: "Senha incorreta." });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/admin/arrival — set Luiz's arrival time (admin only)
 app.post("/api/admin/arrival", async (req, res) => {
   try {
@@ -383,4 +398,4 @@ app.get("/api/overall-rank", async (req, res) => {
 });
 
 // ─── Export for Vercel ────────────────────────────────────────────────────────
-module.exports = app;
+export default app;
