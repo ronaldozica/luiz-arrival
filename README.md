@@ -1,4 +1,4 @@
-# 🕐 Que Horas o Luiz Chega?
+# 🕐 Que horas o Luiz chega?
 > Sistema de apostas estilo Windows 95 para o jogo diário do escritório.
 
 ---

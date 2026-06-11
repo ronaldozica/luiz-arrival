@@ -410,6 +410,16 @@ body {
 .win95-status-bar.closed { color: #800000; font-weight: bold; }
 .win95-status-bar.open   { color: #006400; font-weight: bold; }
 
+.guess-loading {
+  background: #ffffe1;
+  color: var(--win-dark);
+  font-size: 12px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--win-dark);
+  box-shadow: var(--shadow-in);
+}
+
 /* ─── USER PHOTO ──────────────────────────── */
 .user-photo-area {
   display: flex;

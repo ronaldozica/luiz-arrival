@@ -423,11 +423,14 @@ async function updateGuessFormForUser() {
   const pwd  = document.getElementById("guess-password").value;
   if (!name || !pwd) return;
 
-  showLoading("Verificando aposta...");
+  const loading = document.getElementById("guess-loading");
+  loading.textContent = "⏳ Verificando aposta...";
+  loading.style.display = "block";
+
   try {
     const res  = await fetch(`${API}/today?viewer=${encodeURIComponent(name)}&password=${encodeURIComponent(pwd)}`);
     const data = await res.json();
-    if (!res.ok) { hideLoading(); return; }
+    if (!res.ok) { loading.style.display = "none"; return; }
 
     currentUser = { name, password: pwd };
     const msg = document.getElementById("guess-msg");
@@ -438,10 +441,21 @@ async function updateGuessFormForUser() {
     } else {
       setGuessFormOpen(data.bettingOpen);
     }
-  } catch {} finally { hideLoading(); }
+  } catch {
+    setGuessFormOpen(false);
+  } finally {
+    loading.style.display = "none";
+  }
 }
 
 async function checkTodayStatus() {
+  const loading = document.getElementById("guess-loading");
+  setGuessFormOpen(false);
+  if (loading) {
+    loading.textContent = "⏳ Verificando disponibilidade de aposta...";
+    loading.style.display = "block";
+  }
+
   try {
     const res  = await fetch(`${API}/today`);
     const data = await res.json();
@@ -467,6 +481,8 @@ async function checkTodayStatus() {
       banner.className   = "win95-status-bar show closed";
     }
     setGuessFormOpen(false);
+  } finally {
+    if (loading) loading.style.display = "none";
   }
 }
 
@@ -475,10 +491,15 @@ function setGuessFormOpen(isOpen) {
   const submitRow = document.getElementById("guess-submit-row");
   const timeInput = document.getElementById("guess-time");
   const timeOptions = document.getElementById("guess-time-options");
+  const loading = document.getElementById("guess-loading");
+
   if (timeGroup)   timeGroup.style.display   = isOpen ? "flex" : "none";
   if (submitRow)   submitRow.style.display   = isOpen ? "flex" : "none";
   if (timeInput)   timeInput.disabled        = !isOpen;
   if (!isOpen && timeOptions) timeOptions.classList.remove("show");
+  if (loading) {
+    loading.style.display = "none";
+  }
 }
 
 function setGuessTime(time) {
