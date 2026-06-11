@@ -336,11 +336,13 @@ function closeContextMenu() {
 
 // ─── Wallpaper ────────────────────────────────────────────────────────────────
 const WALLPAPER_KEY = "luizos_wallpaper";
+const CUSTOM_COLOR_KEY = "luizos_custom_color";
 const WALLPAPERS = {
   padrao:  { label: "Padrão",   type: "color",  value: "#008080" },
   windows: { label: "Windows",  type: "image",  value: "/wallpapers/windows.png" },
   michaelsoft: { label: "Michaelsoft",  type: "image",  value: "/wallpapers/michaelsoft.png" },
   luiz:    { label: "Luiz",     type: "image",  value: "/wallpapers/luiz.png" },
+  custom:  { label: "Personalizado", type: "color",  value: "#008080" },
 };
 
 function applyWallpaper(key) {
@@ -366,7 +368,26 @@ function applyWallpaper(key) {
 
 function loadWallpaper() {
   const saved = localStorage.getItem(WALLPAPER_KEY) || "padrao";
+  if (saved === "custom") {
+    const customColor = localStorage.getItem(CUSTOM_COLOR_KEY) || "#008080";
+    WALLPAPERS.custom.value = customColor;
+  }
   applyWallpaper(saved);
+}
+
+function openCustomColorPicker() {
+  const colorInput = document.getElementById("custom-color-input");
+  const savedColor = localStorage.getItem(CUSTOM_COLOR_KEY) || "#008080";
+  colorInput.value = savedColor;
+  colorInput.click();
+}
+
+function applyCustomColor() {
+  const colorInput = document.getElementById("custom-color-input");
+  const color = colorInput.value;
+  WALLPAPERS.custom.value = color;
+  localStorage.setItem(CUSTOM_COLOR_KEY, color);
+  applyWallpaper("custom");
 }
 
 // ─── Start Menu ───────────────────────────────────────────────────────────────

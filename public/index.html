@@ -21,9 +21,13 @@
   <button class="ctx-wallpaper-item" data-wp="windows" onclick="applyWallpaper('windows')">Windows</button>
   <button class="ctx-wallpaper-item" data-wp="michaelsoft" onclick="applyWallpaper('michaelsoft')">Michaelsoft</button>
   <button class="ctx-wallpaper-item" data-wp="luiz"    onclick="applyWallpaper('luiz')">Luiz</button>
+  <button class="ctx-wallpaper-item" data-wp="custom"  onclick="openCustomColorPicker()">Personalizado</button>
   <div class="ctx-section-label">Pastas</div>
   <button class="ctx-wallpaper-item" onclick="resetIconPositions()">Redefinir posição das pastas</button>
 </div>
+
+<!-- Hidden color input for custom color -->
+<input type="color" id="custom-color-input" style="display:none" onchange="applyCustomColor()" />
 
 <!-- TASKBAR -->
 <div class="taskbar">
