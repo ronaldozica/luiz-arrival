@@ -11,6 +11,18 @@ let currentUser    = null; // { name, password, photo, isHCM } — set after log
 let todayStatusCache = null; // { data, ts } — cache to prevent stale re-guess
 let todayPollTimer = null;
 
+const windows = {
+    "win-login":    "🔑 Login",
+    "win-guess":    "🎯 Aposta",
+    "win-today":    "📋 Hoje",
+    "win-history":  "📅 Histórico",
+    "win-rank":     "🏆 Ranking",
+    "win-register": "👤 Cadastro",
+    "win-admin":    "🔒 Admin",
+    "win-gamerank": "🎮 Rank Jogos",
+    "win-store":    "🛒 Loja",
+  };
+
 // ─── Loading overlay ─────────────────────────────────────────────────────────
 function showLoading(msg) {
   let el = document.getElementById("global-loading");
@@ -1114,3 +1126,112 @@ startTodayPoll();
 updateTaskbar();
 loadIconPositions();
 loadWallpaper();
+
+// ─── Loja do Luiz ─────────────────────────────────────────────────────────────
+
+async function openStore() {
+  if (!currentUser) {
+    alert("Você precisa fazer login para acessar a loja e ver suas moedas.");
+    openWindow("win-login");
+    return;
+  }
+  openWindow("win-store");
+  await loadStore();
+}
+
+async function loadStore() {
+  const grid = document.getElementById("store-items");
+  const balanceEl = document.getElementById("store-balance");
+  
+  grid.innerHTML = '<div class="loading">⏳ Carregando prêmios...</div>';
+  
+  try {
+    const params = `?viewer=${encodeURIComponent(currentUser.name)}&password=${encodeURIComponent(currentUser.password)}`;
+    const res = await fetch(`${API}/store${params}`);
+    const data = await res.json();
+    
+    if (!res.ok) throw new Error(data.error);
+
+    balanceEl.textContent = data.balance;
+
+    if (data.items.length === 0) {
+      grid.innerHTML = '<div class="no-data">A loja está vazia no momento.</div>';
+      return;
+    }
+
+    let html = "";
+    data.items.forEach(item => {
+      const isUnlocked = data.purchases.includes(item.id);
+      const itemClass = isUnlocked ? "store-item unlocked" : "store-item locked";
+      // Se não comprou, mostramos um placeholder visual.
+      const imgSrc = isUnlocked ? item.src : "/photos/luizCoinIcon.png"; 
+
+      html += `
+        <div class="${itemClass}">
+          <div class="store-item-title">${escHtml(item.title)}</div>
+          <img src="${imgSrc}" class="store-item-preview" draggable="false" />
+          
+          ${!isUnlocked ? `
+            <div class="store-item-price">
+               <img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}
+            </div>
+            <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${data.balance})">Comprar</button>
+          ` : `
+            <div class="store-item-price" style="color:#006400">✅ Seu</div>
+            <button class="win95-action-btn" onclick="openGallery('${item.id}', '${item.src}', '${escHtml(item.title)}')">Abrir</button>
+          `}
+        </div>`;
+    });
+    
+    grid.innerHTML = html;
+  } catch (e) {
+    grid.innerHTML = `<div class="win95-msg err">Erro ao carregar loja: ${e.message}</div>`;
+  }
+}
+
+async function buyStoreItem(itemId, price, currentBalance) {
+  if (currentBalance < price) {
+    alert("Você não tem LuizCoins™ suficientes para comprar este item!");
+    return;
+  }
+  if (!confirm(`Tem certeza que deseja gastar ${price} LuizCoins™ para comprar esse item?`)) return;
+
+  showLoading("Processando compra...");
+  try {
+    const res = await fetch(`${API}/store/buy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: currentUser.name, password: currentUser.password, itemId })
+    });
+    const data = await res.json();
+    
+    if (res.ok) {
+      // Compra feita com sucesso, recarrega a janela da loja
+      await loadStore();
+    } else {
+      alert(`❌ Erro: ${data.error}`);
+    }
+  } catch (e) {
+    alert("Erro de conexão.");
+  } finally {
+    hideLoading();
+  }
+}
+
+function openGallery(id, src, title) {
+  document.getElementById("gallery-title").textContent = `🖼️ Visualizador - ${title}`;
+  document.getElementById("gallery-img").src = src;
+  
+  const btn = document.getElementById("gallery-download-btn");
+  btn.onclick = () => {
+    // Força o download da imagem via JS
+    const a = document.createElement("a");
+    a.href = src;
+    a.download = `Luiz_Meme_${id}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+  
+  openWindow("win-gallery");
+}

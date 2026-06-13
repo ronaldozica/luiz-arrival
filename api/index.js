@@ -405,5 +405,140 @@ app.post("/api/game-rank", async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Loja de Prêmios (Configuração) ──────────────────────────────────────────
+const STORE_ITEMS = [
+  // Cadastre seus GIFs e imagens aqui. Eles devem estar na pasta public (ex: /store/...)
+  { id: "palinha", price: 10, src: "/photos/palinha.gif", title: "Luiz dando uma palinha" },
+  { id: "baixista", price: 10, src: "/photos/baixista.gif", title: "Luiz baixista" },
+];
+
+// ─── Rotas da Loja ───────────────────────────────────────────────────────────
+
+// GET /api/store
+app.get("/api/store", async (req, res) => {
+  try {
+    const { viewer, password } = req.query;
+    if (!viewer || !password) return res.status(401).json({ error: "Faça login para acessar a loja." });
+
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find((u) => userKey(u.name) === userKey(viewer) && u.password === password);
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const hcmNames = new Set(users.filter(u => u.isHCM).map(u => userKey(u.name)));
+    const isUserHCM = hcmNames.has(userKey(user.name));
+
+    let index = (await kv.get("days_index")) || [];
+    let earnedCoins = 0;
+
+    // 1. Calcular moedas ganhas com base no histórico
+    for (const dateKey of index) {
+      if (!isWeekday(dateKey)) continue;
+      const day = await getDayData(kv, dateKey);
+      if (!day.arrival || !day.rankings) continue;
+
+      const userRank = day.rankings.find(r => userKey(r.name) === userKey(user.name));
+      if (userRank) {
+        if (userRank.position === 1) earnedCoins += 10;
+        else if (userRank.position === 2) earnedCoins += 5;
+        else if (userRank.position === 3) earnedCoins += 3;
+      }
+
+      // Regra HCM: 1 moeda extra se for o 1º lugar entre o pessoal do HCM
+      if (isUserHCM) {
+         const hcmRanks = day.rankings.filter(r => hcmNames.has(userKey(r.name)));
+         if (hcmRanks.length > 0) {
+            const topHcmPos = hcmRanks[0].position;
+            const isTopHcm = hcmRanks.some(r => r.position === topHcmPos && userKey(r.name) === userKey(user.name));
+            if (isTopHcm && userRank) earnedCoins += 5;
+         }
+      }
+    }
+
+    // 2. Subtrair moedas gastas
+    const purchasesKey = `purchases:${userKey(user.name)}`;
+    const purchases = (await kv.get(purchasesKey)) || [];
+    let spentCoins = 0;
+    
+    purchases.forEach(id => {
+      const item = STORE_ITEMS.find(i => i.id === id);
+      if (item) spentCoins += item.price;
+    });
+
+    // 3. Ocultar o SRC da mídia para quem não comprou
+    const responseItems = STORE_ITEMS.map(item => {
+        const isUnlocked = purchases.includes(item.id);
+        return {
+            id: item.id,
+            title: item.title,
+            price: item.price,
+            src: isUnlocked ? item.src : null // Mantém bloqueado na rede
+        };
+    });
+
+    res.json({ balance: earnedCoins - spentCoins, purchases, items: responseItems });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/store/buy
+app.post("/api/store/buy", async (req, res) => {
+  try {
+    const { name, password, itemId } = req.body;
+    const kv = getKV();
+    
+    // Validar usuário
+    const users = await getUsers(kv);
+    const user = users.find((u) => userKey(u.name) === userKey(name) && u.password === password);
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const item = STORE_ITEMS.find(i => i.id === itemId);
+    if (!item) return res.status(404).json({ error: "Item não encontrado." });
+
+    // Recalcular saldo para evitar bypass
+    const hcmNames = new Set(users.filter(u => u.isHCM).map(u => userKey(u.name)));
+    const isUserHCM = hcmNames.has(userKey(user.name));
+    let index = (await kv.get("days_index")) || [];
+    let earnedCoins = 0;
+
+    for (const dateKey of index) {
+      if (!isWeekday(dateKey)) continue;
+      const day = await getDayData(kv, dateKey);
+      if (!day.arrival || !day.rankings) continue;
+      const userRank = day.rankings.find(r => userKey(r.name) === userKey(user.name));
+      if (userRank) {
+        if (userRank.position === 1) earnedCoins += 10;
+        else if (userRank.position === 2) earnedCoins += 5;
+        else if (userRank.position === 3) earnedCoins += 3;
+      }
+      if (isUserHCM) {
+         const hcmRanks = day.rankings.filter(r => hcmNames.has(userKey(r.name)));
+         if (hcmRanks.length > 0 && hcmRanks.some(r => r.position === hcmRanks[0].position && userKey(r.name) === userKey(user.name))) {
+            earnedCoins += 1;
+         }
+      }
+    }
+
+    const purchasesKey = `purchases:${userKey(user.name)}`;
+    const purchases = (await kv.get(purchasesKey)) || [];
+    
+    if (purchases.includes(itemId)) return res.status(400).json({ error: "Você já possui este item." });
+
+    let spentCoins = 0;
+    purchases.forEach(id => {
+      const pItem = STORE_ITEMS.find(i => i.id === id);
+      if (pItem) spentCoins += pItem.price;
+    });
+
+    const balance = earnedCoins - spentCoins;
+    if (balance < item.price) return res.status(400).json({ error: "LuizCoins™ insuficientes." });
+
+    // Efetuar compra
+    purchases.push(itemId);
+    await kv.set(purchasesKey, purchases);
+
+    res.json({ success: true, newBalance: balance - item.price });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Export for Vercel ────────────────────────────────────────────────────────
 module.exports = app;

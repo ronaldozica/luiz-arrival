@@ -21,7 +21,8 @@
     <div class="ctx-section-label">Plano de Fundo</div>
     <button class="ctx-wallpaper-item" data-wp="padrao" onclick="applyWallpaper('padrao')">Padrão</button>
     <button class="ctx-wallpaper-item" data-wp="windows" onclick="applyWallpaper('windows')">Windows</button>
-    <button class="ctx-wallpaper-item" data-wp="michaelsoft" onclick="applyWallpaper('michaelsoft')">Michaelsoft</button>
+    <button class="ctx-wallpaper-item" data-wp="michaelsoft"
+      onclick="applyWallpaper('michaelsoft')">Michaelsoft</button>
     <button class="ctx-wallpaper-item" data-wp="luiz" onclick="applyWallpaper('luiz')">Luiz</button>
     <button class="ctx-wallpaper-item" data-wp="custom" onclick="openCustomColorPicker()">Personalizado</button>
     <div class="ctx-section-label">Pastas</div>
@@ -52,6 +53,7 @@
       <button onclick="openWindow('win-history'); closeStartMenu(); loadHistory()">📅 Histórico</button>
       <button onclick="openWindow('win-rank'); closeStartMenu(); loadOverallRank()">🏆 Ranking Geral</button>
       <button onclick="openWindow('win-register'); closeStartMenu()">👤 Novo Usuário</button>
+      <button onclick="openStore(); closeStartMenu()">🛒 Loja</button>
       <hr />
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
@@ -88,13 +90,20 @@
       <div class="icon-img">🐍</div>
       <div class="icon-label">Snake 95</div>
     </div>
-    <div class="desktop-icon" data-icon-id="icon-minesweeper" data-action="openWindow('win-minesweeper'); initMinesweeper()">
+    <div class="desktop-icon" data-icon-id="icon-minesweeper"
+      data-action="openWindow('win-minesweeper'); initMinesweeper()">
       <div class="icon-img">💣</div>
       <div class="icon-label">Campo<br>Minado</div>
     </div>
-    <div class="desktop-icon" data-icon-id="icon-gamerank" data-action="openWindow('win-gamerank'); loadGameRank('snake')">
+    <div class="desktop-icon" data-icon-id="icon-gamerank"
+      data-action="openWindow('win-gamerank'); loadGameRank('snake')">
       <div class="icon-img">🎮</div>
       <div class="icon-label">Rank<br>Jogos</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-store" data-action="openStore()">
+      <div class="icon-img"><img src="/photos/luizCoinIcon.png"
+          style="width:32px; height:32px; image-rendering:pixelated; border-radius:50%"></div>
+      <div class="icon-label">Loja</div>
     </div>
   </div>
 
@@ -363,9 +372,11 @@
       <!-- Difficulty selector -->
       <div class="ms-difficulty-bar">
         <button class="ms-diff-btn active" data-diff="beginner" onclick="setMsDifficulty('beginner')">Iniciante</button>
-        <button class="ms-diff-btn" data-diff="intermediate" onclick="setMsDifficulty('intermediate')">Intermediário</button>
+        <button class="ms-diff-btn" data-diff="intermediate"
+          onclick="setMsDifficulty('intermediate')">Intermediário</button>
         <button class="ms-diff-btn" data-diff="expert" onclick="setMsDifficulty('expert')">Especialista</button>
-        <button class="win95-action-btn" style="margin-left:auto;font-size:10px;padding:2px 6px" onclick="openGameRank('minesweeper', currentMsDifficulty)">🏆</button>
+        <button class="win95-action-btn" style="margin-left:auto;font-size:10px;padding:2px 6px"
+          onclick="openGameRank('minesweeper', currentMsDifficulty)">🏆</button>
       </div>
 
       <div class="ms-header">
@@ -393,13 +404,63 @@
     <div class="win95-body win95-body-scroll">
       <!-- Tabs for games -->
       <div class="win95-tabs" style="margin-bottom:4px">
-        <button class="rank-tab active" data-tab="snake" onclick="loadGameRank('snake'); setGameRankTabActive('snake')">🐍 Snake</button>
-        <button class="rank-tab" data-tab="ms-beginner" onclick="loadGameRank('minesweeper','beginner'); setGameRankTabActive('ms-beginner')">💣 Iniciante</button>
-        <button class="rank-tab" data-tab="ms-intermediate" onclick="loadGameRank('minesweeper','intermediate'); setGameRankTabActive('ms-intermediate')">💣 Médio</button>
-        <button class="rank-tab" data-tab="ms-expert" onclick="loadGameRank('minesweeper','expert'); setGameRankTabActive('ms-expert')">💣 Especialista</button>
+        <button class="rank-tab active" data-tab="snake"
+          onclick="loadGameRank('snake'); setGameRankTabActive('snake')">🐍 Snake</button>
+        <button class="rank-tab" data-tab="ms-beginner"
+          onclick="loadGameRank('minesweeper','beginner'); setGameRankTabActive('ms-beginner')">💣 Iniciante</button>
+        <button class="rank-tab" data-tab="ms-intermediate"
+          onclick="loadGameRank('minesweeper','intermediate'); setGameRankTabActive('ms-intermediate')">💣
+          Médio</button>
+        <button class="rank-tab" data-tab="ms-expert"
+          onclick="loadGameRank('minesweeper','expert'); setGameRankTabActive('ms-expert')">💣 Especialista</button>
       </div>
       <div id="gamerank-content">
         <div class="loading">Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: LOJA DO LUIZ ══ -->
+  <div class="win95-window" id="win-store" style="left:100px;top:40px;width:520px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-store')">
+      <span class="win95-title">🛒 Loja</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-store')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-store')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body win95-body-scroll" style="background:var(--win-gray)">
+      <span style="font-weight:bold; color:var(--win-darker)">Compre skins para o seu Luiz</span>
+      <div class="store-header">
+        <span style="font-weight:bold; color:var(--win-darker)">Seu saldo:</span>
+        <div class="coin-balance">
+          <span id="store-balance">0</span>
+          <img src="/photos/luizCoinIcon.png" class="coin-icon" alt="Moedas">
+        </div>
+      </div>
+      <div id="store-items" class="store-grid">
+        <!-- Mídias da loja serão injetadas aqui -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: GALERIA DE MÍDIA ══ -->
+  <div class="win95-window win95-dialog" id="win-gallery"
+    style="left:180px;top:100px;width:400px;display:none;z-index:9000">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-gallery')">
+      <span class="win95-title" id="gallery-title">🖼️ Visualizador</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-gallery')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body" style="text-align:center; padding-bottom:8px">
+      <div class="gallery-img-container">
+        <img id="gallery-img" src=""
+          style="max-width:100%; max-height:250px; border:1px solid var(--win-gray); box-shadow:var(--shadow-in)" />
+      </div>
+      <div class="btn-row" style="justify-content:center; margin-top:12px">
+        <button class="win95-action-btn" id="gallery-download-btn">💾 Baixar Mídia</button>
+        <button class="win95-action-btn" onclick="closeWindow('win-gallery')">Fechar</button>
       </div>
     </div>
   </div>
@@ -415,4 +476,5 @@
     }
   </script>
 </body>
+
 </html>
