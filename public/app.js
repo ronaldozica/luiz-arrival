@@ -1,13 +1,15 @@
 /* ═══════════════════════════════════════
-   LuizOS 95 — app.js
+   LuizOS 95 — app.js  (v2)
 ═══════════════════════════════════════ */
 
 const API = "/api";
 
 // ─── State ────────────────────────────────────────────────────────────────────
-let adminPassword = "";
-let allUsers = [];
-let currentUser = null; // { name, password } — set after first valid login in guess form
+let adminPassword  = "";
+let allUsers       = [];
+let currentUser    = null; // { name, password, photo, isHCM } — set after login
+let todayStatusCache = null; // { data, ts } — cache to prevent stale re-guess
+let todayPollTimer = null;
 
 // ─── Loading overlay ─────────────────────────────────────────────────────────
 function showLoading(msg) {
@@ -47,7 +49,7 @@ function openWindow(id) {
   w.style.display = "block";
   if (id === "win-guess") {
     centerWindow(w);
-    checkTodayStatus();
+    refreshTodayStatus();
   }
   delete minimizedWindows[id];
   bringToFront(w);
@@ -90,12 +92,14 @@ function updateTaskbar() {
   const bar = document.getElementById("taskbar-apps");
   bar.innerHTML = "";
   const windows = {
+    "win-login":    "🔑 Login",
     "win-guess":    "🎯 Aposta",
     "win-today":    "📋 Hoje",
     "win-history":  "📅 Histórico",
     "win-rank":     "🏆 Ranking",
     "win-register": "👤 Cadastro",
     "win-admin":    "🔒 Admin",
+    "win-gamerank": "🎮 Rank Jogos",
   };
   for (const [id, label] of Object.entries(windows)) {
     const w = document.getElementById(id);
@@ -131,8 +135,8 @@ function startDrag(e, id) {
 }
 
 // ─── Desktop Icon Dragging + Selection Rectangle ──────────────────────────────
-let iconDrag       = null;   // { el, startX, startY, origLeft, origTop }
-let selRect        = null;   // { startX, startY, el }
+let iconDrag       = null;
+let selRect        = null;
 let selectedIcons  = new Set();
 
 const ICON_POSITIONS_KEY = "luizos_icon_positions";
@@ -196,13 +200,11 @@ function selectIcon(icon) {
   selectedIcons.add(icon);
 }
 
-// Desktop mousedown — start icon drag OR selection rect
 document.querySelector(".desktop").addEventListener("mousedown", (e) => {
   closeContextMenu();
 
   const icon = e.target.closest(".desktop-icon");
   if (icon) {
-    // Start dragging icon
     if (!e.shiftKey) clearIconSelection();
     selectIcon(icon);
 
@@ -218,7 +220,6 @@ document.querySelector(".desktop").addEventListener("mousedown", (e) => {
     return;
   }
 
-  // Start selection rectangle
   clearIconSelection();
   const desktop = document.querySelector(".desktop");
   const rect = desktop.getBoundingClientRect();
@@ -238,7 +239,6 @@ document.querySelector(".desktop").addEventListener("mousedown", (e) => {
 });
 
 document.addEventListener("mousemove", (e) => {
-  // Window dragging
   if (drag && drag.isWindow) {
     const x = Math.max(0, Math.min(e.clientX - drag.startX, window.innerWidth  - drag.el.offsetWidth));
     const y = Math.max(0, Math.min(e.clientY - drag.startY, window.innerHeight - drag.el.offsetHeight - 34));
@@ -247,7 +247,6 @@ document.addEventListener("mousemove", (e) => {
     return;
   }
 
-  // Icon dragging
   if (iconDrag) {
     const dx = e.clientX - iconDrag.startX;
     const dy = e.clientY - iconDrag.startY;
@@ -264,7 +263,6 @@ document.addEventListener("mousemove", (e) => {
     return;
   }
 
-  // Selection rectangle
   if (selRect) {
     const desktop = document.querySelector(".desktop");
     const dr = desktop.getBoundingClientRect();
@@ -279,7 +277,6 @@ document.addEventListener("mousemove", (e) => {
     selRect.el.style.width  = (x2 - x1) + "px";
     selRect.el.style.height = (y2 - y1) + "px";
 
-    // Highlight icons inside rect
     clearIconSelection();
     document.querySelectorAll(".desktop-icon").forEach((icon) => {
       const ir = icon.getBoundingClientRect();
@@ -302,19 +299,18 @@ document.addEventListener("mouseup", (e) => {
   drag = null;
 });
 
-// Double-click on icon triggers action
 document.querySelector(".desktop").addEventListener("dblclick", (e) => {
   const icon = e.target.closest(".desktop-icon");
   if (!icon) return;
   const action = icon.dataset.action;
-  if (action) eval(action); // safe: we set this ourselves in HTML
+  if (action) eval(action);
 });
 
-// ─── Context Menu (right-click on desktop) ────────────────────────────────────
+// ─── Context Menu ─────────────────────────────────────────────────────────────
 const contextMenu = document.getElementById("context-menu");
 
 document.querySelector(".desktop").addEventListener("contextmenu", (e) => {
-  if (e.target.closest(".desktop-icon")) return; // let icons have default or nothing
+  if (e.target.closest(".desktop-icon")) return;
   e.preventDefault();
   closeContextMenu();
   contextMenu.style.left    = e.clientX + "px";
@@ -335,14 +331,14 @@ function closeContextMenu() {
 }
 
 // ─── Wallpaper ────────────────────────────────────────────────────────────────
-const WALLPAPER_KEY = "luizos_wallpaper";
+const WALLPAPER_KEY   = "luizos_wallpaper";
 const CUSTOM_COLOR_KEY = "luizos_custom_color";
 const WALLPAPERS = {
-  padrao:  { label: "Padrão",   type: "color",  value: "#008080" },
-  windows: { label: "Windows",  type: "image",  value: "/wallpapers/windows.png" },
-  michaelsoft: { label: "Michaelsoft",  type: "image",  value: "/wallpapers/michaelsoft.png" },
-  luiz:    { label: "Luiz",     type: "image",  value: "/wallpapers/luiz.png" },
-  custom:  { label: "Personalizado", type: "color",  value: "#008080" },
+  padrao:      { label: "Padrão",       type: "color", value: "#008080" },
+  windows:     { label: "Windows",      type: "image", value: "/wallpapers/windows.png" },
+  michaelsoft: { label: "Michaelsoft",  type: "image", value: "/wallpapers/michaelsoft.png" },
+  luiz:        { label: "Luiz",         type: "image", value: "/wallpapers/luiz.png" },
+  custom:      { label: "Personalizado",type: "color", value: "#008080" },
 };
 
 function applyWallpaper(key) {
@@ -359,7 +355,6 @@ function applyWallpaper(key) {
     desktop.style.backgroundPosition = "center";
   }
   localStorage.setItem(WALLPAPER_KEY, key);
-  // Update checkmarks
   document.querySelectorAll(".ctx-wallpaper-item").forEach((el) => {
     el.classList.toggle("checked", el.dataset.wp === key);
   });
@@ -402,103 +397,180 @@ document.addEventListener("click", (e) => {
   if (!e.target.closest(".start-menu") && !e.target.closest(".start-btn")) closeStartMenu();
 });
 
+// ─── Login System ─────────────────────────────────────────────────────────────
+const SESSION_KEY = "luizos_session";
+
+function saveSession(user) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+}
+
+function loadSession() {
+  try {
+    const s = localStorage.getItem(SESSION_KEY);
+    return s ? JSON.parse(s) : null;
+  } catch { return null; }
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+function updateUserDisplay() {
+  const nameEl = document.getElementById("current-user-name");
+  const logoutBtn = document.getElementById("taskbar-logout");
+  if (currentUser) {
+    nameEl.textContent = `👤 ${currentUser.name}`;
+    logoutBtn.style.display = "inline-block";
+  } else {
+    nameEl.textContent = "👤 Visitante";
+    logoutBtn.style.display = "none";
+  }
+}
+
+function logout() {
+  currentUser = null;
+  clearSession();
+  updateUserDisplay();
+  // Show login window again
+  openWindow("win-login");
+}
+
+async function doLogin() {
+  const name     = document.getElementById("login-name-select").value;
+  const password = document.getElementById("login-password").value;
+  const msg      = document.getElementById("login-msg");
+
+  if (!name || !password) {
+    showMsg(msg, "Selecione seu nome e digite a senha.", "err");
+    return;
+  }
+
+  showLoading("Autenticando...");
+  try {
+    const res  = await fetch(`${API}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, password }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      currentUser = { name: data.name, password, photo: data.photo, isHCM: data.isHCM };
+      saveSession(currentUser);
+      updateUserDisplay();
+      closeWindow("win-login");
+      showMsg(msg, "", "ok");
+      document.getElementById("login-password").value = "";
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+function continueAsGuest() {
+  currentUser = null;
+  updateUserDisplay();
+  closeWindow("win-login");
+}
+
 // ─── Load Users ───────────────────────────────────────────────────────────────
 async function loadUsers() {
   try {
     const res = await fetch(`${API}/users`);
     allUsers = await res.json();
-    const sel = document.getElementById("guess-user-select");
-    sel.innerHTML = '<option value="">-- Selecione --</option>';
-    allUsers.forEach((u) => {
-      const opt = document.createElement("option");
-      opt.value = u.name;
-      opt.textContent = u.name;
-      sel.appendChild(opt);
-    });
+
+    // Populate login select
+    const loginSel = document.getElementById("login-name-select");
+    if (loginSel) {
+      loginSel.innerHTML = '<option value="">-- Selecione --</option>';
+      allUsers.forEach((u) => {
+        const opt = document.createElement("option");
+        opt.value = u.name;
+        opt.textContent = u.name;
+        loginSel.appendChild(opt);
+      });
+    }
+
+    // Populate guess select (kept for compatibility, hidden behind login now)
+    const guessSel = document.getElementById("guess-user-select");
+    if (guessSel) {
+      guessSel.innerHTML = '<option value="">-- Selecione --</option>';
+      allUsers.forEach((u) => {
+        const opt = document.createElement("option");
+        opt.value = u.name;
+        opt.textContent = u.name;
+        guessSel.appendChild(opt);
+      });
+    }
   } catch (e) { console.error("loadUsers", e); }
 }
 
-function loadUserPhoto() {
-  const sel  = document.getElementById("guess-user-select");
-  const name = sel.value;
-  const area = document.getElementById("user-photo-area");
-  const img  = document.getElementById("user-photo");
-  if (!name) { area.style.display = "none"; return; }
-  const user = allUsers.find((u) => u.name === name);
-  if (user && user.photo) {
-    img.src     = `/photos/${user.photo}`;
-    img.onerror = () => { area.style.display = "none"; };
-    img.onload  = () => { area.style.display = "flex"; };
-  } else {
-    area.style.display = "none";
-  }
-  // Reset guess state when user changes
-  currentUser = null;
-  updateGuessFormForUser();
+// ─── Today Status (with fresh fetch to prevent stale re-guess) ────────────────
+async function fetchTodayFresh() {
+  const params = currentUser
+    ? `?viewer=${encodeURIComponent(currentUser.name)}&password=${encodeURIComponent(currentUser.password)}`
+    : "";
+  const res  = await fetch(`${API}/today${params}`);
+  const data = await res.json();
+  todayStatusCache = { data, ts: Date.now() };
+  return { res, data };
 }
 
-// ─── Guess Form State ─────────────────────────────────────────────────────────
-// After betting, check if user already guessed today
-async function updateGuessFormForUser() {
-  const name = document.getElementById("guess-user-select").value;
-  const pwd  = document.getElementById("guess-password").value;
-  if (!name || !pwd) return;
-
+async function refreshTodayStatus() {
+  const banner  = document.getElementById("guess-status-banner");
   const loading = document.getElementById("guess-loading");
-  loading.textContent = "⏳ Verificando aposta...";
-  loading.style.display = "block";
 
-  try {
-    const res  = await fetch(`${API}/today?viewer=${encodeURIComponent(name)}&password=${encodeURIComponent(pwd)}`);
-    const data = await res.json();
-    if (!res.ok) { loading.style.display = "none"; return; }
-
-    currentUser = { name, password: pwd };
-    const msg = document.getElementById("guess-msg");
-
-    if (data.viewerHasGuessed && data.bettingOpen) {
-      showMsg(msg, `✅ Você já apostou hoje: ${data.viewerGuess.time}. Só é permitido um palpite por dia.`, "ok");
-      setGuessFormOpen(false);
-    } else {
-      setGuessFormOpen(data.bettingOpen);
-    }
-  } catch {
-    setGuessFormOpen(false);
-  } finally {
-    loading.style.display = "none";
-  }
-}
-
-async function checkTodayStatus() {
-  const loading = document.getElementById("guess-loading");
   setGuessFormOpen(false);
-  if (loading) {
-    loading.textContent = "⏳ Verificando disponibilidade de aposta...";
-    loading.style.display = "block";
-  }
+  if (loading) { loading.textContent = "⏳ Verificando..."; loading.style.display = "block"; }
 
   try {
-    const res  = await fetch(`${API}/today`);
-    const data = await res.json();
-    const banner      = document.getElementById("guess-status-banner");
-    const currentTime = data.currentTime || getBrasiliaTime();
+    const { res, data } = await fetchTodayFresh();
     const bettingOpen = Boolean(res.ok && data.bettingOpen);
+    const currentTime = data.currentTime || getBrasiliaTime();
 
     if (data.arrival) {
       banner.textContent = `⛔ Luiz chegou às ${data.arrival}! Apostas encerradas.`;
       banner.className   = "win95-status-bar show closed";
     } else if (!bettingOpen) {
-      banner.textContent = `⛔ Apostas encerradas (passou das 10h). Horário atual: ${currentTime}.`;
+      banner.textContent = `⛔ Apostas encerradas (passou das 10h). Horário: ${currentTime}.`;
       banner.className   = "win95-status-bar show closed";
     } else {
       banner.textContent = `✅ Apostas abertas! Horário atual: ${currentTime}.`;
       banner.className   = "win95-status-bar show open";
     }
-    setGuessFormOpen(bettingOpen);
+
+    // Show user info panel if logged in
+    const userInfoEl  = document.getElementById("guess-user-info");
+    const userNameEl  = document.getElementById("guess-user-name");
+    if (userInfoEl) userInfoEl.style.display = currentUser ? "block" : "none";
+    if (userNameEl && currentUser) userNameEl.textContent = `👤 ${currentUser.name}`;
+
+    // Prefill hidden select and photo
+    if (currentUser) {
+      const sel = document.getElementById("guess-user-select");
+      if (sel) sel.value = currentUser.name;
+      loadUserPhoto();
+    }
+
+    // Handle logged-in user state
+    if (!currentUser) {
+      // Not logged in — show prompt
+      const msg = document.getElementById("guess-msg");
+      showMsg(msg, "⚠️ Faça login para apostar.", "err");
+      setGuessFormOpen(false);
+    } else if (data.viewerHasGuessed && bettingOpen) {
+      const msg = document.getElementById("guess-msg");
+      showMsg(msg, `✅ Você já apostou hoje: ${data.viewerGuess.time}. Só 1 palpite por dia!`, "ok");
+      setGuessFormOpen(false);
+    } else {
+      setGuessFormOpen(bettingOpen);
+    }
   } catch {
-    const banner = document.getElementById("guess-status-banner");
     if (banner) {
-      banner.textContent = `⚠️ Não foi possível verificar o status. Horário: ${getBrasiliaTime()}.`;
+      banner.textContent = `⚠️ Erro ao verificar status. Horário: ${getBrasiliaTime()}.`;
       banner.className   = "win95-status-bar show closed";
     }
     setGuessFormOpen(false);
@@ -507,24 +579,55 @@ async function checkTodayStatus() {
   }
 }
 
+// Periodically refresh status while win-guess is open (fix stale re-guess bug)
+function startTodayPoll() {
+  stopTodayPoll();
+  todayPollTimer = setInterval(() => {
+    const winGuess = document.getElementById("win-guess");
+    if (winGuess && winGuess.style.display !== "none" && !minimizedWindows["win-guess"]) {
+      refreshTodayStatus();
+    }
+  }, 30000); // refresh every 30s
+}
+
+function stopTodayPoll() {
+  if (todayPollTimer) { clearInterval(todayPollTimer); todayPollTimer = null; }
+}
+
+function loadUserPhoto() {
+  const sel  = document.getElementById("guess-user-select");
+  const name = sel ? sel.value : (currentUser ? currentUser.name : "");
+  const area = document.getElementById("user-photo-area");
+  const img  = document.getElementById("user-photo");
+  if (!name) { if (area) area.style.display = "none"; return; }
+  const user = allUsers.find((u) => u.name === name);
+  if (user && user.photo) {
+    img.src     = `/photos/${user.photo}`;
+    img.onerror = () => { area.style.display = "none"; };
+    img.onload  = () => { area.style.display = "flex"; };
+  } else {
+    area.style.display = "none";
+  }
+}
+
 function setGuessFormOpen(isOpen) {
-  const timeGroup = document.getElementById("guess-time-group");
-  const submitRow = document.getElementById("guess-submit-row");
-  const timeInput = document.getElementById("guess-time");
+  const timeGroup   = document.getElementById("guess-time-group");
+  const submitRow   = document.getElementById("guess-submit-row");
+  const timeInput   = document.getElementById("guess-time");
   const timeOptions = document.getElementById("guess-time-options");
-  const loading = document.getElementById("guess-loading");
+  const loading     = document.getElementById("guess-loading");
+  const loginHint   = document.getElementById("guess-login-hint");
 
   if (timeGroup)   timeGroup.style.display   = isOpen ? "flex" : "none";
   if (submitRow)   submitRow.style.display   = isOpen ? "flex" : "none";
   if (timeInput)   timeInput.disabled        = !isOpen;
   if (!isOpen && timeOptions) timeOptions.classList.remove("show");
-  if (loading) {
-    loading.style.display = "none";
-  }
+  if (loading)     loading.style.display     = "none";
+  if (loginHint)   loginHint.style.display   = (!currentUser && !isOpen) ? "block" : "none";
 }
 
 function setGuessTime(time) {
-  const input = document.getElementById("guess-time");
+  const input   = document.getElementById("guess-time");
   const options = document.getElementById("guess-time-options");
   if (!input) return;
   input.value = clampTime(time);
@@ -553,43 +656,68 @@ function openGuessTimeOptions() {
 }
 
 async function submitGuess() {
+  if (!currentUser) {
+    openWindow("win-login");
+    return;
+  }
+
   normalizeGuessTime();
-  const name     = document.getElementById("guess-user-select").value;
-  const password = document.getElementById("guess-password").value;
+  // Always re-fetch status to prevent stale re-guess (bug #6)
+  const { res: checkRes, data: checkData } = await fetchTodayFresh();
+  if (checkData.viewerHasGuessed) {
+    const msg = document.getElementById("guess-msg");
+    showMsg(msg, `❌ Você já apostou hoje: ${checkData.viewerGuess.time}. Só 1 palpite por dia!`, "err");
+    setGuessFormOpen(false);
+    return;
+  }
+  if (!checkData.bettingOpen) {
+    const msg = document.getElementById("guess-msg");
+    showMsg(msg, "❌ Apostas já encerradas.", "err");
+    setGuessFormOpen(false);
+    return;
+  }
+
   const time     = document.getElementById("guess-time").value;
   const msg      = document.getElementById("guess-msg");
 
-  if (!name || !password || !time) {
-    showMsg(msg, "Preencha todos os campos.", "err");
-    return;
-  }
+  if (!time) { showMsg(msg, "Selecione um horário.", "err"); return; }
 
   showLoading("Registrando aposta...");
   try {
     const res  = await fetch(`${API}/guess`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, password, time }),
+      body: JSON.stringify({ name: currentUser.name, password: currentUser.password, time }),
     });
     const data = await res.json();
     if (res.ok) {
       showMsg(msg, `✅ Aposta registrada! Você apostou ${time}.`, "ok");
-      document.getElementById("guess-password").value = "";
-      setGuessFormOpen(false); // hide form after guessing — only 1 allowed
+      setGuessFormOpen(false);
+      todayStatusCache = null; // Invalidate cache
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
+      // Re-check status in case server says already guessed
+      if (res.status === 409) {
+        await refreshTodayStatus();
+      }
     }
-  } catch { showMsg(msg, "Erro de conexão.", "err"); }
-  finally { hideLoading(); }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
 }
 
-// ─── Today ────────────────────────────────────────────────────────────────────
+// ─── Today Window ─────────────────────────────────────────────────────────────
 async function loadToday() {
   const container = document.getElementById("today-content");
   container.innerHTML = '<div class="loading">⏳ Carregando...</div>';
   showLoading("Carregando apostas de hoje...");
   try {
-    const res  = await fetch(`${API}/today`);
+    const params = currentUser
+      ? `?viewer=${encodeURIComponent(currentUser.name)}&password=${encodeURIComponent(currentUser.password)}`
+      : "";
+    const res  = await fetch(`${API}/today${params}`);
     const data = await res.json();
     let html   = "";
 
@@ -663,39 +791,64 @@ function toggleHistory(header) {
   header.querySelector("span:last-child").textContent = isOpen ? "▼" : "▲";
 }
 
-// ─── Overall Rank ─────────────────────────────────────────────────────────────
+// ─── Overall Rank (with HCM tabs) ────────────────────────────────────────────
+let overallRankData = [];
+let activeRankTab   = "all";
+
 async function loadOverallRank() {
   const container = document.getElementById("rank-content");
   container.innerHTML = '<div class="loading">⏳ Calculando ranking...</div>';
   showLoading("Calculando ranking...");
   try {
     const res   = await fetch(`${API}/overall-rank`);
-    const ranks = await res.json();
-    if (ranks.length === 0) {
-      container.innerHTML = '<div class="no-data">Nenhum dado disponível ainda.</div>';
-      return;
-    }
-    let html = `<div class="section-label">🏆 Ranking Geral (último mês)</div>`;
-    html += `<table class="win95-table"><thead><tr>
-      <th>#</th><th>Nome</th><th>Pontos</th><th>Vitórias 🥇</th><th>Dias</th><th>Erro médio</th>
-    </tr></thead><tbody>`;
-    ranks.forEach((r, i) => {
-      const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-      html += `<tr class="${medalClass}">
-        <td>${i + 1}º</td>
-        <td>${escHtml(r.name)}</td>
-        <td><strong>${r.points}</strong></td>
-        <td>${r.wins}</td>
-        <td>${r.days}</td>
-        <td>${formatMinutes(r.avgDiffMins)}</td>
-      </tr>`;
-    });
-    html += `</tbody></table>`;
-    html += `<div class="info-box" style="margin-top:8px">Pontos: 1º lugar recebe N pts, 2º recebe N-1, etc. Erro médio = média da diferença entre chute e chegada real.</div>`;
-    container.innerHTML = html;
+    overallRankData = await res.json();
+    renderRankTab(activeRankTab);
   } catch {
     container.innerHTML = '<div class="loading">Erro ao carregar.</div>';
   } finally { hideLoading(); }
+}
+
+function switchRankTab(tab) {
+  activeRankTab = tab;
+  document.querySelectorAll(".rank-tab").forEach((t) => {
+    t.classList.toggle("active", t.dataset.tab === tab);
+  });
+  renderRankTab(tab);
+}
+
+function renderRankTab(tab) {
+  // Prefer the dedicated table container, but fall back to the main rank-content
+  // so the UI updates even if the inner container isn't present in the DOM.
+  const container = document.getElementById("rank-table-container") || document.getElementById("rank-content");
+  if (!container) return;
+
+  const ranks = tab === "hcm"
+    ? overallRankData.filter((r) => r.isHCM)
+    : overallRankData;
+
+  if (ranks.length === 0) {
+    container.innerHTML = '<div class="no-data">Nenhum dado disponível ainda.</div>';
+    return;
+  }
+
+  let html = `<table class="win95-table"><thead><tr>
+    <th>#</th><th>Nome</th><th>Pts</th><th>🥇</th><th>Dias</th><th>Erro médio</th>
+  </tr></thead><tbody>`;
+  ranks.forEach((r, i) => {
+    const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
+    const hcmBadge   = r.isHCM ? ' <span class="hcm-badge">HCM</span>' : "";
+    html += `<tr class="${medalClass}">
+      <td>${i + 1}º</td>
+      <td>${escHtml(r.name)}${hcmBadge}</td>
+      <td><strong>${r.points}</strong></td>
+      <td>${r.wins}</td>
+      <td>${r.days}</td>
+      <td>${formatMinutes(r.avgDiffMins)}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  html += `<div class="info-box" style="margin-top:8px">Pontos: 1º lugar recebe N pts, 2º N-1, etc. Erro médio = diferença média entre chute e chegada real.</div>`;
+  container.innerHTML = html;
 }
 
 // ─── Register ─────────────────────────────────────────────────────────────────
@@ -713,7 +866,7 @@ async function registerUser() {
     });
     const data = await res.json();
     if (res.ok) {
-      showMsg(msg, `✅ Usuário "${name}" criado com sucesso!`, "ok");
+      showMsg(msg, `✅ Usuário "${name}" criado! Faça login para apostar.`, "ok");
       document.getElementById("reg-name").value     = "";
       document.getElementById("reg-password").value = "";
       loadUsers();
@@ -769,6 +922,7 @@ async function setArrival() {
       if (data.rankings && data.rankings.length > 0) {
         result.innerHTML = `<div class="section-label">🏆 Resultado</div>` + renderRankingsTable(data.rankings, time);
       }
+      todayStatusCache = null; // invalidate cache
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
       if (res.status === 401) {
@@ -780,6 +934,82 @@ async function setArrival() {
     }
   } catch { showMsg(msg, "Erro de conexão.", "err"); }
   finally { hideLoading(); }
+}
+
+// ─── Game Ranking ─────────────────────────────────────────────────────────────
+let activeGameRankTab = "snake";
+
+async function openGameRank(game, difficulty) {
+  activeGameRankTab = game;
+  openWindow("win-gamerank");
+  await loadGameRank(game, difficulty);
+}
+
+async function loadGameRank(game, difficulty) {
+  const container = document.getElementById("gamerank-content");
+  if (!container) return;
+  container.innerHTML = '<div class="loading">⏳ Carregando ranking...</div>';
+  try {
+    const params = difficulty ? `?game=${game}&difficulty=${difficulty}` : `?game=${game}`;
+    const res    = await fetch(`${API}/game-rank${params}`);
+    const scores = await res.json();
+
+    const gameLabel = game === "snake" ? "🐍 Snake 95" : "💣 Campo Minado";
+    const diffLabel = difficulty ? ` — ${getDifficultyLabel(difficulty)}` : "";
+    let html = `<div class="section-label">${gameLabel}${diffLabel} — Top 10</div>`;
+
+    if (scores.length === 0) {
+      html += '<div class="no-data">Nenhum recorde ainda. Seja o primeiro!</div>';
+    } else {
+      html += `<table class="win95-table"><thead><tr>
+        <th>#</th><th>Jogador</th><th>Pontuação</th><th>Data</th>
+      </tr></thead><tbody>`;
+      scores.forEach((s, i) => {
+        const medal = ["🥇","🥈","🥉"][i] || `${i+1}º`;
+        const date  = new Date(s.date).toLocaleDateString("pt-BR");
+        const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
+        html += `<tr class="${medalClass}"><td>${medal}</td><td>${escHtml(s.name)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
+      });
+      html += `</tbody></table>`;
+    }
+    container.innerHTML = html;
+  } catch {
+    container.innerHTML = '<div class="loading">Erro ao carregar ranking.</div>';
+  }
+}
+
+async function submitGameScore(game, difficulty, score) {
+  if (!currentUser) return; // Only logged-in users save scores
+  try {
+    // Check personal best in localStorage first
+    const personalKey = difficulty
+      ? `luizos_pb_${game}_${difficulty}`
+      : `luizos_pb_${game}`;
+    const personalBest = parseInt(localStorage.getItem(personalKey) || "0", 10);
+    if (score <= personalBest) return; // Not a new personal best
+
+    localStorage.setItem(personalKey, String(score));
+
+    // Submit to API
+    const body = { game, playerName: currentUser.name, score };
+    if (difficulty) body.difficulty = difficulty;
+    await fetch(`${API}/game-rank`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    console.error("submitGameScore", e);
+  }
+}
+
+function getPersonalBest(game, difficulty) {
+  const key = difficulty ? `luizos_pb_${game}_${difficulty}` : `luizos_pb_${game}`;
+  return parseInt(localStorage.getItem(key) || "0", 10);
+}
+
+function getDifficultyLabel(diff) {
+  return { beginner: "Iniciante", intermediate: "Intermediário", expert: "Especialista" }[diff] || diff;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -863,10 +1093,24 @@ function renderRankingsTable(rankings, arrival) {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 captureDefaultIconPositions();
-loadUsers();
-checkTodayStatus();
-centerWindow(document.getElementById("win-guess"));
-setInterval(checkTodayStatus, 60000);
+loadUsers().then(() => {
+  // Restore session
+  const saved = loadSession();
+  if (saved) {
+    currentUser = saved;
+    updateUserDisplay();
+    refreshTodayStatus();
+    // Don't show login window if already logged in
+  } else {
+    updateUserDisplay();
+    // Show login window on startup
+    openWindow("win-login");
+  }
+});
+
+// Keep guess window in sync
+setInterval(refreshTodayStatus, 60000);
+startTodayPoll();
 updateTaskbar();
 loadIconPositions();
 loadWallpaper();

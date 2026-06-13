@@ -18,14 +18,17 @@ function getKV() {
 // ─── Config ───────────────────────────────────────────────────────────────────
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 
+// HCM preset users (used for the HCM tab in rankings)
 const PRESET_USERS = [
-  { name: "Ronaldo",    password: "rolando",   photo: "ronaldo.jpg"   },
-  { name: "Jorge",      password: "jog",       photo: "jorge.jpg"     },
-  { name: "Alexandre",  password: "rock",      photo: "alexandre.jpg" },
-  { name: "João Paulo", password: "joaoPedro", photo: "joaopaulo.jpg" },
-  { name: "Julio",      password: "julho",     photo: "julio.jpg"     },
-  { name: "Pedro",      password: "pedrao",    photo: "pedro.jpg"     },
+  { name: "Ronaldo",    password: "rolando",   photo: "ronaldo.jpg",   isHCM: true },
+  { name: "Jorge",      password: "jog",       photo: "jorge.jpg",     isHCM: true },
+  { name: "Alexandre",  password: "rock",      photo: "alexandre.jpg", isHCM: true },
+  { name: "João Paulo", password: "joaoPedro", photo: "joaopaulo.jpg", isHCM: true },
+  { name: "Julio",      password: "julho",     photo: "julio.jpg",     isHCM: true },
+  { name: "Pedro",      password: "pedrao",    photo: "pedro.jpg",     isHCM: true },
 ];
+
+const HCM_NAMES = new Set(PRESET_USERS.map((u) => String(u.name || "").trim().toLowerCase()));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function getBrasiliaDate() {
@@ -126,7 +129,7 @@ app.get("/api/users", async (req, res) => {
   try {
     const kv = getKV();
     const users = await getUsers(kv);
-    res.json(users.map((u) => ({ name: u.name, photo: u.photo || null })));
+    res.json(users.map((u) => ({ name: u.name, photo: u.photo || null, isHCM: !!u.isHCM })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -140,7 +143,7 @@ app.post("/api/login", async (req, res) => {
       (u) => userKey(u.name) === userKey(name) && u.password === password
     );
     if (!user) return res.status(401).json({ error: "Nome ou senha incorretos." });
-    res.json({ name: user.name, photo: user.photo || null });
+    res.json({ name: user.name, photo: user.photo || null, isHCM: !!user.isHCM });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -153,17 +156,16 @@ app.post("/api/register", async (req, res) => {
     const users = await getUsers(kv);
     const exists = users.find((u) => userKey(u.name) === userKey(name));
     if (exists) return res.status(409).json({ error: "Usuário já existe." });
-    const newUser = { name: name.trim(), password, photo: null };
+    const newUser = { name: name.trim(), password, photo: null, isHCM: false };
     const presetNames = new Set(PRESET_USERS.map((u) => userKey(u.name)));
     const extra = users.filter((u) => !presetNames.has(userKey(u.name)));
     extra.push(newUser);
     await saveExtraUsers(kv, extra);
-    res.json({ name: newUser.name, photo: null });
+    res.json({ name: newUser.name, photo: null, isHCM: false });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/today
-// Query param: ?viewer=<name>&password=<pass>  (optional — used to reveal own guess)
 app.get("/api/today", async (req, res) => {
   try {
     const kv = getKV();
@@ -184,10 +186,6 @@ app.get("/api/today", async (req, res) => {
       if (user) viewerName = user.name;
     }
 
-    // Determine what guesses to expose
-    // - If arrival is set (game over): show all guesses/rankings
-    // - If betting open: only show viewer's own guess (hide count too — just "X já apostaram")
-    // - If past 10h but no arrival yet: show count only, not guesses
     let exposedGuesses = [];
     let hiddenCount = 0;
     const viewerGuess = day.guesses.find(
@@ -195,21 +193,17 @@ app.get("/api/today", async (req, res) => {
     );
 
     if (day.arrival) {
-      // Game over — show everything
       exposedGuesses = day.guesses;
     } else if (bettingOpen) {
-      // Betting phase — only own guess visible
       hiddenCount = day.guesses.filter(
         (g) => !viewerName || userKey(g.name) !== userKey(viewerName)
       ).length;
       exposedGuesses = viewerGuess ? [viewerGuess] : [];
     } else {
-      // After 10h, no arrival yet — show count, not times
       hiddenCount = day.guesses.length;
       exposedGuesses = [];
     }
 
-    // Has the viewer already guessed today?
     const viewerHasGuessed = !!viewerGuess;
 
     res.json({
@@ -253,7 +247,6 @@ app.post("/api/guess", async (req, res) => {
 
     const existing = day.guesses.findIndex((g) => userKey(g.name) === userKey(name));
     if (existing >= 0) {
-      // ── BLOCK re-guess: only 1 guess per person per day ──
       return res.status(409).json({ error: "Você já apostou hoje! Só é permitido um palpite por dia." });
     }
 
@@ -333,28 +326,82 @@ app.get("/api/history", async (req, res) => {
 });
 
 // GET /api/overall-rank
+// Returns all players. Each entry has isHCM flag for frontend filtering.
 app.get("/api/overall-rank", async (req, res) => {
   try {
     const kv = getKV();
     let index = (await kv.get("days_index")) || [];
     const scores = {};
+    // Build a lookup of HCM names from current user list
+    const users = await getUsers(kv);
+    const hcmNames = new Set(users.filter(u => u.isHCM).map(u => userKey(u.name)));
+
     for (const dateKey of index) {
       if (!isWeekday(dateKey)) continue;
       const day = await getDayData(kv, dateKey);
       if (!day.arrival || !day.rankings) continue;
       const total = day.rankings.length;
       for (const r of day.rankings) {
-        if (!scores[r.name]) scores[r.name] = { name: r.name, points: 0, wins: 0, days: 0, totalDiff: 0 };
-        scores[r.name].points   += total - r.position + 1;
-        scores[r.name].totalDiff += r.diff;
-        scores[r.name].days     += 1;
-        if (r.position === 1) scores[r.name].wins += 1;
+        const key = r.name;
+        if (!scores[key]) scores[key] = {
+          name: r.name,
+          points: 0,
+          wins: 0,
+          days: 0,
+          totalDiff: 0,
+          isHCM: hcmNames.has(userKey(r.name)),
+        };
+        scores[key].points    += total - r.position + 1;
+        scores[key].totalDiff += r.diff;
+        scores[key].days      += 1;
+        if (r.position === 1) scores[key].wins += 1;
       }
     }
     const ranked = Object.values(scores)
       .map((s) => ({ ...s, avgDiffMins: s.days > 0 ? Math.round(s.totalDiff / s.days) : 0 }))
       .sort((a, b) => b.points - a.points || a.avgDiffMins - b.avgDiffMins);
     res.json(ranked);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/game-rank?game=snake|minesweeper[&difficulty=beginner|intermediate|expert]
+// Returns top 10 for the given game/difficulty from Redis
+app.get("/api/game-rank", async (req, res) => {
+  try {
+    const { game, difficulty } = req.query;
+    if (!game) return res.status(400).json({ error: "game é obrigatório." });
+    const rankKey = difficulty ? `gamerank:${game}:${difficulty}` : `gamerank:${game}`;
+    const kv = getKV();
+    const scores = (await kv.get(rankKey)) || [];
+    res.json(scores);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/game-rank
+// Body: { game, difficulty?, playerName, score }
+// Stores one score per player, keeps top 10 overall
+app.post("/api/game-rank", async (req, res) => {
+  try {
+    const { game, difficulty, playerName, score } = req.body;
+    if (!game || !playerName || score === undefined) {
+      return res.status(400).json({ error: "game, playerName e score são obrigatórios." });
+    }
+    const rankKey = difficulty ? `gamerank:${game}:${difficulty}` : `gamerank:${game}`;
+    const kv = getKV();
+    let scores = (await kv.get(rankKey)) || [];
+
+    // Remove existing entry for this player
+    scores = scores.filter((s) => String(s.name).toLowerCase() !== String(playerName).toLowerCase());
+
+    // Insert new score
+    scores.push({ name: playerName, score, date: new Date().toISOString() });
+
+    // Sort descending by score, keep top 10
+    scores.sort((a, b) => b.score - a.score);
+    scores = scores.slice(0, 10);
+
+    await kv.set(rankKey, scores);
+    res.json({ success: true, rank: scores });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

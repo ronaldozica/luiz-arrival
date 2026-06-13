@@ -21,15 +21,13 @@
     <div class="ctx-section-label">Plano de Fundo</div>
     <button class="ctx-wallpaper-item" data-wp="padrao" onclick="applyWallpaper('padrao')">Padrão</button>
     <button class="ctx-wallpaper-item" data-wp="windows" onclick="applyWallpaper('windows')">Windows</button>
-    <button class="ctx-wallpaper-item" data-wp="michaelsoft"
-      onclick="applyWallpaper('michaelsoft')">Michaelsoft</button>
+    <button class="ctx-wallpaper-item" data-wp="michaelsoft" onclick="applyWallpaper('michaelsoft')">Michaelsoft</button>
     <button class="ctx-wallpaper-item" data-wp="luiz" onclick="applyWallpaper('luiz')">Luiz</button>
     <button class="ctx-wallpaper-item" data-wp="custom" onclick="openCustomColorPicker()">Personalizado</button>
     <div class="ctx-section-label">Pastas</div>
     <button class="ctx-wallpaper-item" onclick="resetIconPositions()">Redefinir posição das pastas</button>
   </div>
 
-  <!-- Hidden color input for custom color -->
   <input type="color" id="custom-color-input" style="display:none" onchange="applyCustomColor()" />
 
   <!-- TASKBAR -->
@@ -38,6 +36,10 @@
       <span class="start-logo">🪟</span> <strong>Iniciar</strong>
     </button>
     <div class="taskbar-apps" id="taskbar-apps"></div>
+    <div class="taskbar-user-area">
+      <span id="current-user-name" class="taskbar-user">👤 Visitante</span>
+      <button id="taskbar-logout" class="taskbar-logout-btn" style="display:none" onclick="logout()">Sair</button>
+    </div>
     <div class="taskbar-clock" id="taskbar-clock">00:00</div>
   </div>
 
@@ -54,6 +56,9 @@
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
       <button onclick="openWindow('win-minesweeper'); initMinesweeper(); closeStartMenu()">💣 Campo Minado</button>
+      <button onclick="openWindow('win-gamerank'); loadGameRank('snake'); closeStartMenu()">🎮 Rank Jogos</button>
+      <hr />
+      <button onclick="openWindow('win-login'); closeStartMenu()">🔑 Login / Trocar Conta</button>
     </div>
   </div>
 
@@ -83,10 +88,51 @@
       <div class="icon-img">🐍</div>
       <div class="icon-label">Snake 95</div>
     </div>
-    <div class="desktop-icon" data-icon-id="icon-minesweeper"
-      data-action="openWindow('win-minesweeper'); initMinesweeper()">
+    <div class="desktop-icon" data-icon-id="icon-minesweeper" data-action="openWindow('win-minesweeper'); initMinesweeper()">
       <div class="icon-img">💣</div>
       <div class="icon-label">Campo<br>Minado</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-gamerank" data-action="openWindow('win-gamerank'); loadGameRank('snake')">
+      <div class="icon-img">🎮</div>
+      <div class="icon-label">Rank<br>Jogos</div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: LOGIN ══ -->
+  <div class="win95-window" id="win-login" style="left:200px;top:120px;width:340px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-login')">
+      <span class="win95-title">🔑 Entrar no LuizOS</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-login')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body">
+      <div class="login-logo">🕐</div>
+      <div class="login-title">LuizOS 95</div>
+      <div class="login-subtitle">Identifique-se para apostar</div>
+      <div class="field-group" style="margin-top:8px">
+        <label>Quem é você?</label>
+        <select id="login-name-select">
+          <option value="">-- Selecione --</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Senha:</label>
+        <div class="password-field">
+          <input type="password" id="login-password" placeholder="Sua senha"
+            onkeydown="if(event.key==='Enter') doLogin()" />
+          <button type="button" class="password-toggle" onclick="togglePassword('login-password', this)"
+            title="Mostrar senha">&#128065;</button>
+        </div>
+      </div>
+      <div class="btn-row" style="gap:8px">
+        <button class="win95-action-btn" onclick="doLogin()">🔓 Entrar</button>
+        <button class="win95-action-btn" onclick="continueAsGuest()">👁️ Visitante</button>
+      </div>
+      <div class="win95-msg" id="login-msg"></div>
+      <div class="info-box" style="margin-top:4px;font-size:11px">
+        Como visitante, você pode ver as apostas e rankings, mas não pode apostar.
+      </div>
     </div>
   </div>
 
@@ -101,27 +147,24 @@
     </div>
     <div class="win95-body">
       <div class="win95-status-bar" id="guess-status-banner"></div>
-      <div class="guess-loading" id="guess-loading">⏳ Verificando se você pode apostar...</div>
+      <div class="guess-loading" id="guess-loading" style="display:none">⏳ Verificando...</div>
 
-      <div class="field-group">
-        <label>Quem é você?</label>
-        <select id="guess-user-select" onchange="loadUserPhoto()">
-          <option value="">-- Selecione --</option>
-        </select>
-      </div>
-
-      <div class="user-photo-area" id="user-photo-area" style="display:none">
-        <img id="user-photo" src="" alt="Foto" />
-      </div>
-
-      <div class="field-group">
-        <label>Senha:</label>
-        <div class="password-field">
-          <input type="password" id="guess-password" placeholder="Sua senha" onchange="updateGuessFormForUser()" />
-          <button type="button" class="password-toggle" onclick="togglePassword('guess-password', this)"
-            title="Mostrar senha">&#128065;</button>
+      <div id="guess-login-hint" style="display:none">
+        <div class="info-box">
+          🔑 <a href="#" onclick="openWindow('win-login'); return false">Faça login</a> para registrar uma aposta.
         </div>
       </div>
+
+      <!-- User info (shown when logged in) -->
+      <div id="guess-user-info" style="display:none">
+        <div class="user-photo-area" id="user-photo-area" style="display:none">
+          <img id="user-photo" src="" alt="Foto" />
+        </div>
+        <div class="guess-user-name" id="guess-user-name"></div>
+      </div>
+
+      <!-- Hidden select kept for JS compatibility -->
+      <select id="guess-user-select" style="display:none"></select>
 
       <div class="field-group" id="guess-time-group" style="display:none">
         <label>Que horas o Luiz vai chegar?</label>
@@ -158,7 +201,7 @@
         <button class="win95-btn-ctrl" onclick="closeWindow('win-today')">✕</button>
       </div>
     </div>
-    <div class="win95-body">
+    <div class="win95-body win95-body-scroll">
       <div id="today-content">
         <div class="loading">Carregando...</div>
       </div>
@@ -174,7 +217,7 @@
         <button class="win95-btn-ctrl" onclick="closeWindow('win-history')">✕</button>
       </div>
     </div>
-    <div class="win95-body">
+    <div class="win95-body win95-body-scroll">
       <div id="history-content">
         <div class="loading">Carregando...</div>
       </div>
@@ -190,9 +233,16 @@
         <button class="win95-btn-ctrl" onclick="closeWindow('win-rank')">✕</button>
       </div>
     </div>
-    <div class="win95-body">
+    <div class="win95-body win95-body-scroll">
+      <!-- Tab bar -->
+      <div class="win95-tabs">
+        <button class="rank-tab active" data-tab="all" onclick="switchRankTab('all')">🌐 Geral</button>
+        <button class="rank-tab" data-tab="hcm" onclick="switchRankTab('hcm')">🏢 HCM</button>
+      </div>
       <div id="rank-content">
-        <div class="loading">Carregando...</div>
+        <div id="rank-table-container">
+          <div class="loading">Carregando...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -235,7 +285,7 @@
         <button class="win95-btn-ctrl" onclick="closeWindow('win-admin')">✕</button>
       </div>
     </div>
-    <div class="win95-body">
+    <div class="win95-body win95-body-scroll">
       <div id="admin-login-panel">
         <p style="color:#800000;font-weight:bold">⚠️ Área Restrita</p>
         <div class="field-group">
@@ -271,6 +321,7 @@
     </div>
   </div>
 
+  <!-- ══ WINDOW: SNAKE 95 ══ -->
   <div class="win95-window" id="win-snake" style="left:150px;top:50px;width:420px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-snake')">
       <span class="win95-title">🐍 Snake 95</span>
@@ -282,17 +333,24 @@
     <div class="win95-body">
       <div class="snake-header">
         <span>Pontos: <span id="snake-score" style="color:var(--win-blue-hi)">0</span></span>
+        <span>Nível: <span id="snake-level" style="color:var(--win-blue-hi)">1</span></span>
+        <span>Recorde: <span id="snake-best" style="color:#800000">0</span></span>
       </div>
       <div class="canvas-container">
         <canvas id="snake-canvas" width="380" height="380"></canvas>
       </div>
-      <div class="btn-row" style="justify-content: center; margin-top: 8px;">
+      <div class="btn-row" style="justify-content: center; margin-top: 8px; gap: 8px;">
         <button class="win95-action-btn" id="snake-start-btn" onclick="startSnakeGame()">▶ Iniciar Novo Jogo</button>
+        <button class="win95-action-btn" onclick="openGameRank('snake')">🏆 Ranking</button>
+      </div>
+      <div class="info-box" style="font-size:11px;margin-top:4px">
+        Use as setas ou WASD. Espaço para iniciar. A velocidade aumenta com os pontos!
       </div>
     </div>
   </div>
 
-  <div class="win95-window" id="win-minesweeper" style="left:180px;top:80px;width:230px;display:none">
+  <!-- ══ WINDOW: CAMPO MINADO ══ -->
+  <div class="win95-window" id="win-minesweeper" style="left:180px;top:80px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-minesweeper')">
       <span class="win95-title">💣 Campo Minado</span>
       <div class="win95-controls">
@@ -301,6 +359,14 @@
       </div>
     </div>
     <div class="win95-body" style="background: var(--win-gray); padding: 6px;">
+
+      <!-- Difficulty selector -->
+      <div class="ms-difficulty-bar">
+        <button class="ms-diff-btn active" data-diff="beginner" onclick="setMsDifficulty('beginner')">Iniciante</button>
+        <button class="ms-diff-btn" data-diff="intermediate" onclick="setMsDifficulty('intermediate')">Intermediário</button>
+        <button class="ms-diff-btn" data-diff="expert" onclick="setMsDifficulty('expert')">Especialista</button>
+        <button class="win95-action-btn" style="margin-left:auto;font-size:10px;padding:2px 6px" onclick="openGameRank('minesweeper', currentMsDifficulty)">🏆</button>
+      </div>
 
       <div class="ms-header">
         <div class="ms-counter" id="ms-mine-count">010</div>
@@ -315,9 +381,38 @@
     </div>
   </div>
 
+  <!-- ══ WINDOW: RANKING JOGOS ══ -->
+  <div class="win95-window" id="win-gamerank" style="left:220px;top:100px;width:420px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-gamerank')">
+      <span class="win95-title">🎮 Ranking dos Jogos</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-gamerank')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-gamerank')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body win95-body-scroll">
+      <!-- Tabs for games -->
+      <div class="win95-tabs" style="margin-bottom:4px">
+        <button class="rank-tab active" data-tab="snake" onclick="loadGameRank('snake'); setGameRankTabActive('snake')">🐍 Snake</button>
+        <button class="rank-tab" data-tab="ms-beginner" onclick="loadGameRank('minesweeper','beginner'); setGameRankTabActive('ms-beginner')">💣 Iniciante</button>
+        <button class="rank-tab" data-tab="ms-intermediate" onclick="loadGameRank('minesweeper','intermediate'); setGameRankTabActive('ms-intermediate')">💣 Médio</button>
+        <button class="rank-tab" data-tab="ms-expert" onclick="loadGameRank('minesweeper','expert'); setGameRankTabActive('ms-expert')">💣 Especialista</button>
+      </div>
+      <div id="gamerank-content">
+        <div class="loading">Carregando...</div>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
   <script src="game.js"></script>
   <script src="minesweeper.js"></script>
+  <script>
+    function setGameRankTabActive(tab) {
+      document.querySelectorAll('#win-gamerank .rank-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === tab);
+      });
+    }
+  </script>
 </body>
-
 </html>

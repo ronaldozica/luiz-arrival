@@ -777,3 +777,168 @@ body {
 .ms-cell[data-value="8"] { color: gray; }
 
 .ms-cell.mine { background-color: red; } /* Mina que explodiu */
+
+/* ─── TASKBAR USER AREA ───────────────────── */
+.taskbar-user-area {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  background: var(--win-gray);
+  box-shadow: var(--shadow-in);
+  height: 26px;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.taskbar-user {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.taskbar-logout-btn {
+  background: var(--win-gray);
+  border: none;
+  box-shadow: var(--shadow-out);
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 1px 5px;
+  height: 18px;
+  white-space: nowrap;
+}
+.taskbar-logout-btn:active { box-shadow: var(--shadow-in); }
+.taskbar-logout-btn:hover  { background: #d4d0c8; }
+
+/* ─── LOGIN WINDOW ────────────────────────── */
+.login-logo {
+  font-size: 48px;
+  text-align: center;
+  line-height: 1;
+}
+.login-title {
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  color: var(--win-blue);
+}
+.login-subtitle {
+  font-size: 11px;
+  text-align: center;
+  color: var(--win-dark);
+  margin-bottom: 4px;
+}
+
+/* ─── GUESS WINDOW: logged-in user display ── */
+.guess-user-name {
+  text-align: center;
+  font-weight: bold;
+  font-size: 13px;
+  padding: 4px 0;
+  color: var(--win-blue);
+}
+
+/* ─── WIN95 TABS ──────────────────────────── */
+.win95-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 2px solid var(--win-dark);
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.rank-tab {
+  background: var(--win-gray);
+  border: none;
+  box-shadow: var(--shadow-out);
+  padding: 3px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  position: relative;
+  bottom: -2px;
+  border-bottom: 2px solid var(--win-gray);
+}
+.rank-tab:hover { background: #d4d0c8; }
+.rank-tab.active {
+  background: var(--win-gray);
+  box-shadow: inset -1px 0 var(--win-black), inset 1px 1px var(--win-white), inset -2px 0 var(--win-dark), inset 2px 2px var(--win-gray);
+  font-weight: bold;
+  border-bottom: 2px solid var(--win-gray);
+  z-index: 1;
+}
+
+/* ─── HCM BADGE ───────────────────────────── */
+.hcm-badge {
+  background: var(--win-blue);
+  color: white;
+  font-size: 9px;
+  padding: 1px 4px;
+  margin-left: 4px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+/* ─── SCROLLABLE WINDOW BODIES ────────────── */
+/* Better scroll for lists — fix #7 */
+.win95-body-scroll {
+  max-height: 65vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* Tables inside scrollable containers stay full-width */
+.win95-body-scroll .win95-table {
+  min-width: 0;
+}
+
+/* ─── MINESWEEPER DIFFICULTY BAR ──────────── */
+.ms-difficulty-bar {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ms-diff-btn {
+  background: var(--win-gray);
+  border: none;
+  box-shadow: var(--shadow-out);
+  padding: 2px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+}
+.ms-diff-btn:active { box-shadow: var(--shadow-in); }
+.ms-diff-btn.active {
+  box-shadow: var(--shadow-in);
+  font-weight: bold;
+}
+.ms-diff-btn:hover { background: #d4d0c8; }
+
+/* ─── SNAKE HEADER (3 items) ──────────────── */
+.snake-header {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 13px;
+  background: var(--win-gray);
+  padding: 4px 8px;
+  box-shadow: var(--shadow-in);
+  margin-bottom: 8px;
+}
+
+/* ─── LINK STYLE ──────────────────────────── */
+.info-box a {
+  color: var(--win-blue);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.info-box a:hover { color: var(--win-red); }
