@@ -531,9 +531,9 @@ app.post("/api/game-rank", async (req, res) => {
       else if (score > 500) coinsEarned = 2;
       else if (score > 250) coinsEarned = 1;
     } else if (game === "minesweeper") {
-      if (difficulty === "expert") coinsEarned = 2;
-      else if (difficulty === "intermediate") coinsEarned = 1;
-      else if (difficulty === "beginner") coinsEarned = 0.5;
+      if (difficulty === "expert") coinsEarned = 25;
+      else if (difficulty === "intermediate") coinsEarned = 5;
+      else if (difficulty === "beginner") coinsEarned = 1;
     }
 
     // Store earned coins
