@@ -753,10 +753,16 @@ async function loadToday() {
     if (data.arrival && data.rankings && data.rankings.length > 0) {
       html += `<div class="section-label" style="margin-top:8px">🏆 Resultado do Dia</div>`;
       html += renderRankingsTable(data.rankings, data.arrival);
-    } else if (!data.arrival && (data.guesses.length > 0 || data.hiddenCount > 0)) {
-      const total = data.guesses.length + (data.hiddenCount || 0);
+    } else if (!data.arrival && data.guesses.length > 0) {
       html += `<div class="section-label" style="margin-top:8px">🎯 Apostas registradas</div>`;
-      html += `<div class="info-box">🔒 ${total} aposta${total !== 1 ? "s" : ""} registrada${total !== 1 ? "s" : ""}. Os palpites ficam ocultos até o Luiz chegar.</div>`;
+      html += renderRankingsTable(data.guesses, null);
+      if (data.hiddenCount > 0) {
+        html += `<div class="info-box" style="margin-top:8px">🔒 Ainda há ${data.hiddenCount} aposta${data.hiddenCount !== 1 ? "s" : ""} oculta${data.hiddenCount !== 1 ? "s" : ""} de jogadores que não apostaram ainda.</div>`;
+      }
+    } else if (!data.arrival && data.hiddenCount > 0) {
+      const total = data.hiddenCount;
+      html += `<div class="section-label" style="margin-top:8px">🎯 Apostas registradas</div>`;
+      html += `<div class="info-box">🔒 ${total} aposta${total !== 1 ? "s" : ""} registrada${total !== 1 ? "s" : ""}. Você precisa apostar para ver as demais apostas.</div>`;
     } else if (!data.arrival) {
       html += `<div class="no-data">Nenhuma aposta ainda hoje.</div>`;
     }
@@ -1125,7 +1131,9 @@ function renderRankingsTable(rankings, arrival) {
   </tr></thead><tbody>`;
   const medals = ["🥇","🥈","🥉"];
   rankings.forEach((r) => {
-    const medal   = medals[r.position - 1] || `${r.position}º`;
+    const medal = r.position
+      ? medals[r.position - 1] || `${r.position}º`
+      : "—";
     const diffStr = r.diff !== undefined ? formatMinutes(r.diff) : "";
     html += `<tr>
       <td>${medal}</td>

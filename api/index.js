@@ -256,15 +256,24 @@ app.get("/api/today", async (req, res) => {
     );
 
     if (day.arrival) {
+      // Luiz chegou: mostrar todas as apostas
       exposedGuesses = day.guesses;
     } else if (bettingOpen) {
+      // Apostas ainda abertas: mostrar apenas a do usuário (se fez)
       hiddenCount = day.guesses.filter(
         (g) => !viewerName || userKey(g.name) !== userKey(viewerName),
       ).length;
       exposedGuesses = viewerGuess ? [viewerGuess] : [];
     } else {
-      hiddenCount = day.guesses.length;
-      exposedGuesses = [];
+      // Apostas fechadas mas Luiz não chegou
+      if (viewerGuess) {
+        // Usuário já apostou: mostrar todas as apostas
+        exposedGuesses = day.guesses;
+      } else {
+        // Usuário não apostou: manter oculto
+        hiddenCount = day.guesses.length;
+        exposedGuesses = [];
+      }
     }
 
     const viewerHasGuessed = !!viewerGuess;
