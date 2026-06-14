@@ -990,7 +990,7 @@ async function loadGameRank(game, difficulty) {
   }
 }
 
-async function submitGameScore(game, difficulty, score) {
+async function submitGameScore(game, difficulty, score, callback) {
   if (!currentUser) return; // Only logged-in users save scores
   try {
     // Check personal best in localStorage first
@@ -1005,11 +1005,13 @@ async function submitGameScore(game, difficulty, score) {
     // Submit to API
     const body = { game, playerName: currentUser.name, score };
     if (difficulty) body.difficulty = difficulty;
-    await fetch(`${API}/game-rank`, {
+    const res = await fetch(`${API}/game-rank`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    const data = await res.json();
+    if (callback) callback(data.coinsEarned || 0);
   } catch (e) {
     console.error("submitGameScore", e);
   }

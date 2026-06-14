@@ -380,6 +380,7 @@ app.get("/api/game-rank", async (req, res) => {
 // POST /api/game-rank
 // Body: { game, difficulty?, playerName, score }
 // Stores one score per player, keeps top 10 overall
+// Also awards coins based on game performance
 app.post("/api/game-rank", async (req, res) => {
   try {
     const { game, difficulty, playerName, score } = req.body;
@@ -401,7 +402,25 @@ app.post("/api/game-rank", async (req, res) => {
     scores = scores.slice(0, 10);
 
     await kv.set(rankKey, scores);
-    res.json({ success: true, rank: scores });
+
+    // ─── AWARD COINS BASED ON GAME PERFORMANCE ───
+    let coinsEarned = 0;
+    if (game === "snake") {
+      if (score > 1000) coinsEarned = 2;
+      else if (score > 500) coinsEarned = 1;
+    } else if (game === "minesweeper") {
+      if (difficulty === "expert") coinsEarned = 2;
+      else if (difficulty === "intermediate") coinsEarned = 1;
+    }
+
+    // Store earned coins
+    if (coinsEarned > 0) {
+      const coinsKey = `gamecoins:${userKey(playerName)}`;
+      const totalCoins = ((await kv.get(coinsKey)) || 0) + coinsEarned;
+      await kv.set(coinsKey, totalCoins);
+    }
+
+    res.json({ success: true, rank: scores, coinsEarned });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -455,7 +474,12 @@ app.get("/api/store", async (req, res) => {
       }
     }
 
-    // 2. Subtrair moedas gastas
+    // 2. Adicionar moedas ganhas em jogos
+    const gameCoinsKey = `gamecoins:${userKey(user.name)}`;
+    const gameCoins = (await kv.get(gameCoinsKey)) || 0;
+    earnedCoins += gameCoins;
+
+    // 3. Subtrair moedas gastas
     const purchasesKey = `purchases:${userKey(user.name)}`;
     const purchases = (await kv.get(purchasesKey)) || [];
     let spentCoins = 0;
@@ -465,7 +489,7 @@ app.get("/api/store", async (req, res) => {
       if (item) spentCoins += item.price;
     });
 
-    // 3. Ocultar o SRC da mídia para quem não comprou
+    // 4. Ocultar o SRC da mídia para quem não comprou
     const responseItems = STORE_ITEMS.map(item => {
         const isUnlocked = purchases.includes(item.id);
         return {
@@ -517,6 +541,11 @@ app.post("/api/store/buy", async (req, res) => {
          }
       }
     }
+
+    // Adicionar moedas ganhas em jogos
+    const gameCoinsKey = `gamecoins:${userKey(user.name)}`;
+    const gameCoins = (await kv.get(gameCoinsKey)) || 0;
+    earnedCoins += gameCoins;
 
     const purchasesKey = `purchases:${userKey(user.name)}`;
     const purchases = (await kv.get(purchasesKey)) || [];

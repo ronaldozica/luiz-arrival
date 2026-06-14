@@ -101,7 +101,23 @@ function gameLoop() {
     drawTextCenter("GAME OVER", "red");
     drawTextCenter(`Pontos: ${score}`, "white", 30);
     // Submit score
-    submitGameScore("snake", null, score);
+    submitGameScore("snake", null, score, function(coinsEarned) {
+      if (coinsEarned > 0) {
+        // Redraw to add coins message
+        setTimeout(() => {
+          clearCanvas();
+          snakeCtx.fillStyle = "red";
+          snakeCtx.font = "20px 'Courier New', monospace";
+          snakeCtx.textAlign = "center";
+          snakeCtx.textBaseline = "middle";
+          snakeCtx.fillText("GAME OVER", CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 30);
+          snakeCtx.fillStyle = "white";
+          snakeCtx.fillText(`Pontos: ${score}`, CANVAS_SIZE / 2, CANVAS_SIZE / 2);
+          snakeCtx.fillStyle = "gold";
+          snakeCtx.fillText(`🎉 +${coinsEarned} LuizCoins™`, CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 40);
+        }, 100);
+      }
+    });
     return;
   }
 
