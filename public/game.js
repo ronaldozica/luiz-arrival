@@ -103,6 +103,7 @@ function gameLoop() {
     // Submit score
     submitGameScore("snake", null, score, function(coinsEarned) {
       if (coinsEarned > 0) {
+        showGameCoinsToast(coinsEarned);
         // Redraw to add coins message
         setTimeout(() => {
           clearCanvas();

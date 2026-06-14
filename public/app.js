@@ -63,6 +63,9 @@ function openWindow(id) {
     centerWindow(w);
     refreshTodayStatus();
   }
+  if (id === "win-store") {
+    loadStore();
+  }
   delete minimizedWindows[id];
   bringToFront(w);
   updateTaskbar();
@@ -123,7 +126,10 @@ function updateTaskbar() {
       btn.style.fontWeight = minimizedWindows[id] ? "normal" : "bold";
       btn.onclick = () => {
         if (minimizedWindows[id]) openWindow(id);
-        else bringToFront(w);
+        else {
+          bringToFront(w);
+          if (id === "win-store") loadStore();
+        }
       };
       bar.appendChild(btn);
     }
@@ -993,28 +999,55 @@ async function loadGameRank(game, difficulty) {
 async function submitGameScore(game, difficulty, score, callback) {
   if (!currentUser) return; // Only logged-in users save scores
   try {
-    // Check personal best in localStorage first
     const personalKey = difficulty
       ? `luizos_pb_${game}_${difficulty}`
       : `luizos_pb_${game}`;
     const personalBest = parseInt(localStorage.getItem(personalKey) || "0", 10);
-    if (score <= personalBest) return; // Not a new personal best
+    const scoreValue = Number(score);
+    const isNewBest = scoreValue > personalBest;
 
-    localStorage.setItem(personalKey, String(score));
-
-    // Submit to API
-    const body = { game, playerName: currentUser.name, score };
+    // Submit to API; do not update ranking when this is not a new personal best.
+    const body = { game, playerName: currentUser.name, score: scoreValue };
     if (difficulty) body.difficulty = difficulty;
+    if (!isNewBest) body.skipRank = true;
+
     const res = await fetch(`${API}/game-rank`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     const data = await res.json();
+
+    if (res.ok && isNewBest) {
+      localStorage.setItem(personalKey, String(scoreValue));
+    }
     if (callback) callback(data.coinsEarned || 0);
   } catch (e) {
     console.error("submitGameScore", e);
   }
+}
+
+let gameToastTimeout = null;
+function formatCoinValue(coins) {
+  const value = Number(coins);
+  if (!Number.isFinite(value)) return "0";
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(".", ",");
+}
+
+function showGameCoinsToast(coins) {
+  const amount = Number(coins);
+  if (!Number.isFinite(amount) || amount <= 0) return;
+  const el = document.getElementById("game-toast");
+  if (!el) return;
+
+  el.textContent = `+${formatCoinValue(amount)} LuizCoins™`;
+  el.style.display = "block";
+  el.classList.add("show");
+  if (gameToastTimeout) clearTimeout(gameToastTimeout);
+  gameToastTimeout = setTimeout(() => {
+    el.classList.remove("show");
+    setTimeout(() => { el.style.display = "none"; }, 250);
+  }, 2200);
 }
 
 function getPersonalBest(game, difficulty) {
@@ -1154,7 +1187,8 @@ async function loadStore() {
     
     if (!res.ok) throw new Error(data.error);
 
-    balanceEl.textContent = data.balance;
+    const safeBalance = Math.max(0, Number(data.balance) || 0);
+    balanceEl.textContent = safeBalance;
 
     if (data.items.length === 0) {
       grid.innerHTML = '<div class="no-data">A loja está vazia no momento.</div>';
@@ -1177,7 +1211,7 @@ async function loadStore() {
             <div class="store-item-price">
                <img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}
             </div>
-            <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${data.balance})">Comprar</button>
+            <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>
           ` : `
             <div class="store-item-price" style="color:#006400">✅ Seu</div>
             <button class="win95-action-btn" onclick="openGallery('${item.id}', '${item.src}', '${escHtml(item.title)}')">Abrir</button>

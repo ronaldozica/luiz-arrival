@@ -225,7 +225,9 @@ function triggerMsGameOver(won, killerRow = -1, killerCol = -1) {
     }
     // Score for minesweeper = inverse of time (faster = more points, max 9999)
     const winScore = Math.max(1, 9999 - msTimer);
-    submitGameScore("minesweeper", currentMsDifficulty, winScore);
+    submitGameScore("minesweeper", currentMsDifficulty, winScore, function(coinsEarned) {
+      if (coinsEarned > 0) showGameCoinsToast(coinsEarned);
+    });
   } else {
     faceBtn.innerText = "😵";
     for (let r = 0; r < MS_ROWS; r++) {

@@ -1,4 +1,6 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') });
+require("dotenv").config({
+  path: require("path").resolve(__dirname, "../.env.local"),
+});
 
 const express = require("express");
 const { Redis } = require("@upstash/redis");
@@ -20,29 +22,37 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 
 // HCM preset users (used for the HCM tab in rankings)
 const PRESET_USERS = [
-  { name: "Ronaldo",    password: "rolando",   photo: "ronaldo.jpg",   isHCM: true },
-  { name: "Jorge",      password: "jog",       photo: "jorge.jpg",     isHCM: true },
-  { name: "Alexandre",  password: "rock",      photo: "alexandre.jpg", isHCM: true },
-  { name: "João Paulo", password: "joaoPedro", photo: "joaopaulo.jpg", isHCM: true },
-  { name: "Julio",      password: "julho",     photo: "julio.jpg",     isHCM: true },
-  { name: "Pedro",      password: "pedrao",    photo: "pedro.jpg",     isHCM: true },
+  { name: "Ronaldo", password: "rolando", isHCM: true },
+  { name: "Jorge", password: "jog", isHCM: true },
+  { name: "Alexandre", password: "rock", isHCM: true },
+  { name: "João Paulo", password: "joaoPedro", isHCM: true },
+  { name: "Julio", password: "julho", isHCM: true },
+  { name: "Pedro", password: "pedrao", isHCM: true },
 ];
 
-const HCM_NAMES = new Set(PRESET_USERS.map((u) => String(u.name || "").trim().toLowerCase()));
+const HCM_NAMES = new Set(
+  PRESET_USERS.map((u) =>
+    String(u.name || "")
+      .trim()
+      .toLowerCase(),
+  ),
+);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function getBrasiliaDate() {
   const now = new Date();
   const offset = -3 * 60;
-  const local = new Date(now.getTime() + (offset + now.getTimezoneOffset()) * 60000);
+  const local = new Date(
+    now.getTime() + (offset + now.getTimezoneOffset()) * 60000,
+  );
   return local;
 }
 
 function todayKey() {
   const d = getBrasiliaDate();
   const yyyy = d.getFullYear();
-  const mm   = String(d.getMonth() + 1).padStart(2, "0");
-  const dd   = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
 
@@ -68,18 +78,49 @@ function minutesToTimeStr(mins) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-function absDiff(a, b) { return Math.abs(a - b); }
-function userKey(name) { return String(name || "").trim().toLowerCase(); }
+function absDiff(a, b) {
+  return Math.abs(a - b);
+}
+function userKey(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase();
+}
 
 function normalizeUsers(value) {
   if (!value) return [];
   let users = value;
   if (typeof users === "string") {
-    try { users = JSON.parse(users); } catch { return []; }
+    try {
+      users = JSON.parse(users);
+    } catch {
+      return [];
+    }
   }
   return Array.isArray(users)
-    ? users.filter((u) => u && typeof u.name === "string" && typeof u.password === "string")
+    ? users.filter(
+        (u) =>
+          u && typeof u.name === "string" && typeof u.password === "string",
+      )
     : [];
+}
+
+function parseRedisNumber(value) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function parseRedisArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return value ? [value] : [];
+    }
+  }
+  return [];
 }
 
 const MAX_DAYS = 22;
@@ -87,7 +128,11 @@ const MAX_DAYS = 22;
 async function getUsers(kv) {
   let extra = [];
   if (kv) {
-    try { extra = normalizeUsers(await kv.get("users")); } catch { extra = []; }
+    try {
+      extra = normalizeUsers(await kv.get("users"));
+    } catch {
+      extra = [];
+    }
   }
   const allNames = new Set(PRESET_USERS.map((u) => userKey(u.name)));
   const filtered = extra.filter((u) => !allNames.has(userKey(u.name)));
@@ -96,7 +141,9 @@ async function getUsers(kv) {
 
 async function saveExtraUsers(kv, users) {
   const presetNames = new Set(PRESET_USERS.map((u) => userKey(u.name)));
-  const extra = normalizeUsers(users).filter((u) => !presetNames.has(userKey(u.name)));
+  const extra = normalizeUsers(users).filter(
+    (u) => !presetNames.has(userKey(u.name)),
+  );
   await kv.set("users", extra);
 }
 
@@ -129,8 +176,15 @@ app.get("/api/users", async (req, res) => {
   try {
     const kv = getKV();
     const users = await getUsers(kv);
-    res.json(users.map((u) => ({ name: u.name, photo: u.photo || null, isHCM: !!u.isHCM })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    res.json(
+      users.map((u) => ({
+        name: u.name,
+        isHCM: !!u.isHCM,
+      })),
+    );
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/login
@@ -140,29 +194,38 @@ app.post("/api/login", async (req, res) => {
     const kv = getKV();
     const users = await getUsers(kv);
     const user = users.find(
-      (u) => userKey(u.name) === userKey(name) && u.password === password
+      (u) => userKey(u.name) === userKey(name) && u.password === password,
     );
-    if (!user) return res.status(401).json({ error: "Nome ou senha incorretos." });
-    res.json({ name: user.name, photo: user.photo || null, isHCM: !!user.isHCM });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    if (!user)
+      return res.status(401).json({ error: "Nome ou senha incorretos." });
+    res.json({
+      name: user.name,
+      isHCM: !!user.isHCM,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/register
 app.post("/api/register", async (req, res) => {
   try {
     const { name, password } = req.body;
-    if (!name || !password) return res.status(400).json({ error: "Nome e senha são obrigatórios." });
+    if (!name || !password)
+      return res.status(400).json({ error: "Nome e senha são obrigatórios." });
     const kv = getKV();
     const users = await getUsers(kv);
     const exists = users.find((u) => userKey(u.name) === userKey(name));
     if (exists) return res.status(409).json({ error: "Usuário já existe." });
-    const newUser = { name: name.trim(), password, photo: null, isHCM: false };
+    const newUser = { name: name.trim(), password, isHCM: false };
     const presetNames = new Set(PRESET_USERS.map((u) => userKey(u.name)));
     const extra = users.filter((u) => !presetNames.has(userKey(u.name)));
     extra.push(newUser);
     await saveExtraUsers(kv, extra);
-    res.json({ name: newUser.name, photo: null, isHCM: false });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    res.json({ name: newUser.name, isHCM: false });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // GET /api/today
@@ -181,7 +244,7 @@ app.get("/api/today", async (req, res) => {
     if (viewer && password) {
       const users = await getUsers(kv);
       const user = users.find(
-        (u) => userKey(u.name) === userKey(viewer) && u.password === password
+        (u) => userKey(u.name) === userKey(viewer) && u.password === password,
       );
       if (user) viewerName = user.name;
     }
@@ -189,14 +252,14 @@ app.get("/api/today", async (req, res) => {
     let exposedGuesses = [];
     let hiddenCount = 0;
     const viewerGuess = day.guesses.find(
-      (g) => viewerName && userKey(g.name) === userKey(viewerName)
+      (g) => viewerName && userKey(g.name) === userKey(viewerName),
     );
 
     if (day.arrival) {
       exposedGuesses = day.guesses;
     } else if (bettingOpen) {
       hiddenCount = day.guesses.filter(
-        (g) => !viewerName || userKey(g.name) !== userKey(viewerName)
+        (g) => !viewerName || userKey(g.name) !== userKey(viewerName),
       ).length;
       exposedGuesses = viewerGuess ? [viewerGuess] : [];
     } else {
@@ -217,7 +280,9 @@ app.get("/api/today", async (req, res) => {
       bettingOpen,
       currentTime: minutesToTimeStr(nowMins),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/guess
@@ -227,51 +292,75 @@ app.post("/api/guess", async (req, res) => {
     const kv = getKV();
     const users = await getUsers(kv);
     const user = users.find(
-      (u) => userKey(u.name) === userKey(name) && u.password === password
+      (u) => userKey(u.name) === userKey(name) && u.password === password,
     );
-    if (!user) return res.status(401).json({ error: "Nome ou senha incorretos." });
+    if (!user)
+      return res.status(401).json({ error: "Nome ou senha incorretos." });
 
-    if (!/^\d{2}:\d{2}$/.test(time)) return res.status(400).json({ error: "Horário inválido." });
+    if (!/^\d{2}:\d{2}$/.test(time))
+      return res.status(400).json({ error: "Horário inválido." });
 
     const key = todayKey();
     if (!isWeekday(key))
-      return res.status(400).json({ error: "Apostas só são permitidas em dias úteis." });
+      return res
+        .status(400)
+        .json({ error: "Apostas só são permitidas em dias úteis." });
 
     const day = await getDayData(kv, key);
     const nowMins = currentTimeMinutes();
 
     if (day.arrival)
-      return res.status(400).json({ error: "O Luiz já chegou! Apostas encerradas." });
+      return res
+        .status(400)
+        .json({ error: "O Luiz já chegou! Apostas encerradas." });
     if (nowMins >= timeStrToMinutes("10:00"))
       return res.status(400).json({ error: "Apostas encerradas após 10h." });
 
-    const existing = day.guesses.findIndex((g) => userKey(g.name) === userKey(name));
+    const existing = day.guesses.findIndex(
+      (g) => userKey(g.name) === userKey(name),
+    );
     if (existing >= 0) {
-      return res.status(409).json({ error: "Você já apostou hoje! Só é permitido um palpite por dia." });
+      return res
+        .status(409)
+        .json({
+          error: "Você já apostou hoje! Só é permitido um palpite por dia.",
+        });
     }
 
-    day.guesses.push({ name: user.name, time, createdAt: new Date().toISOString() });
+    day.guesses.push({
+      name: user.name,
+      time,
+      createdAt: new Date().toISOString(),
+    });
     await setDayData(kv, key, day);
     res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/admin/login
 app.post("/api/admin/login", async (req, res) => {
   try {
     const { password } = req.body;
-    if (!password) return res.status(400).json({ error: "Senha é obrigatória." });
-    if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: "Senha incorreta." });
+    if (!password)
+      return res.status(400).json({ error: "Senha é obrigatória." });
+    if (password !== ADMIN_PASSWORD)
+      return res.status(401).json({ error: "Senha incorreta." });
     res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/admin/arrival
 app.post("/api/admin/arrival", async (req, res) => {
   try {
     const { password, time, date } = req.body;
-    if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: "Senha incorreta." });
-    if (!/^\d{2}:\d{2}$/.test(time)) return res.status(400).json({ error: "Horário inválido." });
+    if (password !== ADMIN_PASSWORD)
+      return res.status(401).json({ error: "Senha incorreta." });
+    if (!/^\d{2}:\d{2}$/.test(time))
+      return res.status(400).json({ error: "Horário inválido." });
 
     const kv = getKV();
     const key = date || todayKey();
@@ -281,7 +370,10 @@ app.post("/api/admin/arrival", async (req, res) => {
     if (day.guesses.length > 0) {
       const arrivalMins = timeStrToMinutes(time);
       const ranked = day.guesses
-        .map((g) => ({ ...g, diff: absDiff(timeStrToMinutes(g.time), arrivalMins) }))
+        .map((g) => ({
+          ...g,
+          diff: absDiff(timeStrToMinutes(g.time), arrivalMins),
+        }))
         .sort((a, b) => a.diff - b.diff);
       let pos = 1;
       for (let i = 0; i < ranked.length; i++) {
@@ -299,7 +391,9 @@ app.post("/api/admin/arrival", async (req, res) => {
 
     await setDayData(kv, key, day);
     res.json({ success: true, arrival: time, rankings: day.rankings });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // GET /api/history
@@ -322,7 +416,9 @@ app.get("/api/history", async (req, res) => {
       if (results.length >= MAX_DAYS) break;
     }
     res.json(results);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // GET /api/overall-rank
@@ -334,7 +430,9 @@ app.get("/api/overall-rank", async (req, res) => {
     const scores = {};
     // Build a lookup of HCM names from current user list
     const users = await getUsers(kv);
-    const hcmNames = new Set(users.filter(u => u.isHCM).map(u => userKey(u.name)));
+    const hcmNames = new Set(
+      users.filter((u) => u.isHCM).map((u) => userKey(u.name)),
+    );
 
     for (const dateKey of index) {
       if (!isWeekday(dateKey)) continue;
@@ -343,25 +441,31 @@ app.get("/api/overall-rank", async (req, res) => {
       const total = day.rankings.length;
       for (const r of day.rankings) {
         const key = r.name;
-        if (!scores[key]) scores[key] = {
-          name: r.name,
-          points: 0,
-          wins: 0,
-          days: 0,
-          totalDiff: 0,
-          isHCM: hcmNames.has(userKey(r.name)),
-        };
-        scores[key].points    += total - r.position + 1;
+        if (!scores[key])
+          scores[key] = {
+            name: r.name,
+            points: 0,
+            wins: 0,
+            days: 0,
+            totalDiff: 0,
+            isHCM: hcmNames.has(userKey(r.name)),
+          };
+        scores[key].points += total - r.position + 1;
         scores[key].totalDiff += r.diff;
-        scores[key].days      += 1;
+        scores[key].days += 1;
         if (r.position === 1) scores[key].wins += 1;
       }
     }
     const ranked = Object.values(scores)
-      .map((s) => ({ ...s, avgDiffMins: s.days > 0 ? Math.round(s.totalDiff / s.days) : 0 }))
+      .map((s) => ({
+        ...s,
+        avgDiffMins: s.days > 0 ? Math.round(s.totalDiff / s.days) : 0,
+      }))
       .sort((a, b) => b.points - a.points || a.avgDiffMins - b.avgDiffMins);
     res.json(ranked);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // GET /api/game-rank?game=snake|minesweeper[&difficulty=beginner|intermediate|expert]
@@ -370,65 +474,88 @@ app.get("/api/game-rank", async (req, res) => {
   try {
     const { game, difficulty } = req.query;
     if (!game) return res.status(400).json({ error: "game é obrigatório." });
-    const rankKey = difficulty ? `gamerank:${game}:${difficulty}` : `gamerank:${game}`;
+    const rankKey = difficulty
+      ? `gamerank:${game}:${difficulty}`
+      : `gamerank:${game}`;
     const kv = getKV();
     const scores = (await kv.get(rankKey)) || [];
     res.json(scores);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/game-rank
-// Body: { game, difficulty?, playerName, score }
+// Body: { game, difficulty?, playerName, score, skipRank? }
 // Stores one score per player, keeps top 10 overall
 // Also awards coins based on game performance
 app.post("/api/game-rank", async (req, res) => {
   try {
-    const { game, difficulty, playerName, score } = req.body;
+    const { game, difficulty, playerName, score, skipRank } = req.body;
     if (!game || !playerName || score === undefined) {
-      return res.status(400).json({ error: "game, playerName e score são obrigatórios." });
+      return res
+        .status(400)
+        .json({ error: "game, playerName e score são obrigatórios." });
     }
-    const rankKey = difficulty ? `gamerank:${game}:${difficulty}` : `gamerank:${game}`;
+    const rankKey = difficulty
+      ? `gamerank:${game}:${difficulty}`
+      : `gamerank:${game}`;
     const kv = getKV();
     let scores = (await kv.get(rankKey)) || [];
 
-    // Remove existing entry for this player
-    scores = scores.filter((s) => String(s.name).toLowerCase() !== String(playerName).toLowerCase());
-
-    // Insert new score
-    scores.push({ name: playerName, score, date: new Date().toISOString() });
-
-    // Sort descending by score, keep top 10
-    scores.sort((a, b) => b.score - a.score);
-    scores = scores.slice(0, 10);
-
-    await kv.set(rankKey, scores);
+    if (!skipRank) {
+      // Remove existing entry for this player and update ranking
+      scores = scores.filter(
+        (s) =>
+          String(s.name).toLowerCase() !== String(playerName).toLowerCase(),
+      );
+      scores.push({ name: playerName, score, date: new Date().toISOString() });
+      scores.sort((a, b) => b.score - a.score);
+      scores = scores.slice(0, 10);
+      await kv.set(rankKey, scores);
+    }
 
     // ─── AWARD COINS BASED ON GAME PERFORMANCE ───
     let coinsEarned = 0;
     if (game === "snake") {
-      if (score > 1000) coinsEarned = 2;
-      else if (score > 500) coinsEarned = 1;
+      if (score > 1000) coinsEarned = 3;
+      else if (score > 500) coinsEarned = 2;
+      else if (score > 250) coinsEarned = 1;
     } else if (game === "minesweeper") {
       if (difficulty === "expert") coinsEarned = 2;
       else if (difficulty === "intermediate") coinsEarned = 1;
+      else if (difficulty === "beginner") coinsEarned = 0.5;
     }
 
     // Store earned coins
     if (coinsEarned > 0) {
       const coinsKey = `gamecoins:${userKey(playerName)}`;
-      const totalCoins = ((await kv.get(coinsKey)) || 0) + coinsEarned;
-      await kv.set(coinsKey, totalCoins);
+      const existingCoins = Number(await kv.get(coinsKey));
+      const totalCoins = (Number.isFinite(existingCoins) ? existingCoins : 0) + Number(coinsEarned);
+      await kv.set(coinsKey, String(totalCoins));
     }
 
     res.json({ success: true, rank: scores, coinsEarned });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ─── Loja de Prêmios (Configuração) ──────────────────────────────────────────
 const STORE_ITEMS = [
   // Cadastre seus GIFs e imagens aqui. Eles devem estar na pasta public (ex: /store/...)
-  { id: "palinha", price: 10, src: "/photos/palinha.gif", title: "Luiz dando uma palinha" },
-  { id: "baixista", price: 10, src: "/photos/baixista.gif", title: "Luiz baixista" },
+  {
+    id: "palinha",
+    price: 10,
+    src: "/photos/palinha.gif",
+    title: "Luiz dando uma palinha",
+  },
+  {
+    id: "baixista",
+    price: 10,
+    src: "/photos/baixista.gif",
+    title: "Luiz baixista",
+  },
 ];
 
 // ─── Rotas da Loja ───────────────────────────────────────────────────────────
@@ -437,14 +564,19 @@ const STORE_ITEMS = [
 app.get("/api/store", async (req, res) => {
   try {
     const { viewer, password } = req.query;
-    if (!viewer || !password) return res.status(401).json({ error: "Faça login para acessar a loja." });
+    if (!viewer || !password)
+      return res.status(401).json({ error: "Faça login para acessar a loja." });
 
     const kv = getKV();
     const users = await getUsers(kv);
-    const user = users.find((u) => userKey(u.name) === userKey(viewer) && u.password === password);
+    const user = users.find(
+      (u) => userKey(u.name) === userKey(viewer) && u.password === password,
+    );
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
-    const hcmNames = new Set(users.filter(u => u.isHCM).map(u => userKey(u.name)));
+    const hcmNames = new Set(
+      users.filter((u) => u.isHCM).map((u) => userKey(u.name)),
+    );
     const isUserHCM = hcmNames.has(userKey(user.name));
 
     let index = (await kv.get("days_index")) || [];
@@ -456,7 +588,9 @@ app.get("/api/store", async (req, res) => {
       const day = await getDayData(kv, dateKey);
       if (!day.arrival || !day.rankings) continue;
 
-      const userRank = day.rankings.find(r => userKey(r.name) === userKey(user.name));
+      const userRank = day.rankings.find(
+        (r) => userKey(r.name) === userKey(user.name),
+      );
       if (userRank) {
         if (userRank.position === 1) earnedCoins += 10;
         else if (userRank.position === 2) earnedCoins += 5;
@@ -465,43 +599,57 @@ app.get("/api/store", async (req, res) => {
 
       // Regra HCM: 1 moeda extra se for o 1º lugar entre o pessoal do HCM
       if (isUserHCM) {
-         const hcmRanks = day.rankings.filter(r => hcmNames.has(userKey(r.name)));
-         if (hcmRanks.length > 0) {
-            const topHcmPos = hcmRanks[0].position;
-            const isTopHcm = hcmRanks.some(r => r.position === topHcmPos && userKey(r.name) === userKey(user.name));
-            if (isTopHcm && userRank) earnedCoins += 5;
-         }
+        const hcmRanks = day.rankings.filter((r) =>
+          hcmNames.has(userKey(r.name)),
+        );
+        if (hcmRanks.length > 0) {
+          const topHcmPos = hcmRanks[0].position;
+          const isTopHcm = hcmRanks.some(
+            (r) =>
+              r.position === topHcmPos &&
+              userKey(r.name) === userKey(user.name),
+          );
+          if (isTopHcm && userRank) earnedCoins += 5;
+        }
       }
     }
 
     // 2. Adicionar moedas ganhas em jogos
     const gameCoinsKey = `gamecoins:${userKey(user.name)}`;
-    const gameCoins = (await kv.get(gameCoinsKey)) || 0;
+    const gameCoins = parseRedisNumber(await kv.get(gameCoinsKey));
     earnedCoins += gameCoins;
 
     // 3. Subtrair moedas gastas
     const purchasesKey = `purchases:${userKey(user.name)}`;
-    const purchases = (await kv.get(purchasesKey)) || [];
+    const purchases = parseRedisArray(await kv.get(purchasesKey));
     let spentCoins = 0;
-    
-    purchases.forEach(id => {
-      const item = STORE_ITEMS.find(i => i.id === id);
+
+    purchases.forEach((id) => {
+      const item = STORE_ITEMS.find((i) => i.id === id);
       if (item) spentCoins += item.price;
     });
 
     // 4. Ocultar o SRC da mídia para quem não comprou
-    const responseItems = STORE_ITEMS.map(item => {
-        const isUnlocked = purchases.includes(item.id);
-        return {
-            id: item.id,
-            title: item.title,
-            price: item.price,
-            src: isUnlocked ? item.src : null // Mantém bloqueado na rede
-        };
+    const responseItems = STORE_ITEMS.map((item) => {
+      const isUnlocked = purchases.includes(item.id);
+      return {
+        id: item.id,
+        title: item.title,
+        price: item.price,
+        src: isUnlocked ? item.src : null, // Mantém bloqueado na rede
+      };
     });
 
-    res.json({ balance: earnedCoins - spentCoins, purchases, items: responseItems });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    res.json({
+      balance: Math.max(0, earnedCoins - spentCoins),
+      coinsFromGames: parseRedisNumber(await kv.get(gameCoinsKey)),
+      spentCoins,
+      purchases,
+      items: responseItems,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/store/buy
@@ -509,17 +657,21 @@ app.post("/api/store/buy", async (req, res) => {
   try {
     const { name, password, itemId } = req.body;
     const kv = getKV();
-    
+
     // Validar usuário
     const users = await getUsers(kv);
-    const user = users.find((u) => userKey(u.name) === userKey(name) && u.password === password);
+    const user = users.find(
+      (u) => userKey(u.name) === userKey(name) && u.password === password,
+    );
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
-    const item = STORE_ITEMS.find(i => i.id === itemId);
+    const item = STORE_ITEMS.find((i) => i.id === itemId);
     if (!item) return res.status(404).json({ error: "Item não encontrado." });
 
     // Recalcular saldo para evitar bypass
-    const hcmNames = new Set(users.filter(u => u.isHCM).map(u => userKey(u.name)));
+    const hcmNames = new Set(
+      users.filter((u) => u.isHCM).map((u) => userKey(u.name)),
+    );
     const isUserHCM = hcmNames.has(userKey(user.name));
     let index = (await kv.get("days_index")) || [];
     let earnedCoins = 0;
@@ -528,45 +680,60 @@ app.post("/api/store/buy", async (req, res) => {
       if (!isWeekday(dateKey)) continue;
       const day = await getDayData(kv, dateKey);
       if (!day.arrival || !day.rankings) continue;
-      const userRank = day.rankings.find(r => userKey(r.name) === userKey(user.name));
+      const userRank = day.rankings.find(
+        (r) => userKey(r.name) === userKey(user.name),
+      );
       if (userRank) {
         if (userRank.position === 1) earnedCoins += 10;
         else if (userRank.position === 2) earnedCoins += 5;
         else if (userRank.position === 3) earnedCoins += 3;
       }
       if (isUserHCM) {
-         const hcmRanks = day.rankings.filter(r => hcmNames.has(userKey(r.name)));
-         if (hcmRanks.length > 0 && hcmRanks.some(r => r.position === hcmRanks[0].position && userKey(r.name) === userKey(user.name))) {
-            earnedCoins += 1;
-         }
+        const hcmRanks = day.rankings.filter((r) =>
+          hcmNames.has(userKey(r.name)),
+        );
+        if (
+          hcmRanks.length > 0 &&
+          hcmRanks.some(
+            (r) =>
+              r.position === hcmRanks[0].position &&
+              userKey(r.name) === userKey(user.name),
+          )
+        ) {
+          earnedCoins += 1;
+        }
       }
     }
 
     // Adicionar moedas ganhas em jogos
     const gameCoinsKey = `gamecoins:${userKey(user.name)}`;
-    const gameCoins = (await kv.get(gameCoinsKey)) || 0;
+    const gameCoins = parseRedisNumber(await kv.get(gameCoinsKey));
     earnedCoins += gameCoins;
 
     const purchasesKey = `purchases:${userKey(user.name)}`;
-    const purchases = (await kv.get(purchasesKey)) || [];
-    
-    if (purchases.includes(itemId)) return res.status(400).json({ error: "Você já possui este item." });
+    const purchases = parseRedisArray(await kv.get(purchasesKey));
+
+    if (purchases.includes(itemId))
+      return res.status(400).json({ error: "Você já possui este item." });
 
     let spentCoins = 0;
-    purchases.forEach(id => {
-      const pItem = STORE_ITEMS.find(i => i.id === id);
+    purchases.forEach((id) => {
+      const pItem = STORE_ITEMS.find((i) => i.id === id);
       if (pItem) spentCoins += pItem.price;
     });
 
     const balance = earnedCoins - spentCoins;
-    if (balance < item.price) return res.status(400).json({ error: "LuizCoins™ insuficientes." });
+    if (balance < item.price)
+      return res.status(400).json({ error: "LuizCoins™ insuficientes." });
 
     // Efetuar compra
     purchases.push(itemId);
-    await kv.set(purchasesKey, purchases);
+    await kv.set(purchasesKey, JSON.stringify(purchases));
 
     res.json({ success: true, newBalance: balance - item.price });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ─── Export for Vercel ────────────────────────────────────────────────────────
