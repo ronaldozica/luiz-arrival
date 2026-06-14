@@ -554,7 +554,13 @@ const STORE_ITEMS = [
     id: "baixista",
     price: 10,
     src: "/photos/baixista.gif",
-    title: "Luiz baixista",
+    title: "Luiz Fernando baixista",
+  },
+  {
+    id: "confusp",
+    price: 25,
+    src: "/photos/confuso.gif",
+    title: "Luiz confuso",
   },
 ];
 
