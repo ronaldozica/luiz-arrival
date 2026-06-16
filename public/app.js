@@ -28,6 +28,8 @@ const windows = {
 const SHOW_DECORATIONS_KEY = "luizos_show_decorations";
 let showDecorations = true; // name colors + achievement icons in rank
 let userProfiles = {}; // { [name]: { nameColor, achievement } }
+let currentGameRankData = [];
+let currentGameRankMeta = { game: "snake", difficulty: null };
 
 function loadShowDecorations() {
   try {
@@ -44,9 +46,33 @@ function saveShowDecorations() {
   } catch {}
 }
 
-function syncDecorationsCheckbox() {
-  const checkbox = document.getElementById("rank-decorations-checkbox");
-  if (checkbox) checkbox.checked = showDecorations;
+function syncDecorationsCheckboxes() {
+  document.querySelectorAll("#rank-decorations-checkbox, .rank-decorations-checkbox").forEach((checkbox) => {
+    checkbox.checked = showDecorations;
+  });
+}
+
+async function loadProfiles() {
+  try {
+    const res = await fetch(`${API}/profiles`);
+    const data = await res.json();
+    if (res.ok && data) {
+      userProfiles = data;
+    }
+  } catch {}
+}
+
+function renderPlayerName(name, includeAchievement) {
+  const profile = userProfiles[name] || {};
+  let style = "";
+  if (showDecorations && profile.nameColor) {
+    style = `style="color:${profile.nameColor.color};${getColorEffect(profile.nameColor.id)}"`;
+  }
+  const achievementBadge =
+    showDecorations && includeAchievement && profile.achievement
+      ? `<span class="achievement-badge" title="${escHtml(profile.achievement.title)}">${profile.achievement.icon}</span>`
+      : "";
+  return `<span ${style}>${escHtml(name)}</span>${achievementBadge}`;
 }
 
 // ─── Loading overlay ─────────────────────────────────────────────────────────
@@ -1000,14 +1026,11 @@ async function loadOverallRank() {
 function toggleDecorations(checked) {
   showDecorations = typeof checked === "boolean" ? checked : !showDecorations;
   saveShowDecorations();
-  const checkbox = document.getElementById("rank-decorations-checkbox");
-  if (checkbox) checkbox.checked = showDecorations;
+  syncDecorationsCheckboxes();
   renderRankTab(activeRankTab);
-}
-
-function syncDecorationsCheckbox() {
-  const checkbox = document.getElementById("rank-decorations-checkbox");
-  if (checkbox) checkbox.checked = showDecorations;
+  if (currentGameRankData.length > 0) {
+    renderGameRank();
+  }
 }
 
 function switchRankTab(tab) {
@@ -1209,6 +1232,7 @@ let activeGameRankTab = "snake";
 
 async function openGameRank(game, difficulty) {
   activeGameRankTab = game;
+  currentGameRankMeta = { game, difficulty };
   openWindow("win-gamerank");
   await loadGameRank(game, difficulty);
 }
@@ -1223,6 +1247,8 @@ async function loadGameRank(game, difficulty) {
       : `?game=${game}`;
     const res = await fetch(`${API}/game-rank${params}`);
     const scores = await res.json();
+    currentGameRankData = scores;
+    currentGameRankMeta = { game, difficulty };
 
     const gameLabel = game === "snake" ? "🐍 Snake 95" : "💣 Campo Minado";
     const diffLabel = difficulty ? ` — ${getDifficultyLabel(difficulty)}` : "";
@@ -1246,7 +1272,7 @@ async function loadGameRank(game, difficulty) {
               : i === 2
                 ? "rank-bronze"
                 : "";
-        html += `<tr class="${medalClass}"><td>${medal}</td><td>${escHtml(s.name)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
+        html += `<tr class="${medalClass}"><td>${medal}</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
       });
       html += `</tbody></table>`;
     }
@@ -1255,6 +1281,40 @@ async function loadGameRank(game, difficulty) {
     container.innerHTML =
       '<div class="loading">Erro ao carregar ranking.</div>';
   }
+}
+
+function renderGameRank() {
+  const container = document.getElementById("gamerank-content");
+  if (!container) return;
+
+  const { game, difficulty } = currentGameRankMeta;
+  const gameLabel = game === "snake" ? "🐍 Snake 95" : "💣 Campo Minado";
+  const diffLabel = difficulty ? ` — ${getDifficultyLabel(difficulty)}` : "";
+  let html = `<div class="section-label">${gameLabel}${diffLabel} — Top 10</div>`;
+
+  if (currentGameRankData.length === 0) {
+    html += '<div class="no-data">Nenhum recorde ainda. Seja o primeiro!</div>';
+  } else {
+    html += `<table class="win95-table"><thead><tr>
+      <th>#</th><th>Jogador</th><th>Pontuação</th><th>Data</th>
+    </tr></thead><tbody>`;
+    currentGameRankData.forEach((s, i) => {
+      const medal = ["🥇", "🥈", "🥉"][i] || `${i + 1}º`;
+      const date = new Date(s.date).toLocaleDateString("pt-BR");
+      const medalClass =
+        i === 0
+          ? "rank-gold"
+          : i === 1
+            ? "rank-silver"
+            : i === 2
+              ? "rank-bronze"
+              : "";
+      html += `<tr class="${medalClass}"><td>${medal}</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+
+  container.innerHTML = html;
 }
 
 async function submitGameScore(game, difficulty, score, callback) {
@@ -1425,7 +1485,7 @@ function renderRankingsTable(rankings, arrival) {
     const diffStr = r.diff !== undefined ? formatMinutes(r.diff) : "";
     html += `<tr>
       <td>${medal}</td>
-      <td>${escHtml(r.name)}</td>
+      <td>${renderPlayerName(r.name, false)}</td>
       <td><strong>${r.time}</strong></td>
       ${arrival ? `<td>${diffStr}</td>` : ""}
     </tr>`;
@@ -1437,7 +1497,8 @@ function renderRankingsTable(rankings, arrival) {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 captureDefaultIconPositions();
 loadShowDecorations();
-syncDecorationsCheckbox();
+syncDecorationsCheckboxes();
+loadProfiles();
 loadUsers().then(() => {
   // Restore session
   const saved = loadSession();
@@ -1542,7 +1603,7 @@ async function loadStore() {
         html += `
           <div class="store-color-item ${isUnlocked ? "unlocked" : "locked"}">
             <div class="store-color-preview" style="${effect}">
-              <span style="color:${item.color};${getColorEffect(item.id)}">Seu Nome</span>
+              <span style="color:${item.color};${getColorEffect(item.id)}">Seu nome</span>
             </div>
             <div class="store-item-title">${escHtml(item.title)}</div>
             ${
