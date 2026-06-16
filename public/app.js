@@ -603,7 +603,14 @@ async function refreshTodayStatus() {
     const bettingOpen = Boolean(res.ok && data.bettingOpen);
     const currentTime = data.currentTime || getBrasiliaTime();
 
-    if (data.arrival) {
+    // NOVO: Descobre se estamos visualizando aposta pra hoje ou pro próximo dia útil
+    const isNextDay = data.activeBetDate && data.activeBetDate !== data.date;
+
+    if (isNextDay) {
+      const [y, m, d] = data.activeBetDate.split("-");
+      banner.textContent = `✅ Apostas abertas para o próximo dia útil (${d}/${m})!`;
+      banner.className = "win95-status-bar show open";
+    } else if (data.arrival) {
       banner.textContent = `⛔ Luiz chegou às ${data.arrival}! Apostas encerradas.`;
       banner.className = "win95-status-bar show closed";
     } else if (!bettingOpen) {
@@ -614,14 +621,14 @@ async function refreshTodayStatus() {
       banner.className = "win95-status-bar show open";
     }
 
-    // Show user info panel if logged in
+    // Show user info panel if logged in (MANTIDO INTACTO)
     const userInfoEl = document.getElementById("guess-user-info");
     const userNameEl = document.getElementById("guess-user-name");
     if (userInfoEl) userInfoEl.style.display = currentUser ? "block" : "none";
     if (userNameEl && currentUser)
       userNameEl.textContent = `👤 ${currentUser.name}`;
 
-    // Prefill hidden select and photo
+    // Prefill hidden select and photo (MANTIDO INTACTO)
     if (currentUser) {
       const sel = document.getElementById("guess-user-select");
       if (sel) sel.value = currentUser.name;
@@ -636,9 +643,11 @@ async function refreshTodayStatus() {
       setGuessFormOpen(false);
     } else if (data.viewerHasGuessed && bettingOpen) {
       const msg = document.getElementById("guess-msg");
+      // NOVO: Ajusta a label do dia na mensagem
+      const dayLabel = isNextDay ? "para o próximo dia" : "hoje";
       showMsg(
         msg,
-        `✅ Você já apostou hoje: ${data.viewerGuess.time}. Só 1 palpite por dia!`,
+        `✅ Você já apostou ${dayLabel}: ${data.viewerGuess.time}. Só 1 palpite por dia!`,
         "ok",
       );
       setGuessFormOpen(false);
@@ -756,16 +765,21 @@ async function submitGuess() {
   normalizeGuessTime();
   // Always re-fetch status to prevent stale re-guess (bug #6)
   const { res: checkRes, data: checkData } = await fetchTodayFresh();
+  
   if (checkData.viewerHasGuessed) {
     const msg = document.getElementById("guess-msg");
+    // NOVO: Ajusta a label do dia na mensagem de erro
+    const isNextDay = checkData.activeBetDate && checkData.activeBetDate !== checkData.date;
+    const dayLabel = isNextDay ? "para o próximo dia" : "hoje";
     showMsg(
       msg,
-      `❌ Você já apostou hoje: ${checkData.viewerGuess.time}. Só 1 palpite por dia!`,
+      `❌ Você já apostou ${dayLabel}: ${checkData.viewerGuess.time}. Só 1 palpite por dia!`,
       "err",
     );
     setGuessFormOpen(false);
     return;
   }
+  
   if (!checkData.bettingOpen) {
     const msg = document.getElementById("guess-msg");
     showMsg(msg, "❌ Apostas já encerradas.", "err");

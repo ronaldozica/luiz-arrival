@@ -169,6 +169,19 @@ async function setDayData(kv, dateKey, data) {
   }
 }
 
+// Função auxiliar para calcular a data em string do próximo dia útil (pula finais de semana)
+function getNextWeekdayStr() {
+  const d = getBrasiliaDate();
+  do {
+    d.setDate(d.getDate() + 1);
+  } while (d.getDay() === 0 || d.getDay() === 6); // 0 = Domingo, 6 = Sábado
+  
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
 // GET /api/users
@@ -228,118 +241,132 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-// GET /api/today
+// ROTA GET /api/today COMPLETAMENTE INTEGRADA
 app.get("/api/today", async (req, res) => {
   try {
     const kv = getKV();
     const key = todayKey();
-    const day = await getDayData(kv, key);
+    const todayDay = await getDayData(kv, key);
     const nowMins = currentTimeMinutes();
     const cutoffMins = timeStrToMinutes("10:00");
-    const bettingOpen = !day.arrival && nowMins < cutoffMins;
 
-    // Validate viewer identity if provided
+    // 1. Determina dinamicamente se a data ativa para novas apostas avança para o próximo dia útil
+    let activeBetDate = key;
+    if (!isWeekday(key) || todayDay.arrival || nowMins >= cutoffMins) {
+      activeBetDate = getNextWeekdayStr();
+    }
+    const activeDayData = activeBetDate === key ? todayDay : await getDayData(kv, activeBetDate);
+
+    // 2. Valida credenciais do usuário se enviadas por parâmetro na query
     let viewerName = null;
     const { viewer, password } = req.query;
     if (viewer && password) {
       const users = await getUsers(kv);
       const user = users.find(
-        (u) => userKey(u.name) === userKey(viewer) && u.password === password,
+        (u) => userKey(u.name) === userKey(viewer) && u.password === password
       );
       if (user) viewerName = user.name;
     }
 
+    // 3. Verifica se o usuário já realizou um palpite nas duas datas avaliadas
+    const activeViewerGuess = activeDayData.guesses.find(g => viewerName && userKey(g.name) === userKey(viewerName));
+    const todayViewerGuess = todayDay.guesses.find(g => viewerName && userKey(g.name) === userKey(viewerName));
+
+    // 4. Lógica de visibilidade dos palpites exclusiva para renderização da aba 'Hoje'
     let exposedGuesses = [];
     let hiddenCount = 0;
-    const viewerGuess = day.guesses.find(
-      (g) => viewerName && userKey(g.name) === userKey(viewerName),
-    );
+    const bettingOpenForToday = !todayDay.arrival && nowMins < cutoffMins && isWeekday(key);
 
-    if (day.arrival) {
-      // Luiz chegou: mostrar todas as apostas
-      exposedGuesses = day.guesses;
-    } else if (bettingOpen) {
-      // Apostas ainda abertas: mostrar apenas a do usuário (se fez)
-      hiddenCount = day.guesses.filter(
-        (g) => !viewerName || userKey(g.name) !== userKey(viewerName),
-      ).length;
-      exposedGuesses = viewerGuess ? [viewerGuess] : [];
+    if (todayDay.arrival) {
+      exposedGuesses = todayDay.guesses;
+    } else if (bettingOpenForToday) {
+      hiddenCount = todayDay.guesses.filter(g => !viewerName || userKey(g.name) !== userKey(viewerName)).length;
+      exposedGuesses = todayViewerGuess ? [todayViewerGuess] : [];
     } else {
-      // Apostas fechadas mas Luiz não chegou
-      if (viewerGuess) {
-        // Usuário já apostou: mostrar todas as apostas
-        exposedGuesses = day.guesses;
+      if (todayViewerGuess) {
+        exposedGuesses = todayDay.guesses;
       } else {
-        // Usuário não apostou: manter oculto
-        hiddenCount = day.guesses.length;
+        hiddenCount = todayDay.guesses.length;
         exposedGuesses = [];
       }
     }
 
-    const viewerHasGuessed = !!viewerGuess;
-
     res.json({
-      date: key,
+      // Estrutura de visualização da aba 'Hoje' (dia atual de expediente)
+      date: key, 
       guesses: exposedGuesses,
       hiddenCount,
-      viewerHasGuessed,
-      viewerGuess: viewerGuess || null,
-      arrival: day.arrival || null,
-      rankings: day.rankings || null,
-      bettingOpen,
+      arrival: todayDay.arrival || null,
+      rankings: todayDay.rankings || null,
       currentTime: minutesToTimeStr(nowMins),
+
+      // Estrutura de controle para a aba 'Aposta' (dia alvo dinâmico)
+      activeBetDate,
+      viewerHasGuessed: !!activeViewerGuess,
+      viewerGuess: activeViewerGuess || null,
+      bettingOpen: true // Mantém aberto pois redireciona automaticamente para um dia válido futura
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// POST /api/guess
+// ROTA POST /api/guess COMPLETAMENTE INTEGRADA
 app.post("/api/guess", async (req, res) => {
   try {
     const { name, password, time } = req.body;
+    if (!name || !password || !time) {
+      return res.status(400).json({ error: "Faltam campos obrigatórios (name, password, time)." });
+    }
+
+    if (!/^\d{2}:\d{2}$/.test(time)) {
+      return res.status(400).json({ error: "Formato de hora inválido. Use HH:MM." });
+    }
+
     const kv = getKV();
     const users = await getUsers(kv);
     const user = users.find(
-      (u) => userKey(u.name) === userKey(name) && u.password === password,
+      (u) => userKey(u.name) === userKey(name) && u.password === password
     );
-    if (!user)
-      return res.status(401).json({ error: "Nome ou senha incorretos." });
+    if (!user) {
+      return res.status(401).json({ error: "Usuário ou senha inválidos." });
+    }
 
-    if (!/^\d{2}:\d{2}$/.test(time))
-      return res.status(400).json({ error: "Horário inválido." });
-
-    const key = todayKey();
-    if (!isWeekday(key))
-      return res
-        .status(400)
-        .json({ error: "Apostas só são permitidas em dias úteis." });
-
-    const day = await getDayData(kv, key);
+    let activeBetDate = todayKey();
+    const todayDay = await getDayData(kv, activeBetDate);
     const nowMins = currentTimeMinutes();
 
-    if (day.arrival)
-      return res
-        .status(400)
-        .json({ error: "O Luiz já chegou! Apostas encerradas." });
-    if (nowMins >= timeStrToMinutes("10:00"))
-      return res.status(400).json({ error: "Apostas encerradas após 10h." });
+    // Roteamento automático: se passou das 10h, o Luiz já chegou ou é fim de semana, aposta vai para o próximo dia útil
+    if (!isWeekday(activeBetDate) || todayDay.arrival || nowMins >= timeStrToMinutes("10:00")) {
+      activeBetDate = getNextWeekdayStr();
+    }
 
-    const existing = day.guesses.findIndex(
-      (g) => userKey(g.name) === userKey(name),
-    );
+    const day = await getDayData(kv, activeBetDate);
+
+    if (day.arrival) {
+      return res.status(400).json({ error: "Apostas já foram encerradas para este dia." });
+    }
+
+    // Trava rígida das 10h aplicada apenas se a aposta ainda for destinada ao dia atual
+    if (activeBetDate === todayKey() && nowMins >= timeStrToMinutes("10:00")) {
+      return res.status(400).json({ error: "Apostas encerradas após 10h." });
+    }
+
+    const existing = day.guesses.findIndex(g => userKey(g.name) === userKey(name));
     if (existing >= 0) {
       return res.status(409).json({
-        error: "Você já apostou hoje! Só é permitido um palpite por dia.",
+        error: "Você já apostou! Só é permitido um palpite por dia.",
       });
     }
 
+    // Insere o palpite no dia ativo determinado
     day.guesses.push({
       name: user.name,
       time,
       createdAt: new Date().toISOString(),
     });
-    await setDayData(kv, key, day);
+    
+    await setDayData(kv, activeBetDate, day);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
