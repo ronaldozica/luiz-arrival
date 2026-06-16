@@ -329,11 +329,9 @@ app.post("/api/guess", async (req, res) => {
       (g) => userKey(g.name) === userKey(name),
     );
     if (existing >= 0) {
-      return res
-        .status(409)
-        .json({
-          error: "Você já apostou hoje! Só é permitido um palpite por dia.",
-        });
+      return res.status(409).json({
+        error: "Você já apostou hoje! Só é permitido um palpite por dia.",
+      });
     }
 
     day.guesses.push({
@@ -399,6 +397,20 @@ app.post("/api/admin/arrival", async (req, res) => {
     }
 
     await setDayData(kv, key, day);
+
+    // Auto-unlock bet_winner achievement for 1st place winner(s)
+    if (day.rankings && day.rankings.length > 0) {
+      const winners = day.rankings.filter((r) => r.position === 1);
+      for (const winner of winners) {
+        const unlockedKey = `achievements:${userKey(winner.name)}`;
+        const unlocked = parseRedisArray(await kv.get(unlockedKey));
+        if (!unlocked.includes("bet_winner")) {
+          unlocked.push("bet_winner");
+          await kv.set(unlockedKey, JSON.stringify(unlocked));
+        }
+      }
+    }
+
     res.json({ success: true, arrival: time, rankings: day.rankings });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -540,11 +552,40 @@ app.post("/api/game-rank", async (req, res) => {
     if (coinsEarned > 0) {
       const coinsKey = `gamecoins:${userKey(playerName)}`;
       const existingCoins = Number(await kv.get(coinsKey));
-      const totalCoins = (Number.isFinite(existingCoins) ? existingCoins : 0) + Number(coinsEarned);
+      const totalCoins =
+        (Number.isFinite(existingCoins) ? existingCoins : 0) +
+        Number(coinsEarned);
       await kv.set(coinsKey, String(totalCoins));
     }
 
-    res.json({ success: true, rank: scores, coinsEarned });
+    // ─── AWARD ACHIEVEMENTS ───
+    const achUnlockedKey = `achievements:${userKey(playerName)}`;
+    const achUnlocked = parseRedisArray(await kv.get(achUnlockedKey));
+    let newAchievements = [];
+
+    if (game === "snake" && score > 500 && !achUnlocked.includes("snake_500")) {
+      achUnlocked.push("snake_500");
+      newAchievements.push("snake_500");
+    }
+    if (game === "minesweeper") {
+      const achId =
+        difficulty === "beginner"
+          ? "minesweeper_beginner"
+          : difficulty === "intermediate"
+            ? "minesweeper_intermediate"
+            : difficulty === "expert"
+              ? "minesweeper_expert"
+              : null;
+      if (achId && !achUnlocked.includes(achId)) {
+        achUnlocked.push(achId);
+        newAchievements.push(achId);
+      }
+    }
+    if (newAchievements.length > 0) {
+      await kv.set(achUnlockedKey, JSON.stringify(achUnlocked));
+    }
+
+    res.json({ success: true, rank: scores, coinsEarned, newAchievements });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -570,6 +611,39 @@ const STORE_ITEMS = [
     price: 25,
     src: "/photos/confuso.gif",
     title: "Luiz confuso",
+  },
+  // ─── Cores de nome (minerais) ────────────────────────────────────────────────
+  {
+    id: "color_esmeralda",
+    price: 100,
+    type: "namecolor",
+    color: "#00c853",
+    title: "Cor Esmeralda",
+    description: "Nome verde esmeralda brilhante no ranking",
+  },
+  {
+    id: "color_rubi",
+    price: 250,
+    type: "namecolor",
+    color: "#e53935",
+    title: "Cor Rubi",
+    description: "Nome vermelho rubi ardente no ranking",
+  },
+  {
+    id: "color_dourado",
+    price: 1000,
+    type: "namecolor",
+    color: "#ffd600",
+    title: "Cor Dourada",
+    description: "Nome dourado reluzente no ranking",
+  },
+  {
+    id: "color_diamante",
+    price: 10000,
+    type: "namecolor",
+    color: "#b3e5fc",
+    title: "Cor Diamante",
+    description: "Nome com brilho de diamante no ranking",
   },
 ];
 
@@ -647,12 +721,16 @@ app.get("/api/store", async (req, res) => {
     // 4. Ocultar o SRC da mídia para quem não comprou
     const responseItems = STORE_ITEMS.map((item) => {
       const isUnlocked = purchases.includes(item.id);
-      return {
+      const base = {
         id: item.id,
         title: item.title,
         price: item.price,
-        src: isUnlocked ? item.src : null, // Mantém bloqueado na rede
+        type: item.type || "media",
       };
+      if (item.type === "namecolor") {
+        return { ...base, color: item.color, description: item.description };
+      }
+      return { ...base, src: isUnlocked ? item.src : null }; // Mantém bloqueado na rede
     });
 
     res.json({
@@ -750,6 +828,196 @@ app.post("/api/store/buy", async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ─── Conquistas (Achievements) ───────────────────────────────────────────────
+
+// Definição estática das conquistas disponíveis
+const ACHIEVEMENT_DEFS = [
+  {
+    id: "snake_500",
+    title: "Serpente Veloz",
+    description: "Faça mais de 500 pontos no Snake",
+    icon: "🪙",
+  },
+  {
+    id: "minesweeper_beginner",
+    title: "Detonador Iniciante",
+    description: "Complete uma partida de Campo Minado no modo Iniciante",
+    icon: "🪙",
+  },
+  {
+    id: "minesweeper_intermediate",
+    title: "Detonador Intermediário",
+    description: "Complete uma partida de Campo Minado no modo Intermediário",
+    icon: "🪙",
+  },
+  {
+    id: "minesweeper_expert",
+    title: "Detonador Especialista",
+    description: "Complete uma partida de Campo Minado no modo Especialista",
+    icon: "🪙",
+  },
+  {
+    id: "bet_winner",
+    title: "Profeta do Luiz",
+    description: "Seja o vencedor (1º lugar) em uma aposta do dia",
+    icon: "🪙",
+  },
+];
+
+// GET /api/achievements?viewer=...&password=...
+// Retorna as conquistas do usuário (quais desbloqueou) e a conquista ativa (exibida no rank)
+app.get("/api/achievements", async (req, res) => {
+  try {
+    const { viewer, password } = req.query;
+    if (!viewer || !password)
+      return res.status(401).json({ error: "Faça login para ver conquistas." });
+
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find(
+      (u) => userKey(u.name) === userKey(viewer) && u.password === password,
+    );
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const unlockedKey = `achievements:${userKey(user.name)}`;
+    const activeKey = `achievement_active:${userKey(user.name)}`;
+    const unlocked = parseRedisArray(await kv.get(unlockedKey));
+    let active = null;
+    try {
+      active = await kv.get(activeKey);
+    } catch {
+      active = null;
+    }
+
+    res.json({
+      definitions: ACHIEVEMENT_DEFS,
+      unlocked,
+      active: active || null,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/achievements/unlock
+// Body: { name, password, achievementId }
+app.post("/api/achievements/unlock", async (req, res) => {
+  try {
+    const { name, password, achievementId } = req.body;
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find(
+      (u) => userKey(u.name) === userKey(name) && u.password === password,
+    );
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const def = ACHIEVEMENT_DEFS.find((a) => a.id === achievementId);
+    if (!def)
+      return res.status(404).json({ error: "Conquista não encontrada." });
+
+    const unlockedKey = `achievements:${userKey(user.name)}`;
+    const unlocked = parseRedisArray(await kv.get(unlockedKey));
+    if (!unlocked.includes(achievementId)) {
+      unlocked.push(achievementId);
+      await kv.set(unlockedKey, JSON.stringify(unlocked));
+    }
+
+    res.json({ success: true, unlocked });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/achievements/set-active
+// Body: { name, password, achievementId }  (null achievementId to clear)
+app.post("/api/achievements/set-active", async (req, res) => {
+  try {
+    const { name, password, achievementId } = req.body;
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find(
+      (u) => userKey(u.name) === userKey(name) && u.password === password,
+    );
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const activeKey = `achievement_active:${userKey(user.name)}`;
+    if (!achievementId) {
+      await kv.del(activeKey);
+    } else {
+      // Must be unlocked
+      const unlockedKey = `achievements:${userKey(user.name)}`;
+      const unlocked = parseRedisArray(await kv.get(unlockedKey));
+      if (!unlocked.includes(achievementId))
+        return res.status(400).json({ error: "Conquista não desbloqueada." });
+      await kv.set(activeKey, achievementId);
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/profiles
+// Returns public profile data for all users: active name color & achievement
+app.get("/api/profiles", async (req, res) => {
+  try {
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const profiles = {};
+
+    for (const u of users) {
+      const uk = userKey(u.name);
+      const purchasesKey = `purchases:${uk}`;
+      const purchases = parseRedisArray(await kv.get(purchasesKey));
+
+      // Find highest-tier purchased color (priority: diamante > dourado > rubi > esmeralda)
+      const colorPriority = [
+        "color_diamante",
+        "color_dourado",
+        "color_rubi",
+        "color_esmeralda",
+      ];
+      let activeColor = null;
+      for (const cid of colorPriority) {
+        if (purchases.includes(cid)) {
+          const item = STORE_ITEMS.find((i) => i.id === cid);
+          if (item) {
+            activeColor = { id: cid, color: item.color, title: item.title };
+            break;
+          }
+        }
+      }
+
+      let activeAchievement = null;
+      try {
+        const activeAchId = await kv.get(`achievement_active:${uk}`);
+        if (activeAchId) {
+          const def = ACHIEVEMENT_DEFS.find((a) => a.id === activeAchId);
+          if (def)
+            activeAchievement = {
+              id: def.id,
+              icon: def.icon,
+              title: def.title,
+            };
+        }
+      } catch {}
+
+      profiles[u.name] = {
+        nameColor: activeColor,
+        achievement: activeAchievement,
+      };
+    }
+
+    res.json(profiles);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Also award bet winner achievement in admin/arrival
+// (patch: re-export existing route to also call achievements unlock)
 
 // ─── Export for Vercel ────────────────────────────────────────────────────────
 module.exports = app;

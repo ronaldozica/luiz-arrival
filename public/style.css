@@ -5,21 +5,26 @@
 @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
 :root {
-  --win-bg:      #008080;   /* classic teal desktop */
-  --win-gray:    #c0c0c0;
-  --win-dark:    #808080;
-  --win-darker:  #404040;
-  --win-black:   #000000;
-  --win-white:   #ffffff;
-  --win-blue:    #000080;
+  --win-bg: #008080;
+  /* classic teal desktop */
+  --win-gray: #c0c0c0;
+  --win-dark: #808080;
+  --win-darker: #404040;
+  --win-black: #000000;
+  --win-white: #ffffff;
+  --win-blue: #000080;
   --win-blue-hi: #0000aa;
-  --win-red:     #800000;
-  --win-yellow:  #ffff00;
-  --shadow-out:  inset -1px -1px var(--win-black), inset 1px 1px var(--win-white), inset -2px -2px var(--win-dark), inset 2px 2px var(--win-gray);
-  --shadow-in:   inset 1px 1px var(--win-black), inset -1px -1px var(--win-white), inset 2px 2px var(--win-dark), inset -2px -2px var(--win-gray);
+  --win-red: #800000;
+  --win-yellow: #ffff00;
+  --shadow-out: inset -1px -1px var(--win-black), inset 1px 1px var(--win-white), inset -2px -2px var(--win-dark), inset 2px 2px var(--win-gray);
+  --shadow-in: inset 1px 1px var(--win-black), inset -1px -1px var(--win-white), inset 2px 2px var(--win-dark), inset -2px -2px var(--win-gray);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body {
   font-family: 'MS Sans Serif', 'Trebuchet MS', sans-serif;
@@ -34,7 +39,9 @@ body {
 /* ─── TASKBAR ─────────────────────────────── */
 .taskbar {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
   height: 34px;
   background: var(--win-gray);
   box-shadow: var(--shadow-out);
@@ -59,8 +66,14 @@ body {
   height: 28px;
   min-width: 80px;
 }
-.start-btn:active { box-shadow: var(--shadow-in); }
-.start-logo { font-size: 16px; }
+
+.start-btn:active {
+  box-shadow: var(--shadow-in);
+}
+
+.start-logo {
+  font-size: 16px;
+}
 
 .taskbar-apps {
   display: flex;
@@ -83,7 +96,10 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.taskbar-app-btn:hover { background: #d4d0c8; }
+
+.taskbar-app-btn:hover {
+  background: #d4d0c8;
+}
 
 .taskbar-clock {
   background: var(--win-gray);
@@ -144,10 +160,12 @@ body {
   font-family: inherit;
   font-size: 12px;
 }
+
 .start-menu-items button:hover {
   background: var(--win-blue);
   color: white;
 }
+
 .start-menu-items hr {
   border: none;
   border-top: 1px solid var(--win-dark);
@@ -158,7 +176,9 @@ body {
 .desktop {
   height: 100%;
   position: absolute;
-  top: 0; left: 0; right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   bottom: 34px;
   display: flex;
   flex-direction: column;
@@ -179,10 +199,21 @@ body {
   padding: 4px;
   border: 1px solid transparent;
 }
-.desktop-icon:hover { border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.1); }
-.desktop-icon:active { background: rgba(0,0,128,0.5); }
 
-.icon-img { font-size: 32px; line-height: 1; }
+.desktop-icon:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.desktop-icon:active {
+  background: rgba(0, 0, 128, 0.5);
+}
+
+.icon-img {
+  font-size: 32px;
+  line-height: 1;
+}
+
 .icon-label {
   color: white;
   font-size: 11px;
@@ -203,7 +234,9 @@ body {
   z-index: 100;
 }
 
-.win95-window.active { z-index: 500; }
+.win95-window.active {
+  z-index: 500;
+}
 
 .win95-titlebar {
   background: linear-gradient(to right, var(--win-blue), var(--win-blue-hi));
@@ -244,7 +277,10 @@ body {
   color: black;
   padding: 0;
 }
-.win95-btn-ctrl:active { box-shadow: var(--shadow-in); }
+
+.win95-btn-ctrl:active {
+  box-shadow: var(--shadow-in);
+}
 
 .win95-body {
   padding: 12px;
@@ -387,16 +423,30 @@ body {
   font-size: 12px;
   min-width: 90px;
 }
-.win95-action-btn:active { box-shadow: var(--shadow-in); }
-.win95-action-btn:hover { background: #d4d0c8; }
+
+.win95-action-btn:active {
+  box-shadow: var(--shadow-in);
+}
+
+.win95-action-btn:hover {
+  background: #d4d0c8;
+}
 
 /* ─── MESSAGES ────────────────────────────── */
 .win95-msg {
   font-size: 12px;
   min-height: 16px;
 }
-.win95-msg.ok  { color: #006400; font-weight: bold; }
-.win95-msg.err { color: #800000; font-weight: bold; }
+
+.win95-msg.ok {
+  color: #006400;
+  font-weight: bold;
+}
+
+.win95-msg.err {
+  color: #800000;
+  font-weight: bold;
+}
 
 .win95-status-bar {
   background: #ffffe1;
@@ -406,9 +456,20 @@ body {
   font-size: 12px;
   display: none;
 }
-.win95-status-bar.show { display: block; }
-.win95-status-bar.closed { color: #800000; font-weight: bold; }
-.win95-status-bar.open   { color: #006400; font-weight: bold; }
+
+.win95-status-bar.show {
+  display: block;
+}
+
+.win95-status-bar.closed {
+  color: #800000;
+  font-weight: bold;
+}
+
+.win95-status-bar.open {
+  color: #006400;
+  font-weight: bold;
+}
 
 .game-toast {
   position: fixed;
@@ -418,7 +479,7 @@ body {
   background: rgba(255, 235, 0, 0.95);
   color: #000;
   border: 1px solid #b59f00;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 8px 16px rgba(0,0,0,0.2);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.2);
   padding: 10px 16px;
   border-radius: 6px;
   font-size: 14px;
@@ -428,6 +489,7 @@ body {
   transform: translateY(10px);
   transition: opacity 0.24s ease, transform 0.24s ease;
 }
+
 .game-toast.show {
   opacity: 1;
   transform: translateY(0);
@@ -449,6 +511,7 @@ body {
   justify-content: center;
   padding: 4px;
 }
+
 .user-photo-area img {
   width: 64px;
   height: 64px;
@@ -463,6 +526,7 @@ body {
   border-collapse: collapse;
   font-size: 12px;
 }
+
 .win95-table th {
   background: var(--win-blue);
   color: white;
@@ -471,22 +535,35 @@ body {
   font-weight: bold;
   border: 1px solid var(--win-black);
 }
+
 .win95-table td {
   padding: 3px 8px;
   border: 1px solid var(--win-dark);
   background: white;
 }
-.win95-table tr:nth-child(even) td { background: #f0f0f0; }
 
-.rank-gold   td:first-child::before { content: "🥇 "; }
-.rank-silver td:first-child::before { content: "🥈 "; }
-.rank-bronze td:first-child::before { content: "🥉 "; }
+.win95-table tr:nth-child(even) td {
+  background: #f0f0f0;
+}
+
+.rank-gold td:first-child::before {
+  content: "🥇 ";
+}
+
+.rank-silver td:first-child::before {
+  content: "🥈 ";
+}
+
+.rank-bronze td:first-child::before {
+  content: "🥉 ";
+}
 
 /* ─── ACCORDION / HISTORY ─────────────────── */
 .history-day {
   margin-bottom: 6px;
   box-shadow: var(--shadow-out);
 }
+
 .history-day-header {
   background: var(--win-gray);
   padding: 4px 8px;
@@ -497,13 +574,20 @@ body {
   font-weight: bold;
   box-shadow: var(--shadow-out);
 }
-.history-day-header:hover { background: #d4d0c8; }
+
+.history-day-header:hover {
+  background: #d4d0c8;
+}
+
 .history-day-body {
   background: white;
   padding: 6px;
   display: none;
 }
-.history-day-body.open { display: block; }
+
+.history-day-body.open {
+  display: block;
+}
 
 /* ─── LOADING ─────────────────────────────── */
 .loading {
@@ -524,10 +608,25 @@ body {
 }
 
 /* ─── SCROLLBAR WIN95 ─────────────────────── */
-::-webkit-scrollbar { width: 16px; }
-::-webkit-scrollbar-track { background: var(--win-gray); box-shadow: var(--shadow-in); }
-::-webkit-scrollbar-thumb { background: var(--win-gray); box-shadow: var(--shadow-out); }
-::-webkit-scrollbar-button { background: var(--win-gray); box-shadow: var(--shadow-out); height: 16px; }
+::-webkit-scrollbar {
+  width: 16px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--win-gray);
+  box-shadow: var(--shadow-in);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--win-gray);
+  box-shadow: var(--shadow-out);
+}
+
+::-webkit-scrollbar-button {
+  background: var(--win-gray);
+  box-shadow: var(--shadow-out);
+  height: 16px;
+}
 
 /* ─── TODAY PANEL ─────────────────────────── */
 .today-arrival-box {
@@ -554,6 +653,7 @@ body {
   gap: 8px;
   padding: 8px 0;
 }
+
 .rank-medal {
   display: flex;
   flex-direction: column;
@@ -561,7 +661,10 @@ body {
   gap: 2px;
   font-size: 11px;
 }
-.rank-medal-icon { font-size: 24px; }
+
+.rank-medal-icon {
+  font-size: 24px;
+}
 
 /* ─── DIALOG ──────────────────────────────── */
 .win95-dialog {
@@ -587,7 +690,7 @@ body {
 #global-loading {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.25);
+  background: rgba(0, 0, 0, 0.25);
   z-index: 9000;
   display: flex;
   flex-direction: column;
@@ -596,15 +699,27 @@ body {
   gap: 8px;
   pointer-events: all;
 }
+
 .loading-hourglass {
   font-size: 32px;
   animation: spin-hourglass 1s steps(2) infinite;
 }
+
 @keyframes spin-hourglass {
-  0%   { content: "⏳"; transform: rotate(0deg); }
-  50%  { transform: rotate(180deg); }
-  100% { transform: rotate(0deg); }
+  0% {
+    content: "⏳";
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(180deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
 }
+
 .loading-text {
   background: var(--win-gray);
   box-shadow: var(--shadow-out);
@@ -630,15 +745,18 @@ body {
 .desktop-icon {
   cursor: default;
 }
+
 .desktop-icon.selected .icon-img,
 .desktop-icon.selected .icon-label {
   background: rgba(0, 0, 128, 0.5);
   color: white;
   outline: 1px dotted white;
 }
+
 .desktop-icon.selected .icon-label {
   text-shadow: none;
 }
+
 .desktop {
   /* allow absolute-positioned icons */
   position: relative;
@@ -656,6 +774,7 @@ body {
   min-width: 160px;
   padding: 2px 0;
 }
+
 .ctx-section-label {
   font-size: 11px;
   font-weight: bold;
@@ -664,6 +783,7 @@ body {
   border-bottom: 1px solid var(--win-dark);
   margin-bottom: 2px;
 }
+
 .ctx-wallpaper-item {
   display: block;
   width: 100%;
@@ -675,10 +795,12 @@ body {
   font-family: inherit;
   font-size: 12px;
 }
+
 .ctx-wallpaper-item:hover {
   background: var(--win-blue);
   color: white;
 }
+
 .ctx-wallpaper-item.checked {
   font-weight: bold;
 }
@@ -691,14 +813,16 @@ body {
   border: 2px solid var(--win-gray);
   box-shadow: var(--shadow-in);
   background: var(--win-black);
-  width: 384px; /* 380px do canvas + 4px de bordas */
+  width: 384px;
+  /* 380px do canvas + 4px de bordas */
   height: 384px;
   margin: 0 auto;
 }
 
 #snake-canvas {
   background-color: var(--win-black);
-  image-rendering: pixelated; /* Mantém os gráficos nítidos */
+  image-rendering: pixelated;
+  /* Mantém os gráficos nítidos */
 }
 
 .snake-header {
@@ -722,17 +846,19 @@ body {
   background: var(--win-gray);
   box-shadow: var(--shadow-in);
   margin-bottom: 6px;
-  border: 2px solid transparent; /* Para manter o alinhamento */
+  border: 2px solid transparent;
+  /* Para manter o alinhamento */
 }
 
 .ms-counter {
   background: black;
   color: red;
-  font-family: 'VT323', 'Courier New', monospace; /* Fica perfeito se você usar a fonte VT323 que já importou */
+  font-family: 'VT323', 'Courier New', monospace;
+  /* Fica perfeito se você usar a fonte VT323 que já importou */
   font-size: 24px;
   line-height: 1;
   padding: 2px 4px;
-  box-shadow: inset 1px 1px var(--win-dark), inset -1px -1px rgba(255,255,255,0.2);
+  box-shadow: inset 1px 1px var(--win-dark), inset -1px -1px rgba(255, 255, 255, 0.2);
   width: 48px;
   text-align: center;
   letter-spacing: 2px;
@@ -790,16 +916,43 @@ body {
 }
 
 /* Cores dos números clássicos */
-.ms-cell[data-value="1"] { color: blue; }
-.ms-cell[data-value="2"] { color: green; }
-.ms-cell[data-value="3"] { color: red; }
-.ms-cell[data-value="4"] { color: darkblue; }
-.ms-cell[data-value="5"] { color: darkred; }
-.ms-cell[data-value="6"] { color: darkcyan; }
-.ms-cell[data-value="7"] { color: black; }
-.ms-cell[data-value="8"] { color: gray; }
+.ms-cell[data-value="1"] {
+  color: blue;
+}
 
-.ms-cell.mine { background-color: red; } /* Mina que explodiu */
+.ms-cell[data-value="2"] {
+  color: green;
+}
+
+.ms-cell[data-value="3"] {
+  color: red;
+}
+
+.ms-cell[data-value="4"] {
+  color: darkblue;
+}
+
+.ms-cell[data-value="5"] {
+  color: darkred;
+}
+
+.ms-cell[data-value="6"] {
+  color: darkcyan;
+}
+
+.ms-cell[data-value="7"] {
+  color: black;
+}
+
+.ms-cell[data-value="8"] {
+  color: gray;
+}
+
+.ms-cell.mine {
+  background-color: red;
+}
+
+/* Mina que explodiu */
 
 /* ─── TASKBAR USER AREA ───────────────────── */
 .taskbar-user-area {
@@ -834,8 +987,14 @@ body {
   height: 18px;
   white-space: nowrap;
 }
-.taskbar-logout-btn:active { box-shadow: var(--shadow-in); }
-.taskbar-logout-btn:hover  { background: #d4d0c8; }
+
+.taskbar-logout-btn:active {
+  box-shadow: var(--shadow-in);
+}
+
+.taskbar-logout-btn:hover {
+  background: #d4d0c8;
+}
 
 /* ─── LOGIN WINDOW ────────────────────────── */
 .login-logo {
@@ -843,12 +1002,14 @@ body {
   text-align: center;
   line-height: 1;
 }
+
 .login-title {
   font-size: 18px;
   font-weight: bold;
   text-align: center;
   color: var(--win-blue);
 }
+
 .login-subtitle {
   font-size: 11px;
   text-align: center;
@@ -886,7 +1047,11 @@ body {
   bottom: -2px;
   border-bottom: 2px solid var(--win-gray);
 }
-.rank-tab:hover { background: #d4d0c8; }
+
+.rank-tab:hover {
+  background: #d4d0c8;
+}
+
 .rank-tab.active {
   background: var(--win-gray);
   box-shadow: inset -1px 0 var(--win-black), inset 1px 1px var(--win-white), inset -2px 0 var(--win-dark), inset 2px 2px var(--win-gray);
@@ -938,12 +1103,19 @@ body {
   font-family: inherit;
   font-size: 11px;
 }
-.ms-diff-btn:active { box-shadow: var(--shadow-in); }
+
+.ms-diff-btn:active {
+  box-shadow: var(--shadow-in);
+}
+
 .ms-diff-btn.active {
   box-shadow: var(--shadow-in);
   font-weight: bold;
 }
-.ms-diff-btn:hover { background: #d4d0c8; }
+
+.ms-diff-btn:hover {
+  background: #d4d0c8;
+}
 
 /* ─── SNAKE HEADER (3 items) ──────────────── */
 .snake-header {
@@ -964,7 +1136,10 @@ body {
   text-decoration: underline;
   cursor: pointer;
 }
-.info-box a:hover { color: var(--win-red); }
+
+.info-box a:hover {
+  color: var(--win-red);
+}
 
 /* ─── LOJA DO LUIZ ────────────────────────── */
 .store-header {
@@ -1051,4 +1226,177 @@ body {
   background: #000;
   padding: 8px;
   box-shadow: var(--shadow-in);
+}
+
+/* ─── STORE COLOR ITEMS ──────────────────── */
+.store-color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 2px;
+}
+
+.store-color-item {
+  background: var(--win-gray);
+  border: 2px solid var(--win-white);
+  border-right-color: var(--win-black);
+  border-bottom-color: var(--win-black);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.store-color-preview {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.store-color-desc {
+  font-size: 10px;
+  color: var(--win-darker);
+  min-height: 28px;
+}
+
+/* ─── RANK DECORATIONS ───────────────────── */
+.achievement-badge {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 14px;
+  cursor: default;
+}
+
+.name-color-badge {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-left: 3px;
+  vertical-align: middle;
+}
+
+/* Rank toggle button */
+.rank-controls {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+/* ─── DIAMOND ANIMATION ──────────────────── */
+@keyframes diamond-shine {
+  0% {
+    text-shadow: 0 0 8px #ffffff, 0 0 16px #b3e5fc, 0 0 24px #81d4fa;
+  }
+
+  50% {
+    text-shadow: 0 0 16px #ffffff, 0 0 32px #e1f5fe, 0 0 48px #b3e5fc;
+  }
+
+  100% {
+    text-shadow: 0 0 8px #ffffff, 0 0 16px #b3e5fc, 0 0 24px #81d4fa;
+  }
+}
+
+/* ─── ACHIEVEMENTS WINDOW ────────────────── */
+.achievements-hint {
+  font-size: 11px;
+  color: var(--win-darker);
+  margin-bottom: 10px;
+  font-style: italic;
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 2px;
+}
+
+.achievement-item {
+  background: var(--win-gray);
+  border: 2px solid var(--win-white);
+  border-right-color: var(--win-black);
+  border-bottom-color: var(--win-black);
+  padding: 10px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.achievement-item.locked {
+  opacity: 0.5;
+  filter: grayscale(1);
+}
+
+.achievement-item.unlocked {
+  cursor: pointer;
+  border-color: #008000;
+}
+
+.achievement-item.unlocked:hover {
+  background: #d4e8d4;
+  box-shadow: var(--shadow-in);
+}
+
+.achievement-item.active {
+  border: 2px solid #ffd600;
+  background: #fffde7;
+  box-shadow: 0 0 6px #ffd60066;
+}
+
+.achievement-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.achievement-title {
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.achievement-desc {
+  font-size: 10px;
+  color: var(--win-darker);
+  min-height: 24px;
+}
+
+.achievement-active-label {
+  font-size: 10px;
+  color: #b8860b;
+  font-weight: bold;
+}
+
+/* ─── ACHIEVEMENT TOAST ──────────────────── */
+#achievement-toast {
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  background: #1a1a2e;
+  color: #ffd600;
+  border: 2px solid #ffd600;
+  border-radius: 4px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 0 12px #ffd60066;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 9999;
+}
+
+#achievement-toast.show {
+  opacity: 1;
 }
