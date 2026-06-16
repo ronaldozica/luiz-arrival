@@ -122,7 +122,7 @@ Coloque arquivos de imagem na pasta `public/photos/` com os seguintes nomes **ex
 > Se já apostou hoje, pode atualizar o chute antes do prazo.
 
 ### Ver apostas de hoje
-- Clique em **📋 Apostas de Hoje** — mostra todos os chutes do dia e resultado se já chegou.
+- Clique em **📋 Apostas abertas** — mostra todos os chutes do dia e resultado se já chegou.
 
 ### Histórico
 - Clique em **📅 Histórico** — lista dias passados com resultados e rankings.

@@ -53,7 +53,7 @@
     <div class="start-menu-header"><span>LuizOS 95</span></div>
     <div class="start-menu-items">
       <button onclick="openWindow('win-guess'); closeStartMenu()">🎯 Fazer Aposta</button>
-      <button onclick="openWindow('win-today'); closeStartMenu(); loadToday()">📋 Apostas de Hoje</button>
+      <button onclick="openWindow('win-today'); closeStartMenu(); loadToday()">📋 Apostas abertas</button>
       <button onclick="openWindow('win-history'); closeStartMenu(); loadHistory()">📅 Histórico</button>
       <button onclick="openWindow('win-rank'); closeStartMenu(); loadOverallRank()">🏆 Ranking Geral</button>
       <button onclick="openWindow('win-register'); closeStartMenu()">👤 Novo Usuário</button>
@@ -76,7 +76,7 @@
     </div>
     <div class="desktop-icon" data-icon-id="icon-today" data-action="openWindow('win-today'); loadToday()">
       <div class="icon-img">📋</div>
-      <div class="icon-label">Apostas de Hoje</div>
+      <div class="icon-label">Apostas abertas</div>
     </div>
     <div class="desktop-icon" data-icon-id="icon-history" data-action="openWindow('win-history'); loadHistory()">
       <div class="icon-img">📅</div>
@@ -208,7 +208,7 @@
   <!-- ══ WINDOW: APOSTAS DE HOJE ══ -->
   <div class="win95-window" id="win-today" style="left:120px;top:100px;width:480px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-today')">
-      <span class="win95-title">📋 Apostas de Hoje</span>
+      <span class="win95-title">📋 Apostas abertas</span>
       <div class="win95-controls">
         <button class="win95-btn-ctrl" onclick="minimizeWindow('win-today')">_</button>
         <button class="win95-btn-ctrl" onclick="closeWindow('win-today')">✕</button>

@@ -241,23 +241,27 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-// ROTA GET /api/today COMPLETAMENTE INTEGRADA
+// ROTA GET /api/today COMPLETAMENTE ATUALIZADA
 app.get("/api/today", async (req, res) => {
   try {
     const kv = getKV();
-    const key = todayKey();
+    const key = todayKey(); // Data de hoje real (ex: "2026-06-16")
     const todayDay = await getDayData(kv, key);
     const nowMins = currentTimeMinutes();
     const cutoffMins = timeStrToMinutes("10:00");
 
-    // 1. Determina dinamicamente se a data ativa para novas apostas avança para o próximo dia útil
+    // 1. Determina se as apostas já rolaram para o próximo dia útil
     let activeBetDate = key;
     if (!isWeekday(key) || todayDay.arrival || nowMins >= cutoffMins) {
       activeBetDate = getNextWeekdayStr();
     }
-    const activeDayData = activeBetDate === key ? todayDay : await getDayData(kv, activeBetDate);
 
-    // 2. Valida credenciais do usuário se enviadas por parâmetro na query
+    // Se hoje já fechou ou é fim de semana, o foco de exibição passa a ser o próximo dia útil
+    const isNextDay = activeBetDate !== key;
+    const targetDate = activeBetDate; // Dia cujos palpites serão exibidos na tabela
+    const targetDayData = isNextDay ? await getDayData(kv, targetDate) : todayDay;
+
+    // 2. Valida credenciais do usuário visualizador se enviadas por parâmetro na query
     let viewerName = null;
     const { viewer, password } = req.query;
     if (viewer && password) {
@@ -268,43 +272,55 @@ app.get("/api/today", async (req, res) => {
       if (user) viewerName = user.name;
     }
 
-    // 3. Verifica se o usuário já realizou um palpite nas duas datas avaliadas
-    const activeViewerGuess = activeDayData.guesses.find(g => viewerName && userKey(g.name) === userKey(viewerName));
-    const todayViewerGuess = todayDay.guesses.find(g => viewerName && userKey(g.name) === userKey(viewerName));
+    // 3. Verifica palpites do usuário no dia alvo que está sendo exibido
+    const targetViewerGuess = targetDayData.guesses.find(
+      (g) => viewerName && userKey(g.name) === userKey(viewerName)
+    );
 
-    // 4. Lógica de visibilidade dos palpites exclusiva para renderização da aba 'Hoje'
+    // 4. Lógica de visibilidade dos palpites para o dia exibido (targetDate)
     let exposedGuesses = [];
     let hiddenCount = 0;
-    const bettingOpenForToday = !todayDay.arrival && nowMins < cutoffMins && isWeekday(key);
 
-    if (todayDay.arrival) {
-      exposedGuesses = todayDay.guesses;
-    } else if (bettingOpenForToday) {
-      hiddenCount = todayDay.guesses.filter(g => !viewerName || userKey(g.name) !== userKey(viewerName)).length;
-      exposedGuesses = todayViewerGuess ? [todayViewerGuess] : [];
+    if (isNextDay) {
+      // Se estamos exibindo o próximo dia útil, as apostas para ele estão abertas por definição.
+      // Logo, aplica-se a regra de sigilo: o usuário só vê o próprio palpite; os outros ficam ocultos.
+      hiddenCount = targetDayData.guesses.filter(
+        (g) => !viewerName || userKey(g.name) !== userKey(viewerName)
+      ).length;
+      exposedGuesses = targetViewerGuess ? [targetViewerGuess] : [];
     } else {
-      if (todayViewerGuess) {
+      // Lógica original para quando hoje ainda está aberto ou acabou de fechar com a chegada do Luiz hoje
+      const bettingOpenForToday = !todayDay.arrival && nowMins < cutoffMins && isWeekday(key);
+      if (todayDay.arrival) {
         exposedGuesses = todayDay.guesses;
+      } else if (bettingOpenForToday) {
+        hiddenCount = todayDay.guesses.filter(
+          (g) => !viewerName || userKey(g.name) !== userKey(viewerName)
+        ).length;
+        exposedGuesses = targetViewerGuess ? [targetViewerGuess] : [];
       } else {
-        hiddenCount = todayDay.guesses.length;
-        exposedGuesses = [];
+        if (targetViewerGuess) {
+          exposedGuesses = todayDay.guesses;
+        } else {
+          hiddenCount = todayDay.guesses.length;
+          exposedGuesses = [];
+        }
       }
     }
 
     res.json({
-      // Estrutura de visualização da aba 'Hoje' (dia atual de expediente)
-      date: key, 
+      date: key,               // Mantém a data de hoje real para o banner identificar o "isNextDay"
+      displayDate: targetDate, // NOVO: Data correspondente aos palpites que estão sendo retornados
       guesses: exposedGuesses,
       hiddenCount,
-      arrival: todayDay.arrival || null,
-      rankings: todayDay.rankings || null,
+      arrival: isNextDay ? null : (todayDay.arrival || null),
+      rankings: isNextDay ? null : (todayDay.rankings || null),
       currentTime: minutesToTimeStr(nowMins),
 
-      // Estrutura de controle para a aba 'Aposta' (dia alvo dinâmico)
       activeBetDate,
-      viewerHasGuessed: !!activeViewerGuess,
-      viewerGuess: activeViewerGuess || null,
-      bettingOpen: true // Mantém aberto pois redireciona automaticamente para um dia válido futura
+      viewerHasGuessed: !!targetViewerGuess,
+      viewerGuess: targetViewerGuess || null,
+      bettingOpen: true
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

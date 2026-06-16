@@ -831,7 +831,7 @@ async function loadToday() {
 
   // Must be logged in to see any bets
   if (!currentUser) {
-    container.innerHTML = `<div class="info-box">🔒 Faça login para ver as apostas de hoje.</div>
+    container.innerHTML = `<div class="info-box">🔒 Faça login para ver as apostas.</div>
       <div style="text-align:center;margin-top:12px">
         <button class="win95-action-btn" onclick="openWindow('win-login')">🔑 Fazer Login</button>
       </div>`;
@@ -839,47 +839,64 @@ async function loadToday() {
   }
 
   container.innerHTML = '<div class="loading">⏳ Carregando...</div>';
-  showLoading("Carregando apostas de hoje...");
+  showLoading("Carregando apostas...");
   try {
     const params = `?viewer=${encodeURIComponent(currentUser.name)}&password=${encodeURIComponent(currentUser.password)}`;
     const res = await fetch(`${API}/today${params}`);
     const data = await res.json();
     let html = "";
 
-    const [y, m, d] = data.date.split("-");
-    html += `<div class="section-label">📅 ${d}/${m}/${y} — Horário atual: ${data.currentTime}</div>`;
+    // Descobre qual data o backend está retornando (hoje ou próximo dia útil)
+    const targetDate = data.displayDate || data.activeBetDate || data.date;
+    const isNextDay = targetDate !== data.date;
+    const [y, m, d] = targetDate.split("-");
 
-    if (data.arrival) {
-      html += `<div class="today-arrival-box">🚪 Luiz chegou às <strong>${data.arrival}</strong>!</div>`;
-    } else if (!data.bettingOpen) {
-      html += `<div class="info-box">⏰ Apostas encerradas. Aguardando chegada do Luiz...</div>`;
+    // Título da seção
+    if (isNextDay) {
+      html += `<div class="section-label">📅 Próximo Dia Útil: ${d}/${m}/${y} — Horário atual: ${data.currentTime}</div>`;
     } else {
-      html += `<div class="info-box">✅ Apostas abertas até as 10:00 ou até o Luiz chegar.</div>`;
+      html += `<div class="section-label">📅 Hoje: ${d}/${m}/${y} — Horário atual: ${data.currentTime}</div>`;
     }
 
-    // If user hasn't bet yet and betting is open, show a nudge
-    if (!data.viewerHasGuessed && data.bettingOpen && !data.arrival) {
-      html += `<div class="info-box" style="margin-top:8px">⚠️ Você ainda não apostou hoje! Aposte primeiro para ver os palpites dos outros.</div>`;
+    // Avisos de status principal
+    if (data.arrival) {
+      // Se tiver arrival, significa que estamos vendo as estatísticas de hoje já finalizadas
+      html += `<div class="today-arrival-box">🚪 Luiz chegou às <strong>${data.arrival}</strong>!</div>`;
+    } else if (isNextDay) {
+      html += `<div class="info-box">✅ Apostas abertas para o próximo dia útil.</div>`;
+    } else {
+      // Se for hoje e não chegou, mas bettingOpen (pela hora) tá fechado pra hoje
+      // Nota: o backend atualizado retorna bettingOpen=true pro terminal, então checamos a hora local do cutoff
+      const nowMins = timeToMinutes(data.currentTime);
+      const cutoffMins = 10 * 60;
+      if (nowMins >= cutoffMins) {
+        html += `<div class="info-box">⏰ Apostas encerradas. Aguardando chegada do Luiz...</div>`;
+      } else {
+        html += `<div class="info-box">✅ Apostas abertas até as 10:00 ou até o Luiz chegar.</div>`;
+      }
     }
 
+    // Aviso extra se o usuário ainda não apostou e a aposta tá rolando
+    if (!data.viewerHasGuessed && !data.arrival) {
+      html += `<div class="info-box" style="margin-top:8px">⚠️ Você ainda não apostou! Aposte primeiro para ver os palpites dos outros.</div>`;
+    }
+
+    // Renderização das tabelas de palpite/resultado
     if (data.arrival && data.rankings && data.rankings.length > 0) {
       html += `<div class="section-label" style="margin-top:8px">🏆 Resultado do Dia</div>`;
       html += renderRankingsTable(data.rankings, data.arrival);
     } else if (!data.arrival && data.guesses.length > 0) {
-      // Viewer apostou e pode ver apostas — mas só após fechar as apostas verá todas.
-      // Durante bettingOpen, só vê a própria; as dos outros ficam ocultas até fechar.
       html += `<div class="section-label" style="margin-top:8px">🎯 Sua aposta</div>`;
       html += renderRankingsTable(data.guesses, null);
       if (data.hiddenCount > 0) {
-        html += `<div class="info-box" style="margin-top:8px">🔒 Mais ${data.hiddenCount} aposta${data.hiddenCount !== 1 ? "s" : ""} registrada${data.hiddenCount !== 1 ? "s" : ""} — os palpites dos outros ficam ocultos até as apostas fecharem.</div>`;
+        html += `<div class="info-box" style="margin-top:8px">🔒 Mais ${data.hiddenCount} aposta(s) registrada(s) — os palpites dos outros ficam ocultos até as apostas fecharem.</div>`;
       }
     } else if (!data.arrival && data.hiddenCount > 0) {
-      // Viewer não apostou: sabe que há apostas mas não pode ver nenhuma
       const total = data.hiddenCount;
       html += `<div class="section-label" style="margin-top:8px">🎯 Apostas registradas</div>`;
-      html += `<div class="info-box">🔒 Já há ${total} aposta${total !== 1 ? "s" : ""} registrada${total !== 1 ? "s" : ""}. Aposte para ver os palpites dos outros!</div>`;
+      html += `<div class="info-box">🔒 Já há ${total} aposta(s) registrada(s). Aposte para ver os palpites dos outros!</div>`;
     } else if (!data.arrival) {
-      html += `<div class="no-data">Nenhuma aposta ainda hoje.</div>`;
+      html += `<div class="no-data">Nenhuma aposta registrada ainda.</div>`;
     }
 
     container.innerHTML = html;
@@ -889,7 +906,6 @@ async function loadToday() {
     hideLoading();
   }
 }
-
 // ─── History ──────────────────────────────────────────────────────────────────
 async function loadHistory() {
   const container = document.getElementById("history-content");
