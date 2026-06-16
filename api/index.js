@@ -281,13 +281,16 @@ app.get("/api/today", async (req, res) => {
     let exposedGuesses = [];
     let hiddenCount = 0;
 
-    if (isNextDay) {
+    if (targetViewerGuess) {
+      // Se o usuário já apostou no dia exibido, mostra todas as apostas.
+      exposedGuesses = targetDayData.guesses;
+    } else if (isNextDay) {
       // Se estamos exibindo o próximo dia útil, as apostas para ele estão abertas por definição.
-      // Logo, aplica-se a regra de sigilo: o usuário só vê o próprio palpite; os outros ficam ocultos.
+      // O usuário ainda não apostou, então só vê o próprio palpite (se houver) e o restante fica oculto.
       hiddenCount = targetDayData.guesses.filter(
         (g) => !viewerName || userKey(g.name) !== userKey(viewerName)
       ).length;
-      exposedGuesses = targetViewerGuess ? [targetViewerGuess] : [];
+      exposedGuesses = [];
     } else {
       // Lógica original para quando hoje ainda está aberto ou acabou de fechar com a chegada do Luiz hoje
       const bettingOpenForToday = !todayDay.arrival && nowMins < cutoffMins && isWeekday(key);
@@ -297,14 +300,10 @@ app.get("/api/today", async (req, res) => {
         hiddenCount = todayDay.guesses.filter(
           (g) => !viewerName || userKey(g.name) !== userKey(viewerName)
         ).length;
-        exposedGuesses = targetViewerGuess ? [targetViewerGuess] : [];
+        exposedGuesses = [];
       } else {
-        if (targetViewerGuess) {
-          exposedGuesses = todayDay.guesses;
-        } else {
-          hiddenCount = todayDay.guesses.length;
-          exposedGuesses = [];
-        }
+        hiddenCount = todayDay.guesses.length;
+        exposedGuesses = [];
       }
     }
 
