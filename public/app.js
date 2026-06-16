@@ -25,8 +25,29 @@ const windows = {
 };
 
 // ─── Decorations toggle ──────────────────────────────────────────────────────
+const SHOW_DECORATIONS_KEY = "luizos_show_decorations";
 let showDecorations = true; // name colors + achievement icons in rank
 let userProfiles = {}; // { [name]: { nameColor, achievement } }
+
+function loadShowDecorations() {
+  try {
+    const saved = localStorage.getItem(SHOW_DECORATIONS_KEY);
+    if (saved !== null) {
+      showDecorations = saved === "true";
+    }
+  } catch {}
+}
+
+function saveShowDecorations() {
+  try {
+    localStorage.setItem(SHOW_DECORATIONS_KEY, String(showDecorations));
+  } catch {}
+}
+
+function syncDecorationsCheckbox() {
+  const checkbox = document.getElementById("rank-decorations-checkbox");
+  if (checkbox) checkbox.checked = showDecorations;
+}
 
 // ─── Loading overlay ─────────────────────────────────────────────────────────
 function showLoading(msg) {
@@ -976,14 +997,17 @@ async function loadOverallRank() {
   }
 }
 
-function toggleDecorations() {
-  showDecorations = !showDecorations;
-  const btn = document.getElementById("rank-decorations-btn");
-  if (btn)
-    btn.textContent = showDecorations
-      ? "🎨 Ocultar Decorações"
-      : "🎨 Mostrar Decorações";
+function toggleDecorations(checked) {
+  showDecorations = typeof checked === "boolean" ? checked : !showDecorations;
+  saveShowDecorations();
+  const checkbox = document.getElementById("rank-decorations-checkbox");
+  if (checkbox) checkbox.checked = showDecorations;
   renderRankTab(activeRankTab);
+}
+
+function syncDecorationsCheckbox() {
+  const checkbox = document.getElementById("rank-decorations-checkbox");
+  if (checkbox) checkbox.checked = showDecorations;
 }
 
 function switchRankTab(tab) {
@@ -1412,6 +1436,8 @@ function renderRankingsTable(rankings, arrival) {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 captureDefaultIconPositions();
+loadShowDecorations();
+syncDecorationsCheckbox();
 loadUsers().then(() => {
   // Restore session
   const saved = loadSession();

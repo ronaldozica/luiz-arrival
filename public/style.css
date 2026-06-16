@@ -298,6 +298,45 @@ body {
   gap: 3px;
 }
 
+.win95-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  background: var(--win-gray);
+  border: 2px solid var(--win-white);
+  border-right-color: var(--win-black);
+  border-bottom-color: var(--win-black);
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #888888;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.win95-checkbox input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: black;
+  cursor: pointer;
+}
+
+.win95-checkbox span {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #000;
+  background: white;
+  box-shadow: inset 1px 1px 0 #999999;
+}
+
+.rank-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
 .field-group label {
   font-size: 12px;
   font-weight: bold;
