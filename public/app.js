@@ -1807,22 +1807,32 @@ function showAchievementToast(achievementIds) {
     setTimeout(() => {
       const el = document.getElementById("achievement-toast");
       if (!el) return;
-      // Find definition
+
       const def = {
-        snake_500: { title: "Serpente Veloz", icon: "🪙" },
-        minesweeper_beginner: { title: "Detonador Iniciante", icon: "🪙" },
+        snake_500: { title: "Serpente Veloz", icon: "🐍" },
+        minesweeper_beginner: { title: "Detonador Iniciante", icon: "💣" },
         minesweeper_intermediate: {
           title: "Detonador Intermediário",
-          icon: "🪙",
+          icon: "🧨",
         },
-        minesweeper_expert: { title: "Detonador Especialista", icon: "🪙" },
-        bet_winner: { title: "Profeta do Luiz", icon: "🪙" },
+        minesweeper_expert: {
+          title: "Detonador Especialista",
+          icon: "🏆",
+        },
+        bet_winner: {
+          title: "Profeta do Luiz",
+          icon: "🔮",
+        },
       }[id];
+
       if (!def) return;
-      el.innerHTML = `🏅 Conquista: <strong>${def.icon} ${def.title}</strong>`;
+
+      el.innerHTML = `🎖️ Conquista: <strong>${def.icon} ${def.title}</strong>`;
       el.style.display = "block";
       el.classList.add("show");
+
       if (achToastTimeout) clearTimeout(achToastTimeout);
+
       achToastTimeout = setTimeout(() => {
         el.classList.remove("show");
         setTimeout(() => {

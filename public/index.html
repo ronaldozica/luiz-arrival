@@ -58,6 +58,7 @@
       <button onclick="openWindow('win-rank'); closeStartMenu(); loadOverallRank()">🏆 Ranking Geral</button>
       <button onclick="openWindow('win-register'); closeStartMenu()">👤 Novo Usuário</button>
       <button onclick="openStore(); closeStartMenu()">🛒 Loja</button>
+      <button onclick="openAchievements(); closeStartMenu()">🏅 Conquistas</button>
       <hr />
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
@@ -108,6 +109,10 @@
       <div class="icon-img"><img src="/photos/luizCoinIcon.png"
           style="width:32px; height:32px; image-rendering:pixelated; border-radius:50%"></div>
       <div class="icon-label">Loja</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-achievements" data-action="openAchievements()">
+      <div class="icon-img">🏅</div>
+      <div class="icon-label">Conquistas</div>
     </div>
   </div>
 
@@ -432,6 +437,22 @@
           <input type="checkbox" class="rank-decorations-checkbox" onclick="toggleDecorations(this.checked)" checked/>
           Mostrar cores de nome e ícones no ranking
         </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: CONQUISTAS ══ -->
+  <div class="win95-window" id="win-achievements" style="left:180px;top:90px;width:480px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-achievements')">
+      <span class="win95-title">🏅 Conquistas</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-achievements')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-achievements')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body win95-body-scroll">
+      <div id="achievements-content">
+        <div class="loading">⏳ Carregando...</div>
       </div>
     </div>
   </div>

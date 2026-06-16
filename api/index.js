@@ -873,33 +873,33 @@ app.post("/api/store/buy", async (req, res) => {
 const ACHIEVEMENT_DEFS = [
   {
     id: "snake_500",
-    title: "Serpente Veloz",
+    title: "Serpente veloz",
     description: "Faça mais de 500 pontos no Snake",
-    icon: "🪙",
+    icon: "🐍",
   },
   {
     id: "minesweeper_beginner",
-    title: "Detonador Iniciante",
+    title: "Detonador iniciante",
     description: "Complete uma partida de Campo Minado no modo Iniciante",
-    icon: "🪙",
+    icon: "💣",
   },
   {
     id: "minesweeper_intermediate",
-    title: "Detonador Intermediário",
+    title: "Detonador intermediário",
     description: "Complete uma partida de Campo Minado no modo Intermediário",
-    icon: "🪙",
+    icon: "🧨",
   },
   {
     id: "minesweeper_expert",
-    title: "Detonador Especialista",
+    title: "Detonador especialista",
     description: "Complete uma partida de Campo Minado no modo Especialista",
-    icon: "🪙",
+    icon: "🏆",
   },
   {
     id: "bet_winner",
     title: "Profeta do Luiz",
     description: "Seja o vencedor (1º lugar) em uma aposta do dia",
-    icon: "🪙",
+    icon: "🔮",
   },
 ];
 
