@@ -1477,7 +1477,7 @@ async function loadStore() {
     let html = "";
 
     if (mediaItems.length > 0) {
-      html += `<div class="section-label" style="margin-bottom:8px">🖼️ Mídias do Luiz</div>`;
+      html += `<div class="section-label" style="margin-bottom:8px">🖼️ Skins do Luiz</div>`;
       html += `<div class="store-grid">`;
       mediaItems.forEach((item) => {
         const isUnlocked = data.purchases.includes(item.id);
@@ -1508,7 +1508,7 @@ async function loadStore() {
     }
 
     if (colorItems.length > 0) {
-      html += `<div class="section-label" style="margin:16px 0 8px">💎 Cores de Nome (aparecem no Ranking)</div>`;
+      html += `<div class="section-label" style="margin:16px 0 8px">💎 Cores para o nome</div>`;
       html += `<div class="store-color-grid">`;
       colorItems.forEach((item) => {
         const isUnlocked = data.purchases.includes(item.id);
@@ -1519,7 +1519,6 @@ async function loadStore() {
               <span style="color:${item.color};${getColorEffect(item.id)}">Seu Nome</span>
             </div>
             <div class="store-item-title">${escHtml(item.title)}</div>
-            <div class="store-color-desc">${escHtml(item.description || "")}</div>
             ${
               !isUnlocked
                 ? `

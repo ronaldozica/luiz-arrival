@@ -583,7 +583,7 @@ app.post("/api/game-rank", async (req, res) => {
     if (game === "snake") {
       if (score > 1000) coinsEarned = 3;
       else if (score > 500) coinsEarned = 2;
-      else if (score > 250) coinsEarned = 1;
+      else if (score > 250) coinsEarned = 250;
     } else if (game === "minesweeper") {
       if (difficulty === "expert") coinsEarned = 25;
       else if (difficulty === "intermediate") coinsEarned = 5;
@@ -660,32 +660,28 @@ const STORE_ITEMS = [
     price: 100,
     type: "namecolor",
     color: "#00c853",
-    title: "Cor Esmeralda",
-    description: "Nome verde esmeralda brilhante no ranking",
+    title: "Esmeralda",
   },
   {
     id: "color_rubi",
     price: 250,
     type: "namecolor",
     color: "#e53935",
-    title: "Cor Rubi",
-    description: "Nome vermelho rubi ardente no ranking",
+    title: "Rubi",
   },
   {
     id: "color_dourado",
     price: 1000,
     type: "namecolor",
     color: "#ffd600",
-    title: "Cor Dourada",
-    description: "Nome dourado reluzente no ranking",
+    title: "Dourada",
   },
   {
     id: "color_diamante",
     price: 10000,
     type: "namecolor",
     color: "#b3e5fc",
-    title: "Cor Diamante",
-    description: "Nome com brilho de diamante no ranking",
+    title: "Diamante",
   },
 ];
 
