@@ -581,9 +581,10 @@ app.post("/api/game-rank", async (req, res) => {
     // ─── AWARD COINS BASED ON GAME PERFORMANCE ───
     let coinsEarned = 0;
     if (game === "snake") {
-      if (score > 1000) coinsEarned = 3;
-      else if (score > 500) coinsEarned = 2;
-      else if (score > 250) coinsEarned = 250;
+      if (score > 2000) coinsEarned = 25;
+      else if (score > 1000) coinsEarned = 10;
+      else if (score > 500) coinsEarned = 5;
+      else if (score > 250) coinsEarned = 1;
     } else if (game === "minesweeper") {
       if (difficulty === "expert") coinsEarned = 25;
       else if (difficulty === "intermediate") coinsEarned = 5;
@@ -719,9 +720,9 @@ app.get("/api/store", async (req, res) => {
         (r) => userKey(r.name) === userKey(user.name),
       );
       if (userRank) {
-        if (userRank.position === 1) earnedCoins += 10;
-        else if (userRank.position === 2) earnedCoins += 5;
-        else if (userRank.position === 3) earnedCoins += 3;
+        if (userRank.position === 1) earnedCoins += 25;
+        else if (userRank.position === 2) earnedCoins += 10;
+        else if (userRank.position === 3) earnedCoins += 5;
       }
 
       // Regra HCM: 1 moeda extra se for o 1º lugar entre o pessoal do HCM
@@ -739,6 +740,9 @@ app.get("/api/store", async (req, res) => {
           if (isTopHcm && userRank) earnedCoins += 5;
         }
       }
+
+      // Todos que jogaram ganham 1 moeda
+      if (userRank) earnedCoins += 1;
     }
 
     // 2. Adicionar moedas ganhas em jogos
