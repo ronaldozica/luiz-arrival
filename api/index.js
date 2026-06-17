@@ -581,13 +581,13 @@ app.post("/api/game-rank", async (req, res) => {
     // ─── AWARD COINS BASED ON GAME PERFORMANCE ───
     let coinsEarned = 0;
     if (game === "snake") {
-      if (score > 2000) coinsEarned = 25;
-      else if (score > 1000) coinsEarned = 10;
-      else if (score > 500) coinsEarned = 5;
-      else if (score > 250) coinsEarned = 1;
+      coinsEarned = Math.floor(score / 100) * 5;
+
+      if (score >= 250) coinsEarned += 10;
+      if (score >= 500) coinsEarned += 10;
     } else if (game === "minesweeper") {
       if (difficulty === "expert") coinsEarned = 25;
-      else if (difficulty === "intermediate") coinsEarned = 5;
+      else if (difficulty === "intermediate") coinsEarned = 10;
       else if (difficulty === "beginner") coinsEarned = 1;
     }
 
@@ -819,9 +819,10 @@ app.post("/api/store/buy", async (req, res) => {
         (r) => userKey(r.name) === userKey(user.name),
       );
       if (userRank) {
-        if (userRank.position === 1) earnedCoins += 10;
-        else if (userRank.position === 2) earnedCoins += 5;
-        else if (userRank.position === 3) earnedCoins += 3;
+        if (userRank.position === 1) earnedCoins += 25;
+        else if (userRank.position === 2) earnedCoins += 10;
+        else if (userRank.position === 3) earnedCoins += 5;
+        else earnedCoins += 1; // Todos que jogaram ganham 1 moeda
       }
       if (isUserHCM) {
         const hcmRanks = day.rankings.filter((r) =>
@@ -835,7 +836,7 @@ app.post("/api/store/buy", async (req, res) => {
               userKey(r.name) === userKey(user.name),
           )
         ) {
-          earnedCoins += 1;
+          earnedCoins += 5;
         }
       }
     }
