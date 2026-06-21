@@ -1,14 +1,15 @@
 /* ═══════════════════════════════════════
-   LuizOS 95 — app.js  (v2)
+   LuizOS 95 — app.js  (v3 — secure)
 ═══════════════════════════════════════ */
 
 const API = "/api";
 
 // ─── State ────────────────────────────────────────────────────────────────────
-let adminPassword = "";
+let adminToken = "";      // token de sessão de admin (em memória, não persistido)
 let allUsers = [];
-let currentUser = null; // { name, password, photo, isHCM } — set after login
-let todayStatusCache = null; // { data, ts } — cache to prevent stale re-guess
+let currentUser = null;   // { name, isHCM } — sem senha
+let sessionToken = null;  // token JWT-like retornado pelo servidor
+let todayStatusCache = null;
 let todayPollTimer = null;
 
 const windows = {
@@ -24,19 +25,36 @@ const windows = {
   "win-achievements": "🏅 Conquistas",
 };
 
+// ─── Helpers de autenticação ─────────────────────────────────────────────────
+// O token de sessão é armazenado apenas em memória (não no localStorage).
+// Isso evita que a senha viaje em toda requisição e protege contra XSS básico.
+
+function authHeaders(token) {
+  const authToken = token || sessionToken;
+  if (!authToken) return { "Content-Type": "application/json" };
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${authToken}`,
+  };
+}
+
+function authParams() {
+  // Para rotas GET que precisam de autenticação, passa o token como header
+  // via fetch com credentials. Não há mais password em query string.
+  return sessionToken ? { headers: { "Authorization": `Bearer ${sessionToken}` } } : {};
+}
+
 // ─── Decorations toggle ──────────────────────────────────────────────────────
 const SHOW_DECORATIONS_KEY = "luizos_show_decorations";
-let showDecorations = true; // name colors + achievement icons in rank
-let userProfiles = {}; // { [name]: { nameColor, achievement } }
+let showDecorations = true;
+let userProfiles = {};
 let currentGameRankData = [];
 let currentGameRankMeta = { game: "snake", difficulty: null };
 
 function loadShowDecorations() {
   try {
     const saved = localStorage.getItem(SHOW_DECORATIONS_KEY);
-    if (saved !== null) {
-      showDecorations = saved === "true";
-    }
+    if (saved !== null) showDecorations = saved === "true";
   } catch {}
 }
 
@@ -56,9 +74,7 @@ async function loadProfiles() {
   try {
     const res = await fetch(`${API}/profiles`);
     const data = await res.json();
-    if (res.ok && data) {
-      userProfiles = data;
-    }
+    if (res.ok && data) userProfiles = data;
   } catch {}
 }
 
@@ -115,12 +131,8 @@ function openWindow(id) {
     centerWindow(w);
     refreshTodayStatus();
   }
-  if (id === "win-store") {
-    loadStore();
-  }
-  if (id === "win-achievements") {
-    loadAchievements();
-  }
+  if (id === "win-store") loadStore();
+  if (id === "win-achievements") loadAchievements();
   delete minimizedWindows[id];
   bringToFront(w);
   updateTaskbar();
@@ -150,9 +162,7 @@ function minimizeWindow(id) {
 }
 
 function bringToFront(el) {
-  document
-    .querySelectorAll(".win95-window")
-    .forEach((w) => w.classList.remove("active"));
+  document.querySelectorAll(".win95-window").forEach((w) => w.classList.remove("active"));
   el.classList.add("active");
 }
 
@@ -256,8 +266,7 @@ function loadIconPositions() {
         updated = true;
       }
     });
-    if (updated)
-      localStorage.setItem(ICON_POSITIONS_KEY, JSON.stringify(saved));
+    if (updated) localStorage.setItem(ICON_POSITIONS_KEY, JSON.stringify(saved));
   } catch {}
 }
 
@@ -284,7 +293,6 @@ document.querySelector(".desktop").addEventListener("mousedown", (e) => {
   if (icon) {
     if (!e.shiftKey) clearIconSelection();
     selectIcon(icon);
-
     iconDrag = {
       el: icon,
       startX: e.clientX,
@@ -317,20 +325,8 @@ document.querySelector(".desktop").addEventListener("mousedown", (e) => {
 
 document.addEventListener("mousemove", (e) => {
   if (drag && drag.isWindow) {
-    const x = Math.max(
-      0,
-      Math.min(
-        e.clientX - drag.startX,
-        window.innerWidth - drag.el.offsetWidth,
-      ),
-    );
-    const y = Math.max(
-      0,
-      Math.min(
-        e.clientY - drag.startY,
-        window.innerHeight - drag.el.offsetHeight - 34,
-      ),
-    );
+    const x = Math.max(0, Math.min(e.clientX - drag.startX, window.innerWidth - drag.el.offsetWidth));
+    const y = Math.max(0, Math.min(e.clientY - drag.startY, window.innerHeight - drag.el.offsetHeight - 34));
     drag.el.style.left = x + "px";
     drag.el.style.top = y + "px";
     return;
@@ -343,14 +339,8 @@ document.addEventListener("mousemove", (e) => {
     if (iconDrag.moved) {
       const desktop = document.querySelector(".desktop");
       const dr = desktop.getBoundingClientRect();
-      const newLeft = Math.max(
-        0,
-        Math.min(iconDrag.origLeft + dx, dr.width - iconDrag.el.offsetWidth),
-      );
-      const newTop = Math.max(
-        0,
-        Math.min(iconDrag.origTop + dy, dr.height - iconDrag.el.offsetHeight),
-      );
+      const newLeft = Math.max(0, Math.min(iconDrag.origLeft + dx, dr.width - iconDrag.el.offsetWidth));
+      const newTop = Math.max(0, Math.min(iconDrag.origTop + dy, dr.height - iconDrag.el.offsetHeight));
       iconDrag.el.style.position = "absolute";
       iconDrag.el.style.left = newLeft + "px";
       iconDrag.el.style.top = newTop + "px";
@@ -420,8 +410,7 @@ document.addEventListener("click", (e) => {
 });
 
 document.addEventListener("contextmenu", (e) => {
-  if (!e.target.closest(".desktop") && !e.target.closest("#context-menu"))
-    closeContextMenu();
+  if (!e.target.closest(".desktop") && !e.target.closest("#context-menu")) closeContextMenu();
 });
 
 function closeContextMenu() {
@@ -433,16 +422,8 @@ const WALLPAPER_KEY = "luizos_wallpaper";
 const CUSTOM_COLOR_KEY = "luizos_custom_color";
 const WALLPAPERS = {
   padrao: { label: "Padrão", type: "color", value: "#008080" },
-  windows: {
-    label: "Windows",
-    type: "image",
-    value: "/wallpapers/windows.png",
-  },
-  michaelsoft: {
-    label: "Michaelsoft",
-    type: "image",
-    value: "/wallpapers/michaelsoft.png",
-  },
+  windows: { label: "Windows", type: "image", value: "/wallpapers/windows.png" },
+  michaelsoft: { label: "Michaelsoft", type: "image", value: "/wallpapers/michaelsoft.png" },
   luiz: { label: "Luiz", type: "image", value: "/wallpapers/luiz.png" },
   custom: { label: "Personalizado", type: "color", value: "#008080" },
 };
@@ -500,15 +481,15 @@ function closeStartMenu() {
   document.getElementById("start-menu").style.display = "none";
 }
 document.addEventListener("click", (e) => {
-  if (!e.target.closest(".start-menu") && !e.target.closest(".start-btn"))
-    closeStartMenu();
+  if (!e.target.closest(".start-menu") && !e.target.closest(".start-btn")) closeStartMenu();
 });
 
-// ─── Login System ─────────────────────────────────────────────────────────────
+// ─── Session (apenas token + nome — sem senha) ────────────────────────────────
 const SESSION_KEY = "luizos_session";
 
-function saveSession(user) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+function saveSession(user, token) {
+  // Salva o token de sessão e os dados do usuário (sem senha)
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ user, token }));
 }
 
 function loadSession() {
@@ -536,11 +517,16 @@ function updateUserDisplay() {
   }
 }
 
-function logout() {
+async function logout() {
+  if (sessionToken) {
+    try {
+      await fetch(`${API}/logout`, { method: "POST", headers: authHeaders() });
+    } catch {}
+  }
   currentUser = null;
+  sessionToken = null;
   clearSession();
   updateUserDisplay();
-  // Show login window again
   openWindow("win-login");
 }
 
@@ -563,13 +549,10 @@ async function doLogin() {
     });
     const data = await res.json();
     if (res.ok) {
-      currentUser = {
-        name: data.name,
-        password,
-        photo: data.photo,
-        isHCM: data.isHCM,
-      };
-      saveSession(currentUser);
+      // Armazena o token em memória; salva no localStorage apenas nome+token (sem senha)
+      sessionToken = data.token;
+      currentUser = { name: data.name, isHCM: data.isHCM };
+      saveSession(currentUser, sessionToken);
       updateUserDisplay();
       closeWindow("win-login");
       showMsg(msg, "", "ok");
@@ -596,7 +579,6 @@ async function loadUsers() {
     const res = await fetch(`${API}/users`);
     allUsers = await res.json();
 
-    // Populate login select
     const loginSel = document.getElementById("login-name-select");
     if (loginSel) {
       loginSel.innerHTML = '<option value="">-- Selecione --</option>';
@@ -608,7 +590,6 @@ async function loadUsers() {
       });
     }
 
-    // Populate guess select (kept for compatibility, hidden behind login now)
     const guessSel = document.getElementById("guess-user-select");
     if (guessSel) {
       guessSel.innerHTML = '<option value="">-- Selecione --</option>';
@@ -624,12 +605,10 @@ async function loadUsers() {
   }
 }
 
-// ─── Today Status (with fresh fetch to prevent stale re-guess) ────────────────
+// ─── Today Status ─────────────────────────────────────────────────────────────
 async function fetchTodayFresh() {
-  const params = currentUser
-    ? `?viewer=${encodeURIComponent(currentUser.name)}&password=${encodeURIComponent(currentUser.password)}`
-    : "";
-  const res = await fetch(`${API}/today${params}`);
+  const headers = sessionToken ? { "Authorization": `Bearer ${sessionToken}` } : {};
+  const res = await fetch(`${API}/today`, { headers });
   const data = await res.json();
   todayStatusCache = { data, ts: Date.now() };
   return { res, data };
@@ -650,7 +629,6 @@ async function refreshTodayStatus() {
     const bettingOpen = Boolean(res.ok && data.bettingOpen);
     const currentTime = data.currentTime || getBrasiliaTime();
 
-    // NOVO: Descobre se estamos visualizando aposta pra hoje ou pro próximo dia útil
     const isNextDay = data.activeBetDate && data.activeBetDate !== data.date;
 
     if (isNextDay) {
@@ -668,35 +646,25 @@ async function refreshTodayStatus() {
       banner.className = "win95-status-bar show open";
     }
 
-    // Show user info panel if logged in (MANTIDO INTACTO)
     const userInfoEl = document.getElementById("guess-user-info");
     const userNameEl = document.getElementById("guess-user-name");
     if (userInfoEl) userInfoEl.style.display = currentUser ? "block" : "none";
-    if (userNameEl && currentUser)
-      userNameEl.textContent = `👤 ${currentUser.name}`;
+    if (userNameEl && currentUser) userNameEl.textContent = `👤 ${currentUser.name}`;
 
-    // Prefill hidden select and photo (MANTIDO INTACTO)
     if (currentUser) {
       const sel = document.getElementById("guess-user-select");
       if (sel) sel.value = currentUser.name;
       loadUserPhoto();
     }
 
-    // Handle logged-in user state
     if (!currentUser) {
-      // Not logged in — show prompt
       const msg = document.getElementById("guess-msg");
       showMsg(msg, "⚠️ Faça login para apostar.", "err");
       setGuessFormOpen(false);
     } else if (data.viewerHasGuessed && bettingOpen) {
       const msg = document.getElementById("guess-msg");
-      // NOVO: Ajusta a label do dia na mensagem
       const dayLabel = isNextDay ? "para o próximo dia" : "hoje";
-      showMsg(
-        msg,
-        `✅ Você já apostou ${dayLabel}: ${data.viewerGuess.time}. Só 1 palpite por dia!`,
-        "ok",
-      );
+      showMsg(msg, `✅ Você já apostou ${dayLabel}: ${data.viewerGuess.time}. Só 1 palpite por dia!`, "ok");
       setGuessFormOpen(false);
     } else {
       setGuessFormOpen(bettingOpen);
@@ -712,19 +680,14 @@ async function refreshTodayStatus() {
   }
 }
 
-// Periodically refresh status while win-guess is open (fix stale re-guess bug)
 function startTodayPoll() {
   stopTodayPoll();
   todayPollTimer = setInterval(() => {
     const winGuess = document.getElementById("win-guess");
-    if (
-      winGuess &&
-      winGuess.style.display !== "none" &&
-      !minimizedWindows["win-guess"]
-    ) {
+    if (winGuess && winGuess.style.display !== "none" && !minimizedWindows["win-guess"]) {
       refreshTodayStatus();
     }
-  }, 30000); // refresh every 30s
+  }, 30000);
 }
 
 function stopTodayPoll() {
@@ -746,12 +709,8 @@ function loadUserPhoto() {
   const user = allUsers.find((u) => u.name === name);
   if (user && user.photo) {
     img.src = `/photos/${user.photo}`;
-    img.onerror = () => {
-      area.style.display = "none";
-    };
-    img.onload = () => {
-      area.style.display = "flex";
-    };
+    img.onerror = () => { area.style.display = "none"; };
+    img.onload = () => { area.style.display = "flex"; };
   } else {
     area.style.display = "none";
   }
@@ -770,8 +729,7 @@ function setGuessFormOpen(isOpen) {
   if (timeInput) timeInput.disabled = !isOpen;
   if (!isOpen && timeOptions) timeOptions.classList.remove("show");
   if (loading) loading.style.display = "none";
-  if (loginHint)
-    loginHint.style.display = !currentUser && !isOpen ? "block" : "none";
+  if (loginHint) loginHint.style.display = !currentUser && !isOpen ? "block" : "none";
 }
 
 function setGuessTime(time) {
@@ -810,23 +768,17 @@ async function submitGuess() {
   }
 
   normalizeGuessTime();
-  // Always re-fetch status to prevent stale re-guess (bug #6)
   const { res: checkRes, data: checkData } = await fetchTodayFresh();
-  
+
   if (checkData.viewerHasGuessed) {
     const msg = document.getElementById("guess-msg");
-    // NOVO: Ajusta a label do dia na mensagem de erro
     const isNextDay = checkData.activeBetDate && checkData.activeBetDate !== checkData.date;
     const dayLabel = isNextDay ? "para o próximo dia" : "hoje";
-    showMsg(
-      msg,
-      `❌ Você já apostou ${dayLabel}: ${checkData.viewerGuess.time}. Só 1 palpite por dia!`,
-      "err",
-    );
+    showMsg(msg, `❌ Você já apostou ${dayLabel}: ${checkData.viewerGuess.time}. Só 1 palpite por dia!`, "err");
     setGuessFormOpen(false);
     return;
   }
-  
+
   if (!checkData.bettingOpen) {
     const msg = document.getElementById("guess-msg");
     showMsg(msg, "❌ Apostas já encerradas.", "err");
@@ -844,26 +796,20 @@ async function submitGuess() {
 
   showLoading("Registrando aposta...");
   try {
+    // Envia apenas o time — o servidor identifica o usuário pelo token
     const res = await fetch(`${API}/guess`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: currentUser.name,
-        password: currentUser.password,
-        time,
-      }),
+      headers: authHeaders(),
+      body: JSON.stringify({ time }),
     });
     const data = await res.json();
     if (res.ok) {
       showMsg(msg, `✅ Aposta registrada! Você apostou ${time}.`, "ok");
       setGuessFormOpen(false);
-      todayStatusCache = null; // Invalidate cache
+      todayStatusCache = null;
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
-      // Re-check status in case server says already guessed
-      if (res.status === 409) {
-        await refreshTodayStatus();
-      }
+      if (res.status === 409) await refreshTodayStatus();
     }
   } catch {
     showMsg(msg, "Erro de conexão.", "err");
@@ -876,7 +822,6 @@ async function submitGuess() {
 async function loadToday() {
   const container = document.getElementById("today-content");
 
-  // Must be logged in to see any bets
   if (!currentUser) {
     container.innerHTML = `<div class="info-box">🔒 Faça login para ver as apostas.</div>
       <div style="text-align:center;margin-top:12px">
@@ -888,32 +833,25 @@ async function loadToday() {
   container.innerHTML = '<div class="loading">⏳ Carregando...</div>';
   showLoading("Carregando apostas...");
   try {
-    const params = `?viewer=${encodeURIComponent(currentUser.name)}&password=${encodeURIComponent(currentUser.password)}`;
-    const res = await fetch(`${API}/today${params}`);
+    const res = await fetch(`${API}/today`, { headers: sessionToken ? { "Authorization": `Bearer ${sessionToken}` } : {} });
     const data = await res.json();
     let html = "";
 
-    // Descobre qual data o backend está retornando (hoje ou próximo dia útil)
     const targetDate = data.displayDate || data.activeBetDate || data.date;
     const isNextDay = targetDate !== data.date;
     const [y, m, d] = targetDate.split("-");
 
-    // Título da seção
     if (isNextDay) {
       html += `<div class="section-label">📅 Próximo Dia Útil: ${d}/${m}/${y} — Horário atual: ${data.currentTime}</div>`;
     } else {
       html += `<div class="section-label">📅 Hoje: ${d}/${m}/${y} — Horário atual: ${data.currentTime}</div>`;
     }
 
-    // Avisos de status principal
     if (data.arrival) {
-      // Se tiver arrival, significa que estamos vendo as estatísticas de hoje já finalizadas
       html += `<div class="today-arrival-box">🚪 Luiz chegou às <strong>${data.arrival}</strong>!</div>`;
     } else if (isNextDay) {
       html += `<div class="info-box">✅ Apostas abertas para o próximo dia útil.</div>`;
     } else {
-      // Se for hoje e não chegou, mas bettingOpen (pela hora) tá fechado pra hoje
-      // Nota: o backend atualizado retorna bettingOpen=true pro terminal, então checamos a hora local do cutoff
       const nowMins = timeToMinutes(data.currentTime);
       const cutoffMins = 10 * 60;
       if (nowMins >= cutoffMins) {
@@ -923,12 +861,10 @@ async function loadToday() {
       }
     }
 
-    // Aviso extra se o usuário ainda não apostou e a aposta tá rolando
     if (!data.viewerHasGuessed && !data.arrival) {
       html += `<div class="info-box" style="margin-top:8px">⚠️ Você ainda não apostou! Aposte primeiro para ver os palpites dos outros.</div>`;
     }
 
-    // Renderização das tabelas de palpite/resultado
     if (data.arrival && data.rankings && data.rankings.length > 0) {
       html += `<div class="section-label" style="margin-top:8px">🏆 Resultado do Dia</div>`;
       html += renderRankingsTable(data.rankings, data.arrival);
@@ -953,6 +889,7 @@ async function loadToday() {
     hideLoading();
   }
 }
+
 // ─── History ──────────────────────────────────────────────────────────────────
 async function loadHistory() {
   const container = document.getElementById("history-content");
@@ -962,8 +899,7 @@ async function loadHistory() {
     const res = await fetch(`${API}/history`);
     const days = await res.json();
     if (days.length === 0) {
-      container.innerHTML =
-        '<div class="no-data">Nenhum histórico disponível ainda.</div>';
+      container.innerHTML = '<div class="no-data">Nenhum histórico disponível ainda.</div>';
       return;
     }
     let html = "";
@@ -977,11 +913,7 @@ async function loadHistory() {
             <span>▼</span>
           </div>
           <div class="history-day-body">
-            ${
-              day.rankings.length > 0
-                ? renderRankingsTable(day.rankings, day.arrival)
-                : '<div class="no-data">Sem apostas.</div>'
-            }
+            ${day.rankings.length > 0 ? renderRankingsTable(day.rankings, day.arrival) : '<div class="no-data">Sem apostas.</div>'}
           </div>
         </div>`;
     }
@@ -1000,7 +932,7 @@ function toggleHistory(header) {
   header.querySelector("span:last-child").textContent = isOpen ? "▼" : "▲";
 }
 
-// ─── Overall Rank (with HCM tabs) ────────────────────────────────────────────
+// ─── Overall Rank ─────────────────────────────────────────────────────────────
 let overallRankData = [];
 let activeRankTab = "all";
 
@@ -1028,9 +960,7 @@ function toggleDecorations(checked) {
   saveShowDecorations();
   syncDecorationsCheckboxes();
   renderRankTab(activeRankTab);
-  if (currentGameRankData.length > 0) {
-    renderGameRank();
-  }
+  if (currentGameRankData.length > 0) renderGameRank();
 }
 
 function switchRankTab(tab) {
@@ -1042,19 +972,15 @@ function switchRankTab(tab) {
 }
 
 function renderRankTab(tab) {
-  // Prefer the dedicated table container, but fall back to the main rank-content
-  // so the UI updates even if the inner container isn't present in the DOM.
   const container =
     document.getElementById("rank-table-container") ||
     document.getElementById("rank-content");
   if (!container) return;
 
-  const ranks =
-    tab === "hcm" ? overallRankData.filter((r) => r.isHCM) : overallRankData;
+  const ranks = tab === "hcm" ? overallRankData.filter((r) => r.isHCM) : overallRankData;
 
   if (ranks.length === 0) {
-    container.innerHTML =
-      '<div class="no-data">Nenhum dado disponível ainda.</div>';
+    container.innerHTML = '<div class="no-data">Nenhum dado disponível ainda.</div>';
     return;
   }
 
@@ -1062,17 +988,8 @@ function renderRankTab(tab) {
     <th>#</th><th>Nome</th><th>Pts</th><th>🥇</th><th>Dias</th><th>Erro médio</th>
   </tr></thead><tbody>`;
   ranks.forEach((r, i) => {
-    const medalClass =
-      i === 0
-        ? "rank-gold"
-        : i === 1
-          ? "rank-silver"
-          : i === 2
-            ? "rank-bronze"
-            : "";
+    const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
     const hcmBadge = r.isHCM ? ' <span class="hcm-badge">HCM</span>' : "";
-
-    // Decorations: name color + achievement icon
     const profile = userProfiles[r.name] || {};
     let nameStyle = "";
     let colorBadge = "";
@@ -1084,7 +1001,6 @@ function renderRankTab(tab) {
       showDecorations && profile.achievement
         ? `<span class="achievement-badge" title="${escHtml(profile.achievement.title)}">${profile.achievement.icon}</span>`
         : "";
-
     html += `<tr class="${medalClass}">
       <td>${i + 1}º</td>
       <td><span ${nameStyle}>${escHtml(r.name)}</span>${hcmBadge}${achBadge}</td>
@@ -1101,16 +1017,11 @@ function renderRankTab(tab) {
 
 function getColorEffect(colorId) {
   switch (colorId) {
-    case "color_esmeralda":
-      return "text-shadow: 0 0 6px #00e676, 0 0 12px #00c853; font-weight:bold;";
-    case "color_rubi":
-      return "text-shadow: 0 0 6px #ff5252, 0 0 12px #e53935; font-weight:bold;";
-    case "color_dourado":
-      return "text-shadow: 0 0 6px #ffd740, 0 0 12px #ffd600; font-weight:bold;";
-    case "color_diamante":
-      return "text-shadow: 0 0 8px #ffffff, 0 0 16px #b3e5fc, 0 0 24px #81d4fa; font-weight:bold; animation: diamond-shine 2s infinite alternate;";
-    default:
-      return "";
+    case "color_esmeralda": return "text-shadow: 0 0 6px #00e676, 0 0 12px #00c853; font-weight:bold;";
+    case "color_rubi": return "text-shadow: 0 0 6px #ff5252, 0 0 12px #e53935; font-weight:bold;";
+    case "color_dourado": return "text-shadow: 0 0 6px #ffd740, 0 0 12px #ffd600; font-weight:bold;";
+    case "color_diamante": return "text-shadow: 0 0 8px #ffffff, 0 0 16px #b3e5fc, 0 0 24px #81d4fa; font-weight:bold; animation: diamond-shine 2s infinite alternate;";
+    default: return "";
   }
 }
 
@@ -1134,8 +1045,8 @@ async function registerUser() {
     if (res.ok) {
       showMsg(
         msg,
-        `✅ Usuário "${name}" criado! Faça login para apostar.`,
-        "ok",
+        `✅ Usuário "${name}" criado! Como compensação pela instabilidade do aplicativo, todos os novos usuários ganham 125 LuizCoins™. Faça login para entrar.`,
+        "ok"
       );
       document.getElementById("reg-name").value = "";
       document.getElementById("reg-password").value = "";
@@ -1167,7 +1078,8 @@ async function adminLogin() {
     });
     const data = await res.json();
     if (res.ok) {
-      adminPassword = pwd;
+      adminToken = data.token; // Armazena o token de admin em memória
+      document.getElementById("admin-password").value = ""; // Limpa o campo de senha
       document.getElementById("admin-login-panel").style.display = "none";
       document.getElementById("admin-panel").style.display = "block";
     } else {
@@ -1190,11 +1102,11 @@ async function setArrival() {
   }
   showLoading("Registrando chegada...");
   try {
-    const body = { password: adminPassword, time };
+    const body = { time };
     if (date) body.date = date;
     const res = await fetch(`${API}/admin/arrival`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
       body: JSON.stringify(body),
     });
     const data = await res.json();
@@ -1202,22 +1114,16 @@ async function setArrival() {
       showMsg(msg, `✅ Chegada registrada: ${time}`, "ok");
       const result = document.getElementById("admin-result");
       if (data.rankings && data.rankings.length > 0) {
-        result.innerHTML =
-          `<div class="section-label">🏆 Resultado</div>` +
-          renderRankingsTable(data.rankings, time);
+        result.innerHTML = `<div class="section-label">🏆 Resultado</div>` + renderRankingsTable(data.rankings, time);
       }
-      todayStatusCache = null; // invalidate cache
+      todayStatusCache = null;
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
       if (res.status === 401) {
-        adminPassword = "";
+        adminToken = "";
         document.getElementById("admin-login-panel").style.display = "block";
         document.getElementById("admin-panel").style.display = "none";
-        showMsg(
-          document.getElementById("admin-login-msg"),
-          "Senha incorreta.",
-          "err",
-        );
+        showMsg(document.getElementById("admin-login-msg"), "Sessão expirada. Faça login novamente.", "err");
       }
     }
   } catch {
@@ -1242,9 +1148,7 @@ async function loadGameRank(game, difficulty) {
   if (!container) return;
   container.innerHTML = '<div class="loading">⏳ Carregando ranking...</div>';
   try {
-    const params = difficulty
-      ? `?game=${game}&difficulty=${difficulty}`
-      : `?game=${game}`;
+    const params = difficulty ? `?game=${game}&difficulty=${difficulty}` : `?game=${game}`;
     const res = await fetch(`${API}/game-rank${params}`);
     const scores = await res.json();
     currentGameRankData = scores;
@@ -1255,8 +1159,7 @@ async function loadGameRank(game, difficulty) {
     let html = `<div class="section-label">${gameLabel}${diffLabel} — Top 10</div>`;
 
     if (scores.length === 0) {
-      html +=
-        '<div class="no-data">Nenhum recorde ainda. Seja o primeiro!</div>';
+      html += '<div class="no-data">Nenhum recorde ainda. Seja o primeiro!</div>';
     } else {
       html += `<table class="win95-table"><thead><tr>
         <th>#</th><th>Jogador</th><th>Pontuação</th><th>Data</th>
@@ -1264,22 +1167,14 @@ async function loadGameRank(game, difficulty) {
       scores.forEach((s, i) => {
         const medal = ["🥇", "🥈", "🥉"][i] || `${i + 1}º`;
         const date = new Date(s.date).toLocaleDateString("pt-BR");
-        const medalClass =
-          i === 0
-            ? "rank-gold"
-            : i === 1
-              ? "rank-silver"
-              : i === 2
-                ? "rank-bronze"
-                : "";
+        const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
         html += `<tr class="${medalClass}"><td>${medal}</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
       });
       html += `</tbody></table>`;
     }
     container.innerHTML = html;
   } catch {
-    container.innerHTML =
-      '<div class="loading">Erro ao carregar ranking.</div>';
+    container.innerHTML = '<div class="loading">Erro ao carregar ranking.</div>';
   }
 }
 
@@ -1301,40 +1196,31 @@ function renderGameRank() {
     currentGameRankData.forEach((s, i) => {
       const medal = ["🥇", "🥈", "🥉"][i] || `${i + 1}º`;
       const date = new Date(s.date).toLocaleDateString("pt-BR");
-      const medalClass =
-        i === 0
-          ? "rank-gold"
-          : i === 1
-            ? "rank-silver"
-            : i === 2
-              ? "rank-bronze"
-              : "";
+      const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
       html += `<tr class="${medalClass}"><td>${medal}</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
     });
     html += `</tbody></table>`;
   }
-
   container.innerHTML = html;
 }
 
-async function submitGameScore(game, difficulty, score, callback) {
-  if (!currentUser) return; // Only logged-in users save scores
+async function submitGameScore(game, difficulty, score, callback, token) {
+  const authToken = token || sessionToken;
+  if (!currentUser || !authToken) return;
   try {
-    const personalKey = difficulty
-      ? `luizos_pb_${game}_${difficulty}`
-      : `luizos_pb_${game}`;
+    const personalKey = difficulty ? `luizos_pb_${game}_${difficulty}` : `luizos_pb_${game}`;
     const personalBest = parseInt(localStorage.getItem(personalKey) || "0", 10);
     const scoreValue = Number(score);
     const isNewBest = scoreValue > personalBest;
 
-    // Submit to API; do not update ranking when this is not a new personal best.
-    const body = { game, playerName: currentUser.name, score: scoreValue };
+    // Não envia playerName — o servidor usa o token de sessão
+    const body = { game, score: scoreValue };
     if (difficulty) body.difficulty = difficulty;
     if (!isNewBest) body.skipRank = true;
 
     const res = await fetch(`${API}/game-rank`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(authToken),
       body: JSON.stringify(body),
     });
     const data = await res.json();
@@ -1344,7 +1230,6 @@ async function submitGameScore(game, difficulty, score, callback) {
     }
     if (callback) callback(data.coinsEarned || 0);
 
-    // Show achievement notifications
     if (data.newAchievements && data.newAchievements.length > 0) {
       setTimeout(() => showAchievementToast(data.newAchievements), 2500);
     }
@@ -1357,9 +1242,7 @@ let gameToastTimeout = null;
 function formatCoinValue(coins) {
   const value = Number(coins);
   if (!Number.isFinite(value)) return "0";
-  return Number.isInteger(value)
-    ? String(value)
-    : value.toFixed(1).replace(".", ",");
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(".", ",");
 }
 
 function showGameCoinsToast(coins) {
@@ -1367,43 +1250,30 @@ function showGameCoinsToast(coins) {
   if (!Number.isFinite(amount) || amount <= 0) return;
   const el = document.getElementById("game-toast");
   if (!el) return;
-
   el.textContent = `+${formatCoinValue(amount)} LuizCoins™`;
   el.style.display = "block";
   el.classList.add("show");
   if (gameToastTimeout) clearTimeout(gameToastTimeout);
   gameToastTimeout = setTimeout(() => {
     el.classList.remove("show");
-    setTimeout(() => {
-      el.style.display = "none";
-    }, 250);
+    setTimeout(() => { el.style.display = "none"; }, 250);
   }, 2200);
 }
 
 function getPersonalBest(game, difficulty) {
-  const key = difficulty
-    ? `luizos_pb_${game}_${difficulty}`
-    : `luizos_pb_${game}`;
+  const key = difficulty ? `luizos_pb_${game}_${difficulty}` : `luizos_pb_${game}`;
   return parseInt(localStorage.getItem(key) || "0", 10);
 }
 
 function getDifficultyLabel(diff) {
-  return (
-    {
-      beginner: "Iniciante",
-      intermediate: "Intermediário",
-      expert: "Especialista",
-    }[diff] || diff
-  );
+  return ({ beginner: "Iniciante", intermediate: "Intermediário", expert: "Especialista" }[diff] || diff);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function showMsg(el, text, type) {
   el.textContent = text;
   el.className = `win95-msg ${type}`;
-  setTimeout(() => {
-    if (el.textContent === text) el.textContent = "";
-  }, 6000);
+  setTimeout(() => { if (el.textContent === text) el.textContent = ""; }, 6000);
 }
 
 function getBrasiliaTime() {
@@ -1453,10 +1323,7 @@ function togglePassword(inputId, button) {
   if (!input) return;
   const shouldShow = input.type === "password";
   input.type = shouldShow ? "text" : "password";
-  button.setAttribute(
-    "aria-label",
-    shouldShow ? "Ocultar senha" : "Mostrar senha",
-  );
+  button.setAttribute("aria-label", shouldShow ? "Ocultar senha" : "Mostrar senha");
   button.title = shouldShow ? "Ocultar senha" : "Mostrar senha";
   button.classList.toggle("active", shouldShow);
 }
@@ -1500,21 +1367,19 @@ loadShowDecorations();
 syncDecorationsCheckboxes();
 loadProfiles();
 loadUsers().then(() => {
-  // Restore session
+  // Restaura sessão: carrega token e dados do usuário (sem senha)
   const saved = loadSession();
-  if (saved) {
-    currentUser = saved;
+  if (saved && saved.token && saved.user) {
+    sessionToken = saved.token;
+    currentUser = saved.user;
     updateUserDisplay();
     refreshTodayStatus();
-    // Don't show login window if already logged in
   } else {
     updateUserDisplay();
-    // Show login window on startup
     openWindow("win-login");
   }
 });
 
-// Keep guess window in sync
 setInterval(refreshTodayStatus, 60000);
 startTodayPoll();
 updateTaskbar();
@@ -1522,7 +1387,6 @@ loadIconPositions();
 loadWallpaper();
 
 // ─── Loja do Luiz ─────────────────────────────────────────────────────────────
-
 async function openStore() {
   if (!currentUser) {
     alert("Você precisa fazer login para acessar a loja e ver suas moedas.");
@@ -1540,8 +1404,8 @@ async function loadStore() {
   grid.innerHTML = '<div class="loading">⏳ Carregando prêmios...</div>';
 
   try {
-    const params = `?viewer=${encodeURIComponent(currentUser.name)}&password=${encodeURIComponent(currentUser.password)}`;
-    const res = await fetch(`${API}/store${params}`);
+    // Autenticação via header Authorization, sem password na URL
+    const res = await fetch(`${API}/store`, { headers: sessionToken ? { "Authorization": `Bearer ${sessionToken}` } : {} });
     const data = await res.json();
 
     if (!res.ok) throw new Error(data.error);
@@ -1550,15 +1414,11 @@ async function loadStore() {
     balanceEl.textContent = safeBalance;
 
     if (data.items.length === 0) {
-      grid.innerHTML =
-        '<div class="no-data">A loja está vazia no momento.</div>';
+      grid.innerHTML = '<div class="no-data">A loja está vazia no momento.</div>';
       return;
     }
 
-    // Separate media items from color items
-    const mediaItems = data.items.filter(
-      (i) => (i.type || "media") === "media",
-    );
+    const mediaItems = data.items.filter((i) => (i.type || "media") === "media");
     const colorItems = data.items.filter((i) => i.type === "namecolor");
 
     let html = "";
@@ -1568,26 +1428,17 @@ async function loadStore() {
       html += `<div class="store-grid">`;
       mediaItems.forEach((item) => {
         const isUnlocked = data.purchases.includes(item.id);
-        const itemClass = isUnlocked
-          ? "store-item unlocked"
-          : "store-item locked";
+        const itemClass = isUnlocked ? "store-item unlocked" : "store-item locked";
         const imgSrc = isUnlocked ? item.src : "/photos/luizCoinIcon.png";
         html += `
           <div class="${itemClass}">
             <div class="store-item-title">${escHtml(item.title)}</div>
             <img src="${imgSrc}" class="store-item-preview" draggable="false" />
-            ${
-              !isUnlocked
-                ? `
-              <div class="store-item-price">
-                 <img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}
-              </div>
-              <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>
-            `
-                : `
-              <div class="store-item-price" style="color:#006400">✅ Seu</div>
-              <button class="win95-action-btn" onclick="openGallery('${item.id}', '${item.src}', '${escHtml(item.title)}')">Abrir</button>
-            `
+            ${!isUnlocked
+              ? `<div class="store-item-price"><img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}</div>
+                 <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>`
+              : `<div class="store-item-price" style="color:#006400">✅ Seu</div>
+                 <button class="win95-action-btn" onclick="openGallery('${item.id}', '${item.src}', '${escHtml(item.title)}')">Abrir</button>`
             }
           </div>`;
       });
@@ -1606,17 +1457,10 @@ async function loadStore() {
               <span style="color:${item.color};${getColorEffect(item.id)}">Seu nome</span>
             </div>
             <div class="store-item-title">${escHtml(item.title)}</div>
-            ${
-              !isUnlocked
-                ? `
-              <div class="store-item-price">
-                 <img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}
-              </div>
-              <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>
-            `
-                : `
-              <div class="store-item-price" style="color:#006400">✅ Desbloqueado</div>
-            `
+            ${!isUnlocked
+              ? `<div class="store-item-price"><img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}</div>
+                 <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>`
+              : `<div class="store-item-price" style="color:#006400">✅ Desbloqueado</div>`
             }
           </div>`;
       });
@@ -1631,16 +1475,11 @@ async function loadStore() {
 
 function getStoreColorEffect(colorId, color) {
   switch (colorId) {
-    case "color_esmeralda":
-      return `background: linear-gradient(135deg, #1a2e1a, #0d1f0d); border: 1px solid ${color}; box-shadow: 0 0 12px #00c85344; border-radius:4px; padding:12px; text-align:center;`;
-    case "color_rubi":
-      return `background: linear-gradient(135deg, #2e0d0d, #1a0505); border: 1px solid ${color}; box-shadow: 0 0 12px #e5393544; border-radius:4px; padding:12px; text-align:center;`;
-    case "color_dourado":
-      return `background: linear-gradient(135deg, #2a2000, #1a1400); border: 1px solid ${color}; box-shadow: 0 0 12px #ffd60044; border-radius:4px; padding:12px; text-align:center;`;
-    case "color_diamante":
-      return `background: linear-gradient(135deg, #0d1a2e, #050d1a); border: 1px solid ${color}; box-shadow: 0 0 16px #81d4fa66; border-radius:4px; padding:12px; text-align:center;`;
-    default:
-      return `padding:12px; text-align:center;`;
+    case "color_esmeralda": return `background: linear-gradient(135deg, #1a2e1a, #0d1f0d); border: 1px solid ${color}; box-shadow: 0 0 12px #00c85344; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_rubi": return `background: linear-gradient(135deg, #2e0d0d, #1a0505); border: 1px solid ${color}; box-shadow: 0 0 12px #e5393544; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_dourado": return `background: linear-gradient(135deg, #2a2000, #1a1400); border: 1px solid ${color}; box-shadow: 0 0 12px #ffd60044; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_diamante": return `background: linear-gradient(135deg, #0d1a2e, #050d1a); border: 1px solid ${color}; box-shadow: 0 0 16px #81d4fa66; border-radius:4px; padding:12px; text-align:center;`;
+    default: return `padding:12px; text-align:center;`;
   }
 }
 
@@ -1649,28 +1488,18 @@ async function buyStoreItem(itemId, price, currentBalance) {
     alert("Você não tem LuizCoins™ suficientes para comprar este item!");
     return;
   }
-  if (
-    !confirm(
-      `Tem certeza que deseja gastar ${price} LuizCoins™ para comprar esse item?`,
-    )
-  )
-    return;
+  if (!confirm(`Tem certeza que deseja gastar ${price} LuizCoins™ para comprar esse item?`)) return;
 
   showLoading("Processando compra...");
   try {
+    // Sem password no body — autenticação via token
     const res = await fetch(`${API}/store/buy`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: currentUser.name,
-        password: currentUser.password,
-        itemId,
-      }),
+      headers: authHeaders(),
+      body: JSON.stringify({ itemId }),
     });
     const data = await res.json();
-
     if (res.ok) {
-      // Compra feita com sucesso, recarrega a janela da loja
       await loadStore();
     } else {
       alert(`❌ Erro: ${data.error}`);
@@ -1683,13 +1512,11 @@ async function buyStoreItem(itemId, price, currentBalance) {
 }
 
 function openGallery(id, src, title) {
-  document.getElementById("gallery-title").textContent =
-    `🖼️ Visualizador - ${title}`;
+  document.getElementById("gallery-title").textContent = `🖼️ Visualizador - ${title}`;
   document.getElementById("gallery-img").src = src;
 
   const btn = document.getElementById("gallery-download-btn");
   btn.onclick = () => {
-    // Força o download da imagem via JS
     const a = document.createElement("a");
     a.href = src;
     a.download = `Luiz_Meme_${id}`;
@@ -1702,7 +1529,6 @@ function openGallery(id, src, title) {
 }
 
 // ─── Conquistas (Achievements) ────────────────────────────────────────────────
-
 async function openAchievements() {
   if (!currentUser) {
     alert("Você precisa fazer login para ver suas conquistas.");
@@ -1712,7 +1538,7 @@ async function openAchievements() {
   openWindow("win-achievements");
 }
 
-let achievementsData = null; // cache
+let achievementsData = null;
 
 async function loadAchievements() {
   const container = document.getElementById("achievements-content");
@@ -1721,11 +1547,12 @@ async function loadAchievements() {
     container.innerHTML = `<div class="info-box">🔒 Faça login para ver suas conquistas.</div>`;
     return;
   }
-  container.innerHTML =
-    '<div class="loading">⏳ Carregando conquistas...</div>';
+  container.innerHTML = '<div class="loading">⏳ Carregando conquistas...</div>';
   try {
-    const params = `?viewer=${encodeURIComponent(currentUser.name)}&password=${encodeURIComponent(currentUser.password)}`;
-    const res = await fetch(`${API}/achievements${params}`);
+    // Autenticação via token no header, sem password na query string
+    const res = await fetch(`${API}/achievements`, {
+      headers: sessionToken ? { "Authorization": `Bearer ${sessionToken}` } : {},
+    });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     achievementsData = data;
@@ -1747,12 +1574,8 @@ function renderAchievements(data) {
   definitions.forEach((def) => {
     const isUnlocked = unlocked.includes(def.id);
     const isActive = active === def.id;
-    const cls = isUnlocked
-      ? `achievement-item unlocked${isActive ? " active" : ""}`
-      : "achievement-item locked";
-    const onclick = isUnlocked
-      ? `onclick="toggleActiveAchievement('${def.id}')"`
-      : "";
+    const cls = isUnlocked ? `achievement-item unlocked${isActive ? " active" : ""}` : "achievement-item locked";
+    const onclick = isUnlocked ? `onclick="toggleActiveAchievement('${def.id}')"` : "";
     html += `
       <div class="${cls}" ${onclick} title="${isUnlocked ? (isActive ? "Clique para remover do ranking" : "Clique para exibir no ranking") : "Ainda bloqueada"}">
         <div class="achievement-icon">${isUnlocked ? def.icon : "🔒"}</div>
@@ -1763,29 +1586,22 @@ function renderAchievements(data) {
   });
 
   html += `</div>`;
-
   const totalUnlocked = unlocked.length;
   const total = definitions.length;
   html += `<div class="info-box" style="margin-top:12px">Desbloqueadas: ${totalUnlocked}/${total}</div>`;
-
   container.innerHTML = html;
 }
 
 async function toggleActiveAchievement(achievementId) {
   if (!currentUser || !achievementsData) return;
   const isCurrentlyActive = achievementsData.active === achievementId;
-  // Toggle: if already active, deactivate; else activate
   const newActiveId = isCurrentlyActive ? null : achievementId;
 
   try {
     const res = await fetch(`${API}/achievements/set-active`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: currentUser.name,
-        password: currentUser.password,
-        achievementId: newActiveId,
-      }),
+      headers: authHeaders(),
+      body: JSON.stringify({ achievementId: newActiveId }),
     });
     const data = await res.json();
     if (res.ok) {
@@ -1802,7 +1618,6 @@ async function toggleActiveAchievement(achievementId) {
 // Achievement unlock toast
 let achToastTimeout = null;
 function showAchievementToast(achievementIds) {
-  // Show one toast per achievement
   achievementIds.forEach((id, idx) => {
     setTimeout(() => {
       const el = document.getElementById("achievement-toast");
@@ -1811,18 +1626,9 @@ function showAchievementToast(achievementIds) {
       const def = {
         snake_500: { title: "Serpente Veloz", icon: "🐍" },
         minesweeper_beginner: { title: "Detonador Iniciante", icon: "💣" },
-        minesweeper_intermediate: {
-          title: "Detonador Intermediário",
-          icon: "🧨",
-        },
-        minesweeper_expert: {
-          title: "Detonador Especialista",
-          icon: "🏆",
-        },
-        bet_winner: {
-          title: "Profeta do Luiz",
-          icon: "🔮",
-        },
+        minesweeper_intermediate: { title: "Detonador Intermediário", icon: "🧨" },
+        minesweeper_expert: { title: "Detonador Especialista", icon: "🏆" },
+        bet_winner: { title: "Profeta do Luiz", icon: "🔮" },
       }[id];
 
       if (!def) return;
@@ -1832,12 +1638,9 @@ function showAchievementToast(achievementIds) {
       el.classList.add("show");
 
       if (achToastTimeout) clearTimeout(achToastTimeout);
-
       achToastTimeout = setTimeout(() => {
         el.classList.remove("show");
-        setTimeout(() => {
-          el.style.display = "none";
-        }, 300);
+        setTimeout(() => { el.style.display = "none"; }, 300);
       }, 3500);
     }, idx * 1000);
   });

@@ -4,6 +4,8 @@ require("dotenv").config({
 
 const express = require("express");
 const { Redis } = require("@upstash/redis");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const app = express();
 
 app.use(express.json());
@@ -18,25 +20,73 @@ function getKV() {
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+// A senha de admin deve ser forte e definida via variável de ambiente.
+// Exemplo: ADMIN_PASSWORD=xK#9mP!vQ2rL@nZ
+// Nunca use "admin123" ou qualquer senha fraca em produção.
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
+if (!ADMIN_PASSWORD_HASH) {
+  console.warn(
+    "[AVISO] ADMIN_PASSWORD_HASH não definida no .env.local. " +
+    "Gere com: node -e \"const b=require('bcryptjs'); console.log(b.hashSync(process.env.ADMIN_PW, 12))\" ADMIN_PW=suaSenhaForte"
+  );
+}
 
-// HCM preset users (used for the HCM tab in rankings)
-const PRESET_USERS = [
-  { name: "Ronaldo", password: "rolando", isHCM: true },
-  { name: "Jorge", password: "jog", isHCM: true },
-  { name: "Alexandre", password: "rock", isHCM: true },
-  { name: "João Paulo", password: "joaoPedro", isHCM: true },
-  { name: "Julio", password: "julho", isHCM: true },
-  { name: "Pedro", password: "pedrao", isHCM: true },
-];
+// ─── Session tokens ──────────────────────────────────────────────────────────
+// Tokens de sessão persistidos no Redis para suportar execução serverless.
+// Expiração: 24 horas.
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+const SESSION_PREFIX = "session:";
+const ADMIN_SESSION_KEY = "admin_session";
+const ADMIN_SESSION_EXPIRY_KEY = "admin_session_expiry";
 
-const HCM_NAMES = new Set(
-  PRESET_USERS.map((u) =>
-    String(u.name || "")
-      .trim()
-      .toLowerCase(),
-  ),
-);
+async function createUserSession(kv, name) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const session = { name, expiresAt: Date.now() + SESSION_TTL_MS };
+  await kv.set(`${SESSION_PREFIX}${token}`, JSON.stringify(session));
+  console.log("[SESSION CREATE]", token, session);
+  return token;
+}
+
+async function resolveUserSession(kv, token) {
+  if (!token) {
+    console.log("[SESSION RESOLVE] missing token");
+    return null;
+  }
+  const raw = await kv.get(`${SESSION_PREFIX}${token}`);
+  console.log("[SESSION RESOLVE] raw", token, raw);
+  if (!raw) return null;
+  let session;
+  try {
+    session = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch (error) {
+    console.log("[SESSION RESOLVE] invalid session payload", error);
+    return null;
+  }
+  if (!session || Date.now() > session.expiresAt) {
+    await kv.del(`${SESSION_PREFIX}${token}`);
+    return null;
+  }
+  return session.name;
+}
+
+async function setAdminSession(kv, token, expiresAt) {
+  await kv.set(ADMIN_SESSION_KEY, token);
+  await kv.set(ADMIN_SESSION_EXPIRY_KEY, String(expiresAt));
+}
+
+async function resolveAdminSession(kv, token) {
+  if (!token) return false;
+  const storedToken = await kv.get(ADMIN_SESSION_KEY);
+  const expiry = Number(await kv.get(ADMIN_SESSION_EXPIRY_KEY));
+  return token === storedToken && Number.isFinite(expiry) && Date.now() <= expiry;
+}
+
+// Extrai o token do header Authorization: Bearer <token>
+function getBearerToken(req) {
+  const auth = req.headers["authorization"] || "";
+  if (auth.startsWith("Bearer ")) return auth.slice(7);
+  return null;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function getBrasiliaDate() {
@@ -81,6 +131,7 @@ function minutesToTimeStr(mins) {
 function absDiff(a, b) {
   return Math.abs(a - b);
 }
+
 function userKey(name) {
   return String(name || "")
     .trim()
@@ -97,10 +148,11 @@ function normalizeUsers(value) {
       return [];
     }
   }
+  // A partir de agora, os usuários têm passwordHash em vez de password
   return Array.isArray(users)
     ? users.filter(
         (u) =>
-          u && typeof u.name === "string" && typeof u.password === "string",
+          u && typeof u.name === "string" && (typeof u.passwordHash === "string" || typeof u.password === "string"),
       )
     : [];
 }
@@ -125,26 +177,46 @@ function parseRedisArray(value) {
 
 const MAX_DAYS = 22;
 
+// ─── Gestão de usuários (sem PRESET_USERS hardcoded) ─────────────────────────
+// Os usuários HCM agora são definidos pelo campo isHCM=true no banco (Redis),
+// gerenciado pelo admin via /api/admin/users. Não há mais usuários hardcoded.
+
 async function getUsers(kv) {
-  let extra = [];
-  if (kv) {
-    try {
-      extra = normalizeUsers(await kv.get("users"));
-    } catch {
-      extra = [];
-    }
+  try {
+    const value = await kv.get("users");
+    return normalizeUsers(value);
+  } catch {
+    return [];
   }
-  const allNames = new Set(PRESET_USERS.map((u) => userKey(u.name)));
-  const filtered = extra.filter((u) => !allNames.has(userKey(u.name)));
-  return [...PRESET_USERS, ...filtered];
 }
 
-async function saveExtraUsers(kv, users) {
-  const presetNames = new Set(PRESET_USERS.map((u) => userKey(u.name)));
-  const extra = normalizeUsers(users).filter(
-    (u) => !presetNames.has(userKey(u.name)),
-  );
-  await kv.set("users", extra);
+async function saveUsers(kv, users) {
+  // Nunca salva a senha em texto plano — apenas passwordHash
+  const sanitized = users.map(({ password, ...rest }) => rest);
+  await kv.set("users", sanitized);
+}
+
+// Verifica a senha de um usuário comparando com o hash armazenado.
+// Suporta migração: se o usuário ainda tem 'password' em texto plano (legado),
+// verifica em texto plano, depois migra para hash automaticamente.
+async function verifyUserPassword(kv, user, plainPassword) {
+  if (user.passwordHash) {
+    return bcrypt.compare(plainPassword, user.passwordHash);
+  }
+  // Migração legada: usuário tem password em texto plano
+  if (user.password && user.password === plainPassword) {
+    // Migra para hash automaticamente
+    const hash = await bcrypt.hash(plainPassword, 12);
+    const allUsers = await getUsers(kv);
+    const idx = allUsers.findIndex((u) => userKey(u.name) === userKey(user.name));
+    if (idx >= 0) {
+      allUsers[idx].passwordHash = hash;
+      delete allUsers[idx].password;
+      await saveUsers(kv, allUsers);
+    }
+    return true;
+  }
+  return false;
 }
 
 async function getDayData(kv, dateKey) {
@@ -169,22 +241,42 @@ async function setDayData(kv, dateKey, data) {
   }
 }
 
-// Função auxiliar para calcular a data em string do próximo dia útil (pula finais de semana)
 function getNextWeekdayStr() {
   const d = getBrasiliaDate();
   do {
     d.setDate(d.getDate() + 1);
-  } while (d.getDay() === 0 || d.getDay() === 6); // 0 = Domingo, 6 = Sábado
-  
+  } while (d.getDay() === 0 || d.getDay() === 6);
+
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// ─── Middleware de autenticação ───────────────────────────────────────────────
+async function requireAuth(req, res, next) {
+  const token = getBearerToken(req);
+  const kv = getKV();
+  const name = await resolveUserSession(kv, token);
+
+  if (!name) return res.status(401).json({ error: "Sessão inválida ou expirada. Faça login novamente." });
+  req.sessionName = name;
+  next();
+}
+
+async function requireAdminAuth(req, res, next) {
+  const token = getBearerToken(req);
+  const kv = getKV();
+  const valid = await resolveAdminSession(kv, token);
+  if (!valid) {
+    return res.status(401).json({ error: "Acesso de admin negado." });
+  }
+  next();
+}
+
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
-// GET /api/users
+// GET /api/users — retorna apenas nome e isHCM (sem senha)
 app.get("/api/users", async (req, res) => {
   try {
     const kv = getKV();
@@ -200,18 +292,24 @@ app.get("/api/users", async (req, res) => {
   }
 });
 
-// POST /api/login
+// POST /api/login — retorna um token de sessão em vez de repassar a senha
 app.post("/api/login", async (req, res) => {
   try {
     const { name, password } = req.body;
+    if (!name || !password)
+      return res.status(400).json({ error: "Nome e senha são obrigatórios." });
+
     const kv = getKV();
     const users = await getUsers(kv);
-    const user = users.find(
-      (u) => userKey(u.name) === userKey(name) && u.password === password,
-    );
-    if (!user)
-      return res.status(401).json({ error: "Nome ou senha incorretos." });
+    const user = users.find((u) => userKey(u.name) === userKey(name));
+    if (!user) return res.status(401).json({ error: "Nome ou senha incorretos." });
+
+    const valid = await verifyUserPassword(kv, user, password);
+    if (!valid) return res.status(401).json({ error: "Nome ou senha incorretos." });
+
+    const token = await createUserSession(kv, user.name);
     res.json({
+      token,
       name: user.name,
       isHCM: !!user.isHCM,
     });
@@ -220,79 +318,83 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+// POST /api/logout
+app.post("/api/logout", async (req, res) => {
+  const token = getBearerToken(req);
+  if (token) {
+    const kv = getKV();
+    await kv.del(`${SESSION_PREFIX}${token}`);
+  }
+  res.json({ success: true });
+});
+
 // POST /api/register
 app.post("/api/register", async (req, res) => {
   try {
     const { name, password } = req.body;
     if (!name || !password)
       return res.status(400).json({ error: "Nome e senha são obrigatórios." });
+
     const kv = getKV();
     const users = await getUsers(kv);
     const exists = users.find((u) => userKey(u.name) === userKey(name));
     if (exists) return res.status(409).json({ error: "Usuário já existe." });
-    const newUser = { name: name.trim(), password, isHCM: false };
-    const presetNames = new Set(PRESET_USERS.map((u) => userKey(u.name)));
-    const extra = users.filter((u) => !presetNames.has(userKey(u.name)));
-    extra.push(newUser);
-    await saveExtraUsers(kv, extra);
-    res.json({ name: newUser.name, isHCM: false });
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const newUser = { name: name.trim(), passwordHash, isHCM: false };
+    users.push(newUser);
+    await saveUsers(kv, users);
+
+    const coinsKey = `gamecoins:${userKey(newUser.name)}`;
+    await kv.set(coinsKey, String(125));
+
+    res.json({ success: true, name: newUser.name, isHCM: false });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// ROTA GET /api/today COMPLETAMENTE ATUALIZADA
+// GET /api/today
 app.get("/api/today", async (req, res) => {
   try {
     const kv = getKV();
-    const key = todayKey(); // Data de hoje real (ex: "2026-06-16")
+    const key = todayKey();
     const todayDay = await getDayData(kv, key);
     const nowMins = currentTimeMinutes();
     const cutoffMins = timeStrToMinutes("10:00");
 
-    // 1. Determina se as apostas já rolaram para o próximo dia útil
     let activeBetDate = key;
     if (!isWeekday(key) || todayDay.arrival || nowMins >= cutoffMins) {
       activeBetDate = getNextWeekdayStr();
     }
 
-    // Se hoje já fechou ou é fim de semana, o foco de exibição passa a ser o próximo dia útil
     const isNextDay = activeBetDate !== key;
-    const targetDate = activeBetDate; // Dia cujos palpites serão exibidos na tabela
+    const targetDate = activeBetDate;
     const targetDayData = isNextDay ? await getDayData(kv, targetDate) : todayDay;
 
-    // 2. Valida credenciais do usuário visualizador se enviadas por parâmetro na query
+    // Identifica o viewer pelo token de sessão
     let viewerName = null;
-    const { viewer, password } = req.query;
-    if (viewer && password) {
-      const users = await getUsers(kv);
-      const user = users.find(
-        (u) => userKey(u.name) === userKey(viewer) && u.password === password
-      );
-      if (user) viewerName = user.name;
+    const token = getBearerToken(req);
+    if (token) {
+      const kv = getKV();
+      viewerName = await resolveUserSession(kv, token) || null;
     }
 
-    // 3. Verifica palpites do usuário no dia alvo que está sendo exibido
     const targetViewerGuess = targetDayData.guesses.find(
       (g) => viewerName && userKey(g.name) === userKey(viewerName)
     );
 
-    // 4. Lógica de visibilidade dos palpites para o dia exibido (targetDate)
     let exposedGuesses = [];
     let hiddenCount = 0;
 
     if (targetViewerGuess) {
-      // Se o usuário já apostou no dia exibido, mostra todas as apostas.
       exposedGuesses = targetDayData.guesses;
     } else if (isNextDay) {
-      // Se estamos exibindo o próximo dia útil, as apostas para ele estão abertas por definição.
-      // O usuário ainda não apostou, então só vê o próprio palpite (se houver) e o restante fica oculto.
       hiddenCount = targetDayData.guesses.filter(
         (g) => !viewerName || userKey(g.name) !== userKey(viewerName)
       ).length;
       exposedGuesses = [];
     } else {
-      // Lógica original para quando hoje ainda está aberto ou acabou de fechar com a chegada do Luiz hoje
       const bettingOpenForToday = !todayDay.arrival && nowMins < cutoffMins && isWeekday(key);
       if (todayDay.arrival) {
         exposedGuesses = todayDay.guesses;
@@ -308,14 +410,13 @@ app.get("/api/today", async (req, res) => {
     }
 
     res.json({
-      date: key,               // Mantém a data de hoje real para o banner identificar o "isNextDay"
-      displayDate: targetDate, // NOVO: Data correspondente aos palpites que estão sendo retornados
+      date: key,
+      displayDate: targetDate,
       guesses: exposedGuesses,
       hiddenCount,
       arrival: isNextDay ? null : (todayDay.arrival || null),
       rankings: isNextDay ? null : (todayDay.rankings || null),
       currentTime: minutesToTimeStr(nowMins),
-
       activeBetDate,
       viewerHasGuessed: !!targetViewerGuess,
       viewerGuess: targetViewerGuess || null,
@@ -326,32 +427,30 @@ app.get("/api/today", async (req, res) => {
   }
 });
 
-// ROTA POST /api/guess COMPLETAMENTE INTEGRADA
-app.post("/api/guess", async (req, res) => {
+// POST /api/guess — requer sessão válida
+app.post("/api/guess", requireAuth, async (req, res) => {
   try {
-    const { name, password, time } = req.body;
-    if (!name || !password || !time) {
-      return res.status(400).json({ error: "Faltam campos obrigatórios (name, password, time)." });
-    }
+    const { time } = req.body;
+    const name = req.sessionName;
 
+    if (!time) {
+      return res.status(400).json({ error: "Campo 'time' é obrigatório." });
+    }
     if (!/^\d{2}:\d{2}$/.test(time)) {
       return res.status(400).json({ error: "Formato de hora inválido. Use HH:MM." });
     }
 
     const kv = getKV();
     const users = await getUsers(kv);
-    const user = users.find(
-      (u) => userKey(u.name) === userKey(name) && u.password === password
-    );
+    const user = users.find((u) => userKey(u.name) === userKey(name));
     if (!user) {
-      return res.status(401).json({ error: "Usuário ou senha inválidos." });
+      return res.status(401).json({ error: "Usuário não encontrado." });
     }
 
     let activeBetDate = todayKey();
     const todayDay = await getDayData(kv, activeBetDate);
     const nowMins = currentTimeMinutes();
 
-    // Roteamento automático: se passou das 10h, o Luiz já chegou ou é fim de semana, aposta vai para o próximo dia útil
     if (!isWeekday(activeBetDate) || todayDay.arrival || nowMins >= timeStrToMinutes("10:00")) {
       activeBetDate = getNextWeekdayStr();
     }
@@ -362,7 +461,6 @@ app.post("/api/guess", async (req, res) => {
       return res.status(400).json({ error: "Apostas já foram encerradas para este dia." });
     }
 
-    // Trava rígida das 10h aplicada apenas se a aposta ainda for destinada ao dia atual
     if (activeBetDate === todayKey() && nowMins >= timeStrToMinutes("10:00")) {
       return res.status(400).json({ error: "Apostas encerradas após 10h." });
     }
@@ -374,13 +472,12 @@ app.post("/api/guess", async (req, res) => {
       });
     }
 
-    // Insere o palpite no dia ativo determinado
     day.guesses.push({
       name: user.name,
       time,
       createdAt: new Date().toISOString(),
     });
-    
+
     await setDayData(kv, activeBetDate, day);
     res.json({ success: true });
   } catch (e) {
@@ -388,26 +485,37 @@ app.post("/api/guess", async (req, res) => {
   }
 });
 
-// POST /api/admin/login
+// POST /api/admin/login — autentica com bcrypt e retorna token de admin
 app.post("/api/admin/login", async (req, res) => {
   try {
     const { password } = req.body;
     if (!password)
       return res.status(400).json({ error: "Senha é obrigatória." });
-    if (password !== ADMIN_PASSWORD)
+
+    if (!ADMIN_PASSWORD_HASH) {
+      return res.status(500).json({ error: "Senha de admin não configurada no servidor." });
+    }
+
+    const valid = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    if (!valid)
       return res.status(401).json({ error: "Senha incorreta." });
-    res.json({ success: true });
+
+    // Gera um token de sessão de admin com expiração de 4 horas
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = Date.now() + 4 * 60 * 60 * 1000;
+    const kv = getKV();
+    await setAdminSession(kv, token, expiresAt);
+
+    res.json({ success: true, token });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// POST /api/admin/arrival
-app.post("/api/admin/arrival", async (req, res) => {
+// POST /api/admin/arrival — requer token de admin
+app.post("/api/admin/arrival", requireAdminAuth, async (req, res) => {
   try {
-    const { password, time, date } = req.body;
-    if (password !== ADMIN_PASSWORD)
-      return res.status(401).json({ error: "Senha incorreta." });
+    const { time, date } = req.body;
     if (!/^\d{2}:\d{2}$/.test(time))
       return res.status(400).json({ error: "Horário inválido." });
 
@@ -459,6 +567,65 @@ app.post("/api/admin/arrival", async (req, res) => {
   }
 });
 
+// GET /api/admin/users — lista todos os usuários (admin only, sem hashes)
+app.get("/api/admin/users", requireAdminAuth, async (req, res) => {
+  try {
+    const kv = getKV();
+    const users = await getUsers(kv);
+    res.json(users.map(({ passwordHash, password, ...rest }) => rest));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/users — cria ou atualiza um usuário (admin only)
+// Body: { name, password?, isHCM? }
+// Se password não vier, mantém o hash existente.
+app.post("/api/admin/users", requireAdminAuth, async (req, res) => {
+  try {
+    const { name, password, isHCM } = req.body;
+    if (!name) return res.status(400).json({ error: "Nome é obrigatório." });
+
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const idx = users.findIndex((u) => userKey(u.name) === userKey(name));
+
+    if (idx >= 0) {
+      // Atualiza usuário existente
+      if (typeof isHCM === "boolean") users[idx].isHCM = isHCM;
+      if (password) {
+        users[idx].passwordHash = await bcrypt.hash(password, 12);
+        delete users[idx].password;
+      }
+    } else {
+      // Cria novo usuário
+      if (!password) return res.status(400).json({ error: "Senha obrigatória para novo usuário." });
+      const passwordHash = await bcrypt.hash(password, 12);
+      users.push({ name: name.trim(), passwordHash, isHCM: !!isHCM });
+    }
+
+    await saveUsers(kv, users);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/users/:name — remove um usuário (admin only)
+app.delete("/api/admin/users/:name", requireAdminAuth, async (req, res) => {
+  try {
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const filtered = users.filter((u) => userKey(u.name) !== userKey(req.params.name));
+    if (filtered.length === users.length)
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    await saveUsers(kv, filtered);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/history
 app.get("/api/history", async (req, res) => {
   try {
@@ -485,13 +652,11 @@ app.get("/api/history", async (req, res) => {
 });
 
 // GET /api/overall-rank
-// Returns all players. Each entry has isHCM flag for frontend filtering.
 app.get("/api/overall-rank", async (req, res) => {
   try {
     const kv = getKV();
     let index = (await kv.get("days_index")) || [];
     const scores = {};
-    // Build a lookup of HCM names from current user list
     const users = await getUsers(kv);
     const hcmNames = new Set(
       users.filter((u) => u.isHCM).map((u) => userKey(u.name)),
@@ -531,8 +696,7 @@ app.get("/api/overall-rank", async (req, res) => {
   }
 });
 
-// GET /api/game-rank?game=snake|minesweeper[&difficulty=beginner|intermediate|expert]
-// Returns top 10 for the given game/difficulty from Redis
+// GET /api/game-rank
 app.get("/api/game-rank", async (req, res) => {
   try {
     const { game, difficulty } = req.query;
@@ -548,18 +712,48 @@ app.get("/api/game-rank", async (req, res) => {
   }
 });
 
-// POST /api/game-rank
-// Body: { game, difficulty?, playerName, score, skipRank? }
-// Stores one score per player, keeps top 10 overall
-// Also awards coins based on game performance
-app.post("/api/game-rank", async (req, res) => {
+// POST /api/game-rank — requer sessão válida; playerName vem do token, não do body
+// Proteção contra burla: o servidor ignora qualquer playerName enviado pelo cliente.
+// O score é validado contra limites razoáveis por jogo.
+app.post("/api/game-rank", requireAuth, async (req, res) => {
   try {
-    const { game, difficulty, playerName, score, skipRank } = req.body;
-    if (!game || !playerName || score === undefined) {
+    const { game, difficulty, score, skipRank } = req.body;
+    const playerName = req.sessionName; // Sempre do token de sessão, nunca do body
+
+    if (!game || score === undefined) {
       return res
         .status(400)
-        .json({ error: "game, playerName e score são obrigatórios." });
+        .json({ error: "game e score são obrigatórios." });
     }
+
+    // ─── Validação de score ────────────────────────────────────────────────────
+    // Limites máximos físicos por jogo para bloquear scores impossíveis.
+    const scoreNum = Number(score);
+    if (!Number.isFinite(scoreNum) || scoreNum < 0) {
+      return res.status(400).json({ error: "Score inválido." });
+    }
+
+    const SCORE_LIMITS = {
+      snake: 99999,           // Snake: fisicamente impossível passar disso
+      minesweeper: 1,         // Minesweeper: score é apenas 0 (falhou) ou 1 (completou)
+    };
+
+    const maxScore = SCORE_LIMITS[game];
+    if (maxScore !== undefined && scoreNum > maxScore) {
+      return res.status(400).json({ error: "Score fora dos limites permitidos." });
+    }
+
+    // Para minesweeper, o score deve ser exatamente 0 ou 1
+    if (game === "minesweeper" && scoreNum !== 0 && scoreNum !== 1) {
+      return res.status(400).json({ error: "Score de minesweeper inválido." });
+    }
+
+    // Valida difficulty para minesweeper
+    const validDifficulties = ["beginner", "intermediate", "expert"];
+    if (game === "minesweeper" && difficulty && !validDifficulties.includes(difficulty)) {
+      return res.status(400).json({ error: "Dificuldade inválida." });
+    }
+
     const rankKey = difficulty
       ? `gamerank:${game}:${difficulty}`
       : `gamerank:${game}`;
@@ -567,12 +761,11 @@ app.post("/api/game-rank", async (req, res) => {
     let scores = (await kv.get(rankKey)) || [];
 
     if (!skipRank) {
-      // Remove existing entry for this player and update ranking
       scores = scores.filter(
         (s) =>
           String(s.name).toLowerCase() !== String(playerName).toLowerCase(),
       );
-      scores.push({ name: playerName, score, date: new Date().toISOString() });
+      scores.push({ name: playerName, score: scoreNum, date: new Date().toISOString() });
       scores.sort((a, b) => b.score - a.score);
       scores = scores.slice(0, 10);
       await kv.set(rankKey, scores);
@@ -581,23 +774,21 @@ app.post("/api/game-rank", async (req, res) => {
     // ─── AWARD COINS BASED ON GAME PERFORMANCE ───
     let coinsEarned = 0;
     if (game === "snake") {
-      coinsEarned = Math.floor(score / 100) * 5;
-
-      if (score >= 250) coinsEarned += 10;
-      if (score >= 500) coinsEarned += 10;
-    } else if (game === "minesweeper") {
+      coinsEarned = Math.floor(scoreNum / 100) * 5;
+      if (scoreNum >= 250) coinsEarned += 10;
+      if (scoreNum >= 500) coinsEarned += 10;
+    } else if (game === "minesweeper" && scoreNum === 1) {
+      // Só ganha moedas se realmente completou (score=1)
       if (difficulty === "expert") coinsEarned = 25;
       else if (difficulty === "intermediate") coinsEarned = 10;
       else if (difficulty === "beginner") coinsEarned = 1;
     }
 
-    // Store earned coins
     if (coinsEarned > 0) {
       const coinsKey = `gamecoins:${userKey(playerName)}`;
       const existingCoins = Number(await kv.get(coinsKey));
       const totalCoins =
-        (Number.isFinite(existingCoins) ? existingCoins : 0) +
-        Number(coinsEarned);
+        (Number.isFinite(existingCoins) ? existingCoins : 0) + coinsEarned;
       await kv.set(coinsKey, String(totalCoins));
     }
 
@@ -606,11 +797,11 @@ app.post("/api/game-rank", async (req, res) => {
     const achUnlocked = parseRedisArray(await kv.get(achUnlockedKey));
     let newAchievements = [];
 
-    if (game === "snake" && score > 500 && !achUnlocked.includes("snake_500")) {
+    if (game === "snake" && scoreNum > 500 && !achUnlocked.includes("snake_500")) {
       achUnlocked.push("snake_500");
       newAchievements.push("snake_500");
     }
-    if (game === "minesweeper") {
+    if (game === "minesweeper" && scoreNum === 1) {
       const achId =
         difficulty === "beginner"
           ? "minesweeper_beginner"
@@ -634,150 +825,92 @@ app.post("/api/game-rank", async (req, res) => {
   }
 });
 
-// ─── Loja de Prêmios (Configuração) ──────────────────────────────────────────
+// ─── Loja de Prêmios ─────────────────────────────────────────────────────────
 const STORE_ITEMS = [
-  // Cadastre seus GIFs e imagens aqui. Eles devem estar na pasta public (ex: /store/...)
-  {
-    id: "palinha",
-    price: 10,
-    src: "/photos/palinha.gif",
-    title: "Luiz dando uma palinha",
-  },
-  {
-    id: "baixista",
-    price: 10,
-    src: "/photos/baixista.gif",
-    title: "Luiz Fernando baixista",
-  },
-  {
-    id: "confusp",
-    price: 25,
-    src: "/photos/confuso.gif",
-    title: "Luiz confuso",
-  },
-  // ─── Cores de nome (minerais) ────────────────────────────────────────────────
-  {
-    id: "color_esmeralda",
-    price: 100,
-    type: "namecolor",
-    color: "#00c853",
-    title: "Esmeralda",
-  },
-  {
-    id: "color_rubi",
-    price: 250,
-    type: "namecolor",
-    color: "#e53935",
-    title: "Rubi",
-  },
-  {
-    id: "color_dourado",
-    price: 1000,
-    type: "namecolor",
-    color: "#ffd600",
-    title: "Dourada",
-  },
-  {
-    id: "color_diamante",
-    price: 10000,
-    type: "namecolor",
-    color: "#b3e5fc",
-    title: "Diamante",
-  },
+  { id: "palinha", price: 10, src: "/photos/palinha.gif", title: "Luiz dando uma palinha" },
+  { id: "baixista", price: 10, src: "/photos/baixista.gif", title: "Luiz Fernando baixista" },
+  { id: "confusp", price: 25, src: "/photos/confuso.gif", title: "Luiz confuso" },
+  { id: "color_esmeralda", price: 100, type: "namecolor", color: "#00c853", title: "Esmeralda" },
+  { id: "color_rubi", price: 250, type: "namecolor", color: "#e53935", title: "Rubi" },
+  { id: "color_dourado", price: 1000, type: "namecolor", color: "#ffd600", title: "Dourada" },
+  { id: "color_diamante", price: 10000, type: "namecolor", color: "#b3e5fc", title: "Diamante" },
 ];
 
-// ─── Rotas da Loja ───────────────────────────────────────────────────────────
+async function calcBalance(kv, user, users) {
+  const hcmNames = new Set(
+    users.filter((u) => u.isHCM).map((u) => userKey(u.name)),
+  );
+  const isUserHCM = hcmNames.has(userKey(user.name));
 
-// GET /api/store
-app.get("/api/store", async (req, res) => {
+  let index = (await kv.get("days_index")) || [];
+  let earnedCoins = 0;
+
+  for (const dateKey of index) {
+    if (!isWeekday(dateKey)) continue;
+    const day = await getDayData(kv, dateKey);
+    if (!day.arrival || !day.rankings) continue;
+    const userRank = day.rankings.find(
+      (r) => userKey(r.name) === userKey(user.name),
+    );
+    if (userRank) {
+      if (userRank.position === 1) earnedCoins += 25;
+      else if (userRank.position === 2) earnedCoins += 10;
+      else if (userRank.position === 3) earnedCoins += 5;
+      earnedCoins += 1;
+    }
+    if (isUserHCM) {
+      const hcmRanks = day.rankings.filter((r) =>
+        hcmNames.has(userKey(r.name)),
+      );
+      if (hcmRanks.length > 0) {
+        const topHcmPos = hcmRanks[0].position;
+        const isTopHcm = hcmRanks.some(
+          (r) =>
+            r.position === topHcmPos &&
+            userKey(r.name) === userKey(user.name),
+        );
+        if (isTopHcm && userRank) earnedCoins += 5;
+      }
+    }
+  }
+
+  const gameCoinsKey = `gamecoins:${userKey(user.name)}`;
+  const gameCoins = parseRedisNumber(await kv.get(gameCoinsKey));
+  earnedCoins += gameCoins;
+
+  const purchasesKey = `purchases:${userKey(user.name)}`;
+  const purchases = parseRedisArray(await kv.get(purchasesKey));
+  let spentCoins = 0;
+  purchases.forEach((id) => {
+    const item = STORE_ITEMS.find((i) => i.id === id);
+    if (item) spentCoins += item.price;
+  });
+
+  return { earnedCoins, spentCoins, purchases, gameCoins };
+}
+
+// GET /api/store — requer sessão válida
+app.get("/api/store", requireAuth, async (req, res) => {
   try {
-    const { viewer, password } = req.query;
-    if (!viewer || !password)
-      return res.status(401).json({ error: "Faça login para acessar a loja." });
-
     const kv = getKV();
     const users = await getUsers(kv);
-    const user = users.find(
-      (u) => userKey(u.name) === userKey(viewer) && u.password === password,
-    );
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
-    const hcmNames = new Set(
-      users.filter((u) => u.isHCM).map((u) => userKey(u.name)),
-    );
-    const isUserHCM = hcmNames.has(userKey(user.name));
+    const { earnedCoins, spentCoins, purchases, gameCoins } = await calcBalance(kv, user, users);
 
-    let index = (await kv.get("days_index")) || [];
-    let earnedCoins = 0;
-
-    // 1. Calcular moedas ganhas com base no histórico
-    for (const dateKey of index) {
-      if (!isWeekday(dateKey)) continue;
-      const day = await getDayData(kv, dateKey);
-      if (!day.arrival || !day.rankings) continue;
-
-      const userRank = day.rankings.find(
-        (r) => userKey(r.name) === userKey(user.name),
-      );
-      if (userRank) {
-        if (userRank.position === 1) earnedCoins += 25;
-        else if (userRank.position === 2) earnedCoins += 10;
-        else if (userRank.position === 3) earnedCoins += 5;
-      }
-
-      // Regra HCM: 1 moeda extra se for o 1º lugar entre o pessoal do HCM
-      if (isUserHCM) {
-        const hcmRanks = day.rankings.filter((r) =>
-          hcmNames.has(userKey(r.name)),
-        );
-        if (hcmRanks.length > 0) {
-          const topHcmPos = hcmRanks[0].position;
-          const isTopHcm = hcmRanks.some(
-            (r) =>
-              r.position === topHcmPos &&
-              userKey(r.name) === userKey(user.name),
-          );
-          if (isTopHcm && userRank) earnedCoins += 5;
-        }
-      }
-
-      // Todos que jogaram ganham 1 moeda
-      if (userRank) earnedCoins += 1;
-    }
-
-    // 2. Adicionar moedas ganhas em jogos
-    const gameCoinsKey = `gamecoins:${userKey(user.name)}`;
-    const gameCoins = parseRedisNumber(await kv.get(gameCoinsKey));
-    earnedCoins += gameCoins;
-
-    // 3. Subtrair moedas gastas
-    const purchasesKey = `purchases:${userKey(user.name)}`;
-    const purchases = parseRedisArray(await kv.get(purchasesKey));
-    let spentCoins = 0;
-
-    purchases.forEach((id) => {
-      const item = STORE_ITEMS.find((i) => i.id === id);
-      if (item) spentCoins += item.price;
-    });
-
-    // 4. Ocultar o SRC da mídia para quem não comprou
     const responseItems = STORE_ITEMS.map((item) => {
       const isUnlocked = purchases.includes(item.id);
-      const base = {
-        id: item.id,
-        title: item.title,
-        price: item.price,
-        type: item.type || "media",
-      };
+      const base = { id: item.id, title: item.title, price: item.price, type: item.type || "media" };
       if (item.type === "namecolor") {
         return { ...base, color: item.color, description: item.description };
       }
-      return { ...base, src: isUnlocked ? item.src : null }; // Mantém bloqueado na rede
+      return { ...base, src: isUnlocked ? item.src : null };
     });
 
     res.json({
       balance: Math.max(0, earnedCoins - spentCoins),
-      coinsFromGames: parseRedisNumber(await kv.get(gameCoinsKey)),
+      coinsFromGames: gameCoins,
       spentCoins,
       purchases,
       items: responseItems,
@@ -787,84 +920,29 @@ app.get("/api/store", async (req, res) => {
   }
 });
 
-// POST /api/store/buy
-app.post("/api/store/buy", async (req, res) => {
+// POST /api/store/buy — requer sessão válida
+app.post("/api/store/buy", requireAuth, async (req, res) => {
   try {
-    const { name, password, itemId } = req.body;
+    const { itemId } = req.body;
     const kv = getKV();
-
-    // Validar usuário
     const users = await getUsers(kv);
-    const user = users.find(
-      (u) => userKey(u.name) === userKey(name) && u.password === password,
-    );
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
     const item = STORE_ITEMS.find((i) => i.id === itemId);
     if (!item) return res.status(404).json({ error: "Item não encontrado." });
 
-    // Recalcular saldo para evitar bypass
-    const hcmNames = new Set(
-      users.filter((u) => u.isHCM).map((u) => userKey(u.name)),
-    );
-    const isUserHCM = hcmNames.has(userKey(user.name));
-    let index = (await kv.get("days_index")) || [];
-    let earnedCoins = 0;
-
-    for (const dateKey of index) {
-      if (!isWeekday(dateKey)) continue;
-      const day = await getDayData(kv, dateKey);
-      if (!day.arrival || !day.rankings) continue;
-      const userRank = day.rankings.find(
-        (r) => userKey(r.name) === userKey(user.name),
-      );
-      if (userRank) {
-        if (userRank.position === 1) earnedCoins += 25;
-        else if (userRank.position === 2) earnedCoins += 10;
-        else if (userRank.position === 3) earnedCoins += 5;
-        else earnedCoins += 1; // Todos que jogaram ganham 1 moeda
-      }
-      if (isUserHCM) {
-        const hcmRanks = day.rankings.filter((r) =>
-          hcmNames.has(userKey(r.name)),
-        );
-        if (
-          hcmRanks.length > 0 &&
-          hcmRanks.some(
-            (r) =>
-              r.position === hcmRanks[0].position &&
-              userKey(r.name) === userKey(user.name),
-          )
-        ) {
-          earnedCoins += 5;
-        }
-      }
-    }
-
-    // Adicionar moedas ganhas em jogos
-    const gameCoinsKey = `gamecoins:${userKey(user.name)}`;
-    const gameCoins = parseRedisNumber(await kv.get(gameCoinsKey));
-    earnedCoins += gameCoins;
-
-    const purchasesKey = `purchases:${userKey(user.name)}`;
-    const purchases = parseRedisArray(await kv.get(purchasesKey));
+    const { earnedCoins, spentCoins, purchases } = await calcBalance(kv, user, users);
 
     if (purchases.includes(itemId))
       return res.status(400).json({ error: "Você já possui este item." });
-
-    let spentCoins = 0;
-    purchases.forEach((id) => {
-      const pItem = STORE_ITEMS.find((i) => i.id === id);
-      if (pItem) spentCoins += pItem.price;
-    });
 
     const balance = earnedCoins - spentCoins;
     if (balance < item.price)
       return res.status(400).json({ error: "LuizCoins™ insuficientes." });
 
-    // Efetuar compra
     purchases.push(itemId);
-    await kv.set(purchasesKey, JSON.stringify(purchases));
+    await kv.set(`purchases:${userKey(user.name)}`, JSON.stringify(purchases));
 
     res.json({ success: true, newBalance: balance - item.price });
   } catch (e) {
@@ -873,122 +951,47 @@ app.post("/api/store/buy", async (req, res) => {
 });
 
 // ─── Conquistas (Achievements) ───────────────────────────────────────────────
-
-// Definição estática das conquistas disponíveis
 const ACHIEVEMENT_DEFS = [
-  {
-    id: "snake_500",
-    title: "Serpente veloz",
-    description: "Faça mais de 500 pontos no Snake",
-    icon: "🐍",
-  },
-  {
-    id: "minesweeper_beginner",
-    title: "Detonador iniciante",
-    description: "Complete uma partida de Campo Minado no modo Iniciante",
-    icon: "💣",
-  },
-  {
-    id: "minesweeper_intermediate",
-    title: "Detonador intermediário",
-    description: "Complete uma partida de Campo Minado no modo Intermediário",
-    icon: "🧨",
-  },
-  {
-    id: "minesweeper_expert",
-    title: "Detonador especialista",
-    description: "Complete uma partida de Campo Minado no modo Especialista",
-    icon: "🏆",
-  },
-  {
-    id: "bet_winner",
-    title: "Profeta do Luiz",
-    description: "Seja o vencedor (1º lugar) em uma aposta do dia",
-    icon: "🔮",
-  },
+  { id: "snake_500", title: "Serpente veloz", description: "Faça mais de 500 pontos no Snake", icon: "🐍" },
+  { id: "minesweeper_beginner", title: "Detonador iniciante", description: "Complete uma partida de Campo Minado no modo Iniciante", icon: "💣" },
+  { id: "minesweeper_intermediate", title: "Detonador intermediário", description: "Complete uma partida de Campo Minado no modo Intermediário", icon: "🧨" },
+  { id: "minesweeper_expert", title: "Detonador especialista", description: "Complete uma partida de Campo Minado no modo Especialista", icon: "🏆" },
+  { id: "bet_winner", title: "Profeta do Luiz", description: "Seja o vencedor (1º lugar) em uma aposta do dia", icon: "🔮" },
 ];
 
-// GET /api/achievements?viewer=...&password=...
-// Retorna as conquistas do usuário (quais desbloqueou) e a conquista ativa (exibida no rank)
-app.get("/api/achievements", async (req, res) => {
+// GET /api/achievements — requer sessão válida
+app.get("/api/achievements", requireAuth, async (req, res) => {
   try {
-    const { viewer, password } = req.query;
-    if (!viewer || !password)
-      return res.status(401).json({ error: "Faça login para ver conquistas." });
-
     const kv = getKV();
     const users = await getUsers(kv);
-    const user = users.find(
-      (u) => userKey(u.name) === userKey(viewer) && u.password === password,
-    );
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
     const unlockedKey = `achievements:${userKey(user.name)}`;
     const activeKey = `achievement_active:${userKey(user.name)}`;
     const unlocked = parseRedisArray(await kv.get(unlockedKey));
     let active = null;
-    try {
-      active = await kv.get(activeKey);
-    } catch {
-      active = null;
-    }
+    try { active = await kv.get(activeKey); } catch { active = null; }
 
-    res.json({
-      definitions: ACHIEVEMENT_DEFS,
-      unlocked,
-      active: active || null,
-    });
+    res.json({ definitions: ACHIEVEMENT_DEFS, unlocked, active: active || null });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// POST /api/achievements/unlock
-// Body: { name, password, achievementId }
-app.post("/api/achievements/unlock", async (req, res) => {
+// POST /api/achievements/set-active — requer sessão válida
+app.post("/api/achievements/set-active", requireAuth, async (req, res) => {
   try {
-    const { name, password, achievementId } = req.body;
+    const { achievementId } = req.body;
     const kv = getKV();
     const users = await getUsers(kv);
-    const user = users.find(
-      (u) => userKey(u.name) === userKey(name) && u.password === password,
-    );
-    if (!user) return res.status(401).json({ error: "Acesso negado." });
-
-    const def = ACHIEVEMENT_DEFS.find((a) => a.id === achievementId);
-    if (!def)
-      return res.status(404).json({ error: "Conquista não encontrada." });
-
-    const unlockedKey = `achievements:${userKey(user.name)}`;
-    const unlocked = parseRedisArray(await kv.get(unlockedKey));
-    if (!unlocked.includes(achievementId)) {
-      unlocked.push(achievementId);
-      await kv.set(unlockedKey, JSON.stringify(unlocked));
-    }
-
-    res.json({ success: true, unlocked });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// POST /api/achievements/set-active
-// Body: { name, password, achievementId }  (null achievementId to clear)
-app.post("/api/achievements/set-active", async (req, res) => {
-  try {
-    const { name, password, achievementId } = req.body;
-    const kv = getKV();
-    const users = await getUsers(kv);
-    const user = users.find(
-      (u) => userKey(u.name) === userKey(name) && u.password === password,
-    );
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
     const activeKey = `achievement_active:${userKey(user.name)}`;
     if (!achievementId) {
       await kv.del(activeKey);
     } else {
-      // Must be unlocked
       const unlockedKey = `achievements:${userKey(user.name)}`;
       const unlocked = parseRedisArray(await kv.get(unlockedKey));
       if (!unlocked.includes(achievementId))
@@ -1002,8 +1005,7 @@ app.post("/api/achievements/set-active", async (req, res) => {
   }
 });
 
-// GET /api/profiles
-// Returns public profile data for all users: active name color & achievement
+// GET /api/profiles — público
 app.get("/api/profiles", async (req, res) => {
   try {
     const kv = getKV();
@@ -1015,13 +1017,7 @@ app.get("/api/profiles", async (req, res) => {
       const purchasesKey = `purchases:${uk}`;
       const purchases = parseRedisArray(await kv.get(purchasesKey));
 
-      // Find highest-tier purchased color (priority: diamante > dourado > rubi > esmeralda)
-      const colorPriority = [
-        "color_diamante",
-        "color_dourado",
-        "color_rubi",
-        "color_esmeralda",
-      ];
+      const colorPriority = ["color_diamante", "color_dourado", "color_rubi", "color_esmeralda"];
       let activeColor = null;
       for (const cid of colorPriority) {
         if (purchases.includes(cid)) {
@@ -1038,19 +1034,11 @@ app.get("/api/profiles", async (req, res) => {
         const activeAchId = await kv.get(`achievement_active:${uk}`);
         if (activeAchId) {
           const def = ACHIEVEMENT_DEFS.find((a) => a.id === activeAchId);
-          if (def)
-            activeAchievement = {
-              id: def.id,
-              icon: def.icon,
-              title: def.title,
-            };
+          if (def) activeAchievement = { id: def.id, icon: def.icon, title: def.title };
         }
       } catch {}
 
-      profiles[u.name] = {
-        nameColor: activeColor,
-        achievement: activeAchievement,
-      };
+      profiles[u.name] = { nameColor: activeColor, achievement: activeAchievement };
     }
 
     res.json(profiles);
@@ -1059,8 +1047,5 @@ app.get("/api/profiles", async (req, res) => {
   }
 });
 
-// Also award bet winner achievement in admin/arrival
-// (patch: re-export existing route to also call achievements unlock)
-
-// ─── Export for Vercel ────────────────────────────────────────────────────────
+// ─── Export para Vercel ───────────────────────────────────────────────────────
 module.exports = app;
