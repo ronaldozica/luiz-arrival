@@ -145,7 +145,7 @@ function toggleLegacyScore(checked) {
 }
 
 // Jogos cujo score bruto é 9999 - tempoEmSegundos (menor tempo = maior score).
-const TIME_BASED_SCORE_GAMES = new Set(["sudoku", "minesweeper"]);
+const TIME_BASED_SCORE_GAMES = new Set(["sudoku", "minesweeper", "spider"]);
 
 function formatGameScore(game, score) {
   if (!TIME_BASED_SCORE_GAMES.has(game) || showLegacyScore) return score;
@@ -1840,7 +1840,7 @@ function renderGameRank() {
   container.innerHTML = html;
 }
 
-async function submitGameScore(game, difficulty, score, callback, token) {
+async function submitGameScore(game, difficulty, score, callback, token, extra) {
   const authToken = token || sessionToken;
   if (!currentUser || !authToken) return;
   try {
@@ -1850,7 +1850,7 @@ async function submitGameScore(game, difficulty, score, callback, token) {
     const isNewBest = scoreValue > personalBest;
 
     // Não envia playerName — o servidor usa o token de sessão
-    const body = { game, score: scoreValue };
+    const body = { game, score: scoreValue, ...extra };
     if (difficulty) body.difficulty = difficulty;
     if (!isNewBest) body.skipRank = true;
 
@@ -1909,7 +1909,7 @@ function getDifficultyLabel(diff) {
 }
 
 function getGameLabel(game) {
-  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku" }[game] || game);
+  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", spider: "🕷️ Paciência Spider" }[game] || game);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -2637,9 +2637,22 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "1.4.0",
+    version: "1.5.0",
     date: "27/06/2026",
     isNew: true,
+    title: "Novo minigame: Paciência Spider",
+    items: [
+      "🕷️ Novo minigame Paciência Spider, com 3 dificuldades (1, 2 ou 4 naipes), ranking próprio e LuizCoins por vitória.",
+      "💡 Sistema de dicas no Spider: até 10 dicas no fácil, 5 no médio e 3 no difícil — cada uma sugere a melhor jogada disponível no momento.",
+      "🏅 6 novas conquistas do Spider: uma por dificuldade completada, mais \"Pura estratégia\" (vencer sem usar dica) e \"Com uma ajudinha\" (vencer usando ao menos uma).",
+      "😵 O Spider agora detecta quando não há mais jogadas possíveis e encerra a partida automaticamente, em vez de deixar o jogador travado sem aviso.",
+      "🔢 Sudoku: ranking dos jogos agora tem abas próprias por dificuldade ao lado do Spider.",
+    ],
+  },
+  {
+    version: "1.4.0",
+    date: "27/06/2026",
+    isNew: false,
     title: "Luiz de Placa: dobre seus pontos uma vez por semana",
     items: [
       "🏆 Novo boost \"Luiz de Placa\": ative o checkbox antes de apostar e ganhe o dobro de LuizCoins pela aposta do dia. Disponível 1 vez por semana para cada jogador.",

@@ -109,6 +109,11 @@
       <div class="icon-img">🔢</div>
       <div class="icon-label">Sudoku</div>
     </div>
+    <div class="desktop-icon" data-icon-id="icon-spider"
+      data-action="openSpiderWindow()">
+      <div class="icon-img">🕷️</div>
+      <div class="icon-label">Paciência<br>Spider</div>
+    </div>
     <div class="desktop-icon" data-icon-id="icon-gamerank"
       data-action="openWindow('win-gamerank'); loadGameRank('snake')">
       <div class="icon-img">🎮</div>
@@ -566,6 +571,56 @@
     </div>
   </div>
 
+  <!-- ══ WINDOW: SPIDER ══ -->
+  <div class="win95-window" id="win-spider" style="left:160px;top:50px;width:560px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-spider')">
+      <span class="win95-title">🕷️ Paciência Spider</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-spider')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-spider'); stopSpider()">✕</button>
+      </div>
+    </div>
+    <div class="win95-body" style="background: var(--win-gray); padding: 6px;">
+
+      <div class="ms-session-warning" id="sp-session-warning" style="display:none">
+        ⚠️ <strong>Sessão inválida.</strong> Você não conseguirá salvar seu recorde ao terminar a partida.
+        Saia e faça login novamente para corrigir.
+      </div>
+
+      <!-- Difficulty selector -->
+      <div class="ms-difficulty-bar">
+        <button class="sp-diff-btn ms-diff-btn active" data-diff="easy" onclick="setSpDifficulty('easy')">Fácil (1 naipe)</button>
+        <button class="sp-diff-btn ms-diff-btn" data-diff="medium" onclick="setSpDifficulty('medium')">Médio (2 naipes)</button>
+        <button class="sp-diff-btn ms-diff-btn" data-diff="hard" onclick="setSpDifficulty('hard')">Difícil (4 naipes)</button>
+        <button class="win95-action-btn" id="sp-hint-btn" style="margin-left:auto;font-size:10px;padding:2px 6px"
+          onclick="useSpHint()">💡 Dica (3/3)</button>
+        <button class="win95-action-btn" style="font-size:10px;padding:2px 6px"
+          onclick="openGameRank('spider', currentSpDifficulty)">🏆</button>
+      </div>
+
+      <div class="ms-header">
+        <div class="ms-counter" id="sp-sequences">0/8</div>
+        <button class="win95-btn-ctrl ms-face" id="sp-face" onclick="initSpider()">🙂</button>
+        <div class="ms-counter" id="sp-timer">000</div>
+      </div>
+
+      <div class="ms-board-container sp-board-container">
+        <div class="sp-board-row">
+          <div class="sp-stock" id="sp-stock" onclick="dealSpStock()" title="Distribuir cartas"></div>
+          <div class="sp-tableau" id="sp-tableau"></div>
+        </div>
+      </div>
+
+      <div class="info-box" style="font-size:10px;margin-top:4px">
+        Clique numa carta virada para selecionar a sequência móvel, depois clique na coluna de destino.
+        Clique na pilha à esquerda para distribuir 10 cartas (só com nenhuma coluna vazia).
+        Sem jogadas possíveis encerra a partida (rosto 😵) — clique nele para recomeçar.
+        Use até 3 dicas (💡) por partida — vencer sem usar nenhuma desbloqueia uma conquista diferente de vencer usando.
+      </div>
+
+    </div>
+  </div>
+
   <!-- ══ WINDOW: RANKING JOGOS ══ -->
   <div class="win95-window" id="win-gamerank" style="left:220px;top:100px;width:420px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-gamerank')">
@@ -593,6 +648,12 @@
           onclick="loadGameRank('sudoku','medium'); setGameRankTabActive('sd-medium')">🔢 Médio</button>
         <button class="rank-tab" data-tab="sd-hard"
           onclick="loadGameRank('sudoku','hard'); setGameRankTabActive('sd-hard')">🔢 Difícil</button>
+        <button class="rank-tab" data-tab="sp-easy"
+          onclick="loadGameRank('spider','easy'); setGameRankTabActive('sp-easy')">🕷️ Fácil</button>
+        <button class="rank-tab" data-tab="sp-medium"
+          onclick="loadGameRank('spider','medium'); setGameRankTabActive('sp-medium')">🕷️ Médio</button>
+        <button class="rank-tab" data-tab="sp-hard"
+          onclick="loadGameRank('spider','hard'); setGameRankTabActive('sp-hard')">🕷️ Difícil</button>
       </div>
       <div id="gamerank-content">
         <div class="loading">Carregando...</div>
@@ -792,6 +853,7 @@
   <script src="js/snake.js"></script>
   <script src="js/minesweeper.js"></script>
   <script src="js/sudoku.js"></script>
+  <script src="js/spider.js"></script>
   <script>
     function setGameRankTabActive(tab) {
       document.querySelectorAll('#win-gamerank .rank-tab').forEach(t => {
