@@ -1830,7 +1830,7 @@ async function loadStore() {
             ${!isUnlocked
               ? `<div class="store-item-price"><img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}</div>
                  <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>`
-              : `<div class="store-item-price" style="color:#006400">✅ Seu</div>
+              : `<div class="store-item-price" style="color:#006400">✅ Seu <span class="store-item-current-price">(custa <img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price} hoje)</span></div>
                  <button class="win95-action-btn" onclick="openGallery('${item.id}', '${item.src}', '${escHtml(item.title)}')">Abrir</button>`
             }
           </div>`;
@@ -1853,7 +1853,7 @@ async function loadStore() {
             ${!isUnlocked
               ? `<div class="store-item-price"><img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}</div>
                  <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>`
-              : `<div class="store-item-price" style="color:#006400">✅ Desbloqueado</div>`
+              : `<div class="store-item-price" style="color:#006400">✅ Desbloqueado <span class="store-item-current-price">(custa <img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price} hoje)</span></div>`
             }
           </div>`;
       });

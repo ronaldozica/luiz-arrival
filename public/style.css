@@ -1334,6 +1334,16 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
+}
+
+.store-item-current-price {
+  font-size: 10px;
+  font-weight: normal;
+  color: var(--win-dark);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .gallery-img-container {
