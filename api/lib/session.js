@@ -18,23 +18,17 @@ async function createUserSession(kv, name) {
   const token = crypto.randomBytes(32).toString("hex");
   const session = { name };
   await kv.set(`${SESSION_PREFIX}${token}`, JSON.stringify(session));
-  console.log("[SESSION CREATE]", token, session);
   return token;
 }
 
 async function resolveUserSession(kv, token) {
-  if (!token) {
-    console.log("[SESSION RESOLVE] missing token");
-    return null;
-  }
+  if (!token) return null;
   const raw = await kv.get(`${SESSION_PREFIX}${token}`);
-  console.log("[SESSION RESOLVE] raw", token, raw);
   if (!raw) return null;
   let session;
   try {
     session = typeof raw === "string" ? JSON.parse(raw) : raw;
-  } catch (error) {
-    console.log("[SESSION RESOLVE] invalid session payload", error);
+  } catch {
     return null;
   }
   if (!session) return null;

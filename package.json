@@ -4,7 +4,7 @@
   "description": "Jogo de apostas - Que horas o Luiz chega?",
   "main": "api/index.js",
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "cross-env DOTENV_QUIET=true vercel dev",
     "start": "node api/server.js"
   },
   "dependencies": {
@@ -18,6 +18,7 @@
     "node": ">=18"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "vercel": "^54.18.0"
   }
 }
