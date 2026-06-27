@@ -248,6 +248,140 @@ function clampWindowToViewport(w) {
   w.style.top = `${Math.min(Math.max(top, 0), maxTop)}px`;
 }
 
+// ─── Maximize / zoom de jogos ─────────────────────────────────────────────────
+// Botão de maximizar é injetado em toda .win95-window (genérico, sem precisar
+// editar cada bloco de janela no HTML). Para janelas de jogo (que têm um
+// elemento .game-zoom-target), maximizar também escala o conteúdo do jogo via
+// CSS transform, em vez de só dar mais espaço vazio em volta.
+const windowRestoreState = {};
+
+function injectMaximizeButtons() {
+  document.querySelectorAll(".win95-window").forEach((win) => {
+    const controls = win.querySelector(".win95-controls");
+    if (!controls || controls.querySelector(".win95-btn-maximize")) return;
+    const closeBtn = controls.querySelector(".win95-btn-ctrl:last-child");
+    const btn = document.createElement("button");
+    btn.className = "win95-btn-ctrl win95-btn-maximize";
+    btn.title = "Maximizar";
+    btn.textContent = "🗖";
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      toggleMaximizeWindow(win.id);
+    };
+    if (closeBtn) controls.insertBefore(btn, closeBtn);
+    else controls.appendChild(btn);
+  });
+}
+
+function toggleMaximizeWindow(id) {
+  const win = document.getElementById(id);
+  if (!win) return;
+  const body = win.querySelector(".win95-body");
+  const titlebar = win.querySelector(".win95-titlebar");
+  const taskbarHeight = 34;
+
+  if (win.dataset.maximized === "true") {
+    const restore = windowRestoreState[id];
+    if (restore) {
+      win.style.left = restore.left;
+      win.style.top = restore.top;
+      win.style.width = restore.width;
+    }
+    win.style.height = "";
+    if (body) {
+      body.style.height = "";
+      body.style.maxHeight = "";
+    }
+    win.classList.remove("maximized");
+    win.dataset.maximized = "false";
+    setGameZoom(win, 1);
+    return;
+  }
+
+  windowRestoreState[id] = {
+    left: win.style.left,
+    top: win.style.top,
+    width: win.style.width,
+  };
+
+  win.style.left = "0px";
+  win.style.top = "0px";
+  const fullWidth = window.innerWidth;
+  const fullHeight = window.innerHeight - taskbarHeight;
+  win.style.width = `${fullWidth}px`;
+  win.style.height = `${fullHeight}px`;
+  win.classList.add("maximized");
+  win.dataset.maximized = "true";
+
+  if (body && titlebar) {
+    const bodyHeight = fullHeight - titlebar.offsetHeight;
+    body.style.height = `${bodyHeight}px`;
+    body.style.maxHeight = `${bodyHeight}px`;
+  }
+
+  bringToFront(win);
+  applyGameZoom(win);
+}
+
+// Chamado pelos jogos depois de reconstruir o tabuleiro (ex: troca de
+// dificuldade), para reajustar o zoom se a janela estiver maximizada.
+function refreshGameZoom(id) {
+  const win = document.getElementById(id);
+  if (win && win.dataset.maximized === "true") applyGameZoom(win);
+}
+
+// `transform: scale()` amplia visualmente o elemento mas não altera o
+// espaço que ele ocupa no fluxo do layout — sem reservar esse espaço extra,
+// o conteúdo abaixo (info-box, dicas) fica sobreposto pelo jogo ampliado.
+// `extraHeight` é a diferença entre a altura visual ampliada e a altura
+// natural, aplicada como margin-bottom (o transform-origin é "top center",
+// então o crescimento visual é só para baixo, nunca para cima).
+function setGameZoom(win, scale, extraHeight) {
+  const target = win.querySelector(".game-zoom-target");
+  if (!target) return;
+  target.style.transform = scale === 1 ? "" : `scale(${scale})`;
+  target.style.marginBottom = scale === 1 ? "" : `${extraHeight || 0}px`;
+}
+
+// Escala o conteúdo do jogo (.game-zoom-target) para aproveitar o espaço
+// extra de uma janela maximizada, sem nunca encolher abaixo do tamanho base.
+function applyGameZoom(win) {
+  const target = win.querySelector(".game-zoom-target");
+  const body = win.querySelector(".win95-body");
+  if (!target || !body) return;
+
+  target.style.transform = "";
+  // .game-zoom-target tem align-self:center no CSS, então seu tamanho já
+  // reflete o conteúdo real (não esticado pelo flex column do .win95-body).
+  const naturalWidth = target.scrollWidth;
+  const naturalHeight = target.scrollHeight;
+
+  const availWidth = body.clientWidth - 16;
+  const availHeight = body.clientHeight - 16;
+  if (!naturalWidth || !naturalHeight || availWidth <= 0 || availHeight <= 0) return;
+
+  const GAME_ZOOM_MAX = 2.2;
+  const scale = Math.max(1, Math.min(availWidth / naturalWidth, availHeight / naturalHeight, GAME_ZOOM_MAX));
+  const extraHeight = naturalHeight * (scale - 1);
+  setGameZoom(win, scale, extraHeight);
+}
+
+window.addEventListener("resize", () => {
+  document.querySelectorAll('.win95-window[data-maximized="true"]').forEach((win) => {
+    const taskbarHeight = 34;
+    const body = win.querySelector(".win95-body");
+    const titlebar = win.querySelector(".win95-titlebar");
+    win.style.width = `${window.innerWidth}px`;
+    win.style.height = `${window.innerHeight - taskbarHeight}px`;
+    if (body && titlebar) {
+      const bodyHeight = window.innerHeight - taskbarHeight - titlebar.offsetHeight;
+      body.style.height = `${bodyHeight}px`;
+      body.style.maxHeight = `${bodyHeight}px`;
+    }
+    applyGameZoom(win);
+  });
+});
+
 function closeWindow(id) {
   const w = document.getElementById(id);
   if (!w) return;
@@ -2011,6 +2145,7 @@ function renderRankingsTable(rankings, arrival) {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
+injectMaximizeButtons();
 captureDefaultIconPositions();
 loadShowDecorations();
 syncDecorationsCheckboxes();
@@ -2637,9 +2772,19 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "1.5.0",
+    version: "1.6.0",
     date: "27/06/2026",
     isNew: true,
+    title: "Janelas maximizáveis e zoom nos jogos",
+    items: [
+      "🗖 Todas as janelas agora têm um botão de maximizar na barra de título, ocupando toda a área útil da tela.",
+      "🔍 Nos jogos (Snake, Campo Minado, Sudoku e Paciência Spider), maximizar também amplia o tabuleiro/cartas (zoom), em vez de só deixar espaço vazio em volta — ótimo para quem joga em telas grandes ou quer aliviar a vista.",
+    ],
+  },
+  {
+    version: "1.5.0",
+    date: "27/06/2026",
+    isNew: false,
     title: "Novo minigame: Paciência Spider",
     items: [
       "🕷️ Novo minigame Paciência Spider, com 3 dificuldades (1, 2 ou 4 naipes), ranking próprio e LuizCoins por vitória.",

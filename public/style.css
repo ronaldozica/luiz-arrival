@@ -243,6 +243,24 @@ body {
   z-index: 500;
 }
 
+.win95-window.maximized {
+  border-width: 1px;
+}
+
+.win95-window.maximized .win95-body {
+  overflow-y: auto;
+}
+
+.game-zoom-target {
+  /* .win95-body é flex column com align-items:stretch (padrão) — sem isso
+     o item esticaria para 100% da largura do body, inflando o "tamanho
+     natural" medido em JS e fazendo o zoom nunca passar de ~1x. */
+  align-self: center;
+  text-align: center;
+  transform-origin: top center;
+  transition: transform 0.15s ease;
+}
+
 .win95-titlebar {
   background: linear-gradient(to right, var(--win-blue), var(--win-blue-hi));
   color: white;
@@ -914,6 +932,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  margin: 0 auto;
   border: 2px solid var(--win-gray);
   box-shadow: var(--shadow-in);
   background: var(--win-black);

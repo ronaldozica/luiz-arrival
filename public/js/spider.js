@@ -146,6 +146,7 @@ function initSpider() {
   updateSpHintButton();
   renderSpBoard();
   startSpTimer();
+  refreshGameZoom("win-spider");
 }
 
 // ─── RENDERING ───────────────────────────────

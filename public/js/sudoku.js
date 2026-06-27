@@ -91,6 +91,7 @@ function initSudoku() {
   updateSdCounters();
   renderSdGrid();
   startSdTimer();
+  refreshGameZoom("win-sudoku");
 }
 
 // ─── GENERATION ─────────────────────────────
