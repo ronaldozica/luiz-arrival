@@ -43,6 +43,47 @@ function authParams() {
   return sessionToken ? { headers: { "Authorization": `Bearer ${sessionToken}` } } : {};
 }
 
+// ─── Cache local de leituras (localStorage) ──────────────────────────────────
+// Reduz comandos de leitura no Redis: dados que não mudam a cada segundo
+// (ranking, histórico, perfis, rank de jogos) ficam guardados no navegador por
+// um curto período. O backend já invalida seu próprio cache quando os dados
+// de origem mudam, então um TTL curto aqui só evita refetch ao reabrir a
+// mesma janela repetidamente.
+const CACHE_PREFIX = "luizos_cache_";
+
+function cacheGet(key, maxAgeMs) {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > maxAgeMs) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function cacheSet(key, data) {
+  try {
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, ts: Date.now() }));
+  } catch {}
+}
+
+async function cachedFetchJSON(key, url, maxAgeMs, options) {
+  const cached = cacheGet(key, maxAgeMs);
+  if (cached !== null) return cached;
+  const res = await fetch(url, options);
+  const data = await res.json();
+  if (res.ok) cacheSet(key, data);
+  return data;
+}
+
+const CACHE_TTL_MS = 60 * 1000;
+
+function invalidateProfileCache() {
+  try { localStorage.removeItem(CACHE_PREFIX + "profiles"); } catch {}
+}
+
 // ─── Decorations toggle ──────────────────────────────────────────────────────
 const SHOW_DECORATIONS_KEY = "luizos_show_decorations";
 let showDecorations = true;
@@ -71,9 +112,8 @@ function syncDecorationsCheckboxes() {
 
 async function loadProfiles() {
   try {
-    const res = await fetch(`${API}/profiles`);
-    const data = await res.json();
-    if (res.ok && data) userProfiles = data;
+    const data = await cachedFetchJSON("profiles", `${API}/profiles`, CACHE_TTL_MS);
+    if (data) userProfiles = data;
   } catch {}
 }
 
@@ -888,8 +928,7 @@ async function loadHistory() {
   container.innerHTML = '<div class="loading">⏳ Carregando...</div>';
   showLoading("Carregando histórico...");
   try {
-    const res = await fetch(`${API}/history`);
-    const days = await res.json();
+    const days = await cachedFetchJSON("history", `${API}/history`, CACHE_TTL_MS);
     if (days.length === 0) {
       container.innerHTML = '<div class="no-data">Nenhum histórico disponível ainda.</div>';
       return;
@@ -933,12 +972,12 @@ async function loadOverallRank() {
   container.innerHTML = '<div class="loading">⏳ Calculando ranking...</div>';
   showLoading("Calculando ranking...");
   try {
-    const [rankRes, profileRes] = await Promise.all([
-      fetch(`${API}/overall-rank`),
-      fetch(`${API}/profiles`),
+    const [rank, profiles] = await Promise.all([
+      cachedFetchJSON("overall_rank", `${API}/overall-rank`, CACHE_TTL_MS),
+      cachedFetchJSON("profiles", `${API}/profiles`, CACHE_TTL_MS),
     ]);
-    overallRankData = await rankRes.json();
-    userProfiles = (await profileRes.json()) || {};
+    overallRankData = rank;
+    userProfiles = profiles || {};
     renderRankTab(activeRankTab);
   } catch {
     container.innerHTML = '<div class="loading">Erro ao carregar.</div>';
@@ -1345,6 +1384,10 @@ async function setArrival() {
         result.innerHTML = `<div class="section-label">🏆 Resultado</div>` + renderRankingsTable(data.rankings, time);
       }
       todayStatusCache = null;
+      try {
+        localStorage.removeItem(CACHE_PREFIX + "history");
+        localStorage.removeItem(CACHE_PREFIX + "overall_rank");
+      } catch {}
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
       handleAdminAuthError(res.status);
@@ -1372,8 +1415,8 @@ async function loadGameRank(game, difficulty) {
   container.innerHTML = '<div class="loading">⏳ Carregando ranking...</div>';
   try {
     const params = difficulty ? `?game=${game}&difficulty=${difficulty}` : `?game=${game}`;
-    const res = await fetch(`${API}/game-rank${params}`);
-    const scores = await res.json();
+    const cacheKey = `game_rank_${game}_${difficulty || "default"}`;
+    const scores = await cachedFetchJSON(cacheKey, `${API}/game-rank${params}`, 20 * 1000);
     currentGameRankData = scores;
     currentGameRankMeta = { game, difficulty };
 
@@ -1828,6 +1871,7 @@ async function toggleActiveAchievement(achievementId) {
     if (res.ok) {
       achievementsData.active = newActiveId;
       renderAchievements(achievementsData);
+      invalidateProfileCache();
     } else {
       alert(`❌ ${data.error}`);
     }
@@ -1930,6 +1974,7 @@ async function selectProfileColor(colorId) {
       profileColorData.activeColorId = colorId;
       renderProfileColor();
       showMsg(msg, "✅ Cor atualizada.", "ok");
+      invalidateProfileCache();
       loadProfiles();
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
@@ -1989,6 +2034,7 @@ async function selectProfileAchievement(achievementId) {
       profileAchievementData.active = achievementId;
       renderProfileAchievement();
       showMsg(msg, "✅ Conquista atualizada.", "ok");
+      invalidateProfileCache();
       loadProfiles();
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
@@ -2051,6 +2097,7 @@ async function setActiveProfileEmoji(emoji) {
       profileEmojiData.active = emoji || null;
       renderProfileEmoji();
       showMsg(msg, "✅ Emoji atualizado.", "ok");
+      invalidateProfileCache();
       loadProfiles();
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
@@ -2078,6 +2125,7 @@ async function removeProfileEmoji(emoji) {
       if (profileEmojiData.active === emoji) profileEmojiData.active = null;
       renderProfileEmoji();
       showMsg(msg, "✅ Emoji removido.", "ok");
+      invalidateProfileCache();
       loadProfiles();
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
@@ -2156,6 +2204,7 @@ async function buyProfileEmoji() {
       renderProfileEmoji();
       showMsg(msg, `✅ Emoji ${emoji} comprado!`, "ok");
       setPickedEmoji(null);
+      invalidateProfileCache();
       loadProfiles();
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");

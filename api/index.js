@@ -190,6 +190,25 @@ async function saveUsers(kv, users) {
   // Nunca salva a senha em texto plano — apenas passwordHash
   const sanitized = users.map(({ password, ...rest }) => rest);
   await kv.set("users", sanitized);
+  await invalidateCache(kv, "cache:overall_rank", "cache:profiles");
+}
+
+// ─── Cache de leituras pesadas ────────────────────────────────────────────────
+// Os endpoints de ranking/histórico/perfis fazem fan-out (1 leitura por dia ou
+// por usuário). Para não estourar o limite de comandos do plano gratuito do
+// Redis, o resultado computado é guardado sob uma única chave e só é
+// recalculado quando os dados de origem mudam (ver invalidateCache nos pontos
+// de escrita: setDayData, saveUsers e as rotas de perfil).
+async function getCachedOrCompute(kv, cacheKey, computeFn) {
+  const cached = await kv.get(cacheKey);
+  if (cached !== null && cached !== undefined) return cached;
+  const value = await computeFn();
+  await kv.set(cacheKey, value);
+  return value;
+}
+
+async function invalidateCache(kv, ...keys) {
+  if (keys.length) await kv.del(...keys);
 }
 
 // Verifica a senha de um usuário comparando com o hash armazenado.
@@ -235,6 +254,7 @@ async function setDayData(kv, dateKey, data) {
     }
     await kv.set("days_index", index);
   }
+  await invalidateCache(kv, "cache:history", "cache:overall_rank");
 }
 
 function getNextWeekdayStr() {
@@ -652,21 +672,24 @@ app.delete("/api/admin/users/:name", requireAdminAuth, async (req, res) => {
 app.get("/api/history", async (req, res) => {
   try {
     const kv = getKV();
-    let index = (await kv.get("days_index")) || [];
-    const results = [];
-    for (const dateKey of index.reverse()) {
-      if (!isWeekday(dateKey)) continue;
-      const day = await getDayData(kv, dateKey);
-      if (day.arrival) {
-        results.push({
-          date: dateKey,
-          arrival: day.arrival,
-          rankings: day.rankings || [],
-          guesses: day.guesses || [],
-        });
+    const results = await getCachedOrCompute(kv, "cache:history", async () => {
+      let index = (await kv.get("days_index")) || [];
+      const computed = [];
+      for (const dateKey of index.reverse()) {
+        if (!isWeekday(dateKey)) continue;
+        const day = await getDayData(kv, dateKey);
+        if (day.arrival) {
+          computed.push({
+            date: dateKey,
+            arrival: day.arrival,
+            rankings: day.rankings || [],
+            guesses: day.guesses || [],
+          });
+        }
+        if (computed.length >= MAX_DAYS) break;
       }
-      if (results.length >= MAX_DAYS) break;
-    }
+      return computed;
+    });
     res.json(results);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -677,41 +700,43 @@ app.get("/api/history", async (req, res) => {
 app.get("/api/overall-rank", async (req, res) => {
   try {
     const kv = getKV();
-    let index = (await kv.get("days_index")) || [];
-    const scores = {};
-    const users = await getUsers(kv);
-    const hcmNames = new Set(
-      users.filter((u) => u.isHCM).map((u) => userKey(u.name)),
-    );
+    const ranked = await getCachedOrCompute(kv, "cache:overall_rank", async () => {
+      let index = (await kv.get("days_index")) || [];
+      const scores = {};
+      const users = await getUsers(kv);
+      const hcmNames = new Set(
+        users.filter((u) => u.isHCM).map((u) => userKey(u.name)),
+      );
 
-    for (const dateKey of index) {
-      if (!isWeekday(dateKey)) continue;
-      const day = await getDayData(kv, dateKey);
-      if (!day.arrival || !day.rankings) continue;
-      const total = day.rankings.length;
-      for (const r of day.rankings) {
-        const key = r.name;
-        if (!scores[key])
-          scores[key] = {
-            name: r.name,
-            points: 0,
-            wins: 0,
-            days: 0,
-            totalDiff: 0,
-            isHCM: hcmNames.has(userKey(r.name)),
-          };
-        scores[key].points += total - r.position + 1;
-        scores[key].totalDiff += r.diff;
-        scores[key].days += 1;
-        if (r.position === 1) scores[key].wins += 1;
+      for (const dateKey of index) {
+        if (!isWeekday(dateKey)) continue;
+        const day = await getDayData(kv, dateKey);
+        if (!day.arrival || !day.rankings) continue;
+        const total = day.rankings.length;
+        for (const r of day.rankings) {
+          const key = r.name;
+          if (!scores[key])
+            scores[key] = {
+              name: r.name,
+              points: 0,
+              wins: 0,
+              days: 0,
+              totalDiff: 0,
+              isHCM: hcmNames.has(userKey(r.name)),
+            };
+          scores[key].points += total - r.position + 1;
+          scores[key].totalDiff += r.diff;
+          scores[key].days += 1;
+          if (r.position === 1) scores[key].wins += 1;
+        }
       }
-    }
-    const ranked = Object.values(scores)
-      .map((s) => ({
-        ...s,
-        avgDiffMins: s.days > 0 ? Math.round(s.totalDiff / s.days) : 0,
-      }))
-      .sort((a, b) => b.points - a.points || a.avgDiffMins - b.avgDiffMins);
+      return Object.values(scores)
+        .map((s) => ({
+          ...s,
+          avgDiffMins: s.days > 0 ? Math.round(s.totalDiff / s.days) : 0,
+        }))
+        .sort((a, b) => b.points - a.points || a.avgDiffMins - b.avgDiffMins);
+    });
     res.json(ranked);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1006,6 +1031,7 @@ app.post("/api/store/buy", requireAuth, async (req, res) => {
 
     purchases.push(itemId);
     await kv.set(`purchases:${userKey(user.name)}`, JSON.stringify(purchases));
+    await invalidateCache(kv, "cache:profiles");
 
     res.json({ success: true, newBalance: balance - item.price });
   } catch (e) {
@@ -1033,6 +1059,7 @@ app.post("/api/profile/color", requireAuth, async (req, res) => {
         return res.status(400).json({ error: "Você não possui essa cor." });
       await kv.set(activeKey, colorId);
     }
+    await invalidateCache(kv, "cache:profiles");
 
     res.json({ success: true });
   } catch (e) {
@@ -1085,6 +1112,7 @@ app.post("/api/profile/emoji/buy", requireAuth, async (req, res) => {
     if (newOwned.length === 1) {
       await kv.set(`emoji_active:${uk}`, emoji);
     }
+    await invalidateCache(kv, "cache:profiles");
 
     res.json({ success: true, owned: newOwned, newBalance: balance - EMOJI_PRICE });
   } catch (e) {
@@ -1111,6 +1139,7 @@ app.post("/api/profile/emoji/remove", requireAuth, async (req, res) => {
     const activeKey = `emoji_active:${uk}`;
     const active = await kv.get(activeKey);
     if (active === emoji) await kv.del(activeKey);
+    await invalidateCache(kv, "cache:profiles");
 
     res.json({ success: true, owned: newOwned });
   } catch (e) {
@@ -1134,6 +1163,7 @@ app.post("/api/profile/emoji/set-active", requireAuth, async (req, res) => {
         return res.status(400).json({ error: "Você não possui esse emoji." });
       await kv.set(activeKey, emoji);
     }
+    await invalidateCache(kv, "cache:profiles");
 
     res.json({ success: true });
   } catch (e) {
@@ -1189,6 +1219,7 @@ app.post("/api/achievements/set-active", requireAuth, async (req, res) => {
         return res.status(400).json({ error: "Conquista não desbloqueada." });
       await kv.set(activeKey, achievementId);
     }
+    await invalidateCache(kv, "cache:profiles");
 
     res.json({ success: true });
   } catch (e) {
@@ -1200,47 +1231,51 @@ app.post("/api/achievements/set-active", requireAuth, async (req, res) => {
 app.get("/api/profiles", async (req, res) => {
   try {
     const kv = getKV();
-    const users = await getUsers(kv);
-    const profiles = {};
+    const profiles = await getCachedOrCompute(kv, "cache:profiles", async () => {
+      const users = await getUsers(kv);
+      const computed = {};
 
-    for (const u of users) {
-      const uk = userKey(u.name);
-      const purchasesKey = `purchases:${uk}`;
-      const purchases = parseRedisArray(await kv.get(purchasesKey));
+      for (const u of users) {
+        const uk = userKey(u.name);
+        const purchasesKey = `purchases:${uk}`;
+        const purchases = parseRedisArray(await kv.get(purchasesKey));
 
-      let activeColor = null;
-      const chosenColorId = await kv.get(`color_active:${uk}`);
-      if (chosenColorId && purchases.includes(chosenColorId)) {
-        const item = STORE_ITEMS.find((i) => i.id === chosenColorId && i.type === "namecolor");
-        if (item) activeColor = { id: chosenColorId, color: item.color, title: item.title };
-      }
-      if (!activeColor) {
-        // Sem escolha explícita: usa a cor de maior prestígio que o jogador possui.
-        const colorPriority = ["color_diamante", "color_dourado", "color_rubi", "color_esmeralda"];
-        for (const cid of colorPriority) {
-          if (purchases.includes(cid)) {
-            const item = STORE_ITEMS.find((i) => i.id === cid);
-            if (item) {
-              activeColor = { id: cid, color: item.color, title: item.title };
-              break;
+        let activeColor = null;
+        const chosenColorId = await kv.get(`color_active:${uk}`);
+        if (chosenColorId && purchases.includes(chosenColorId)) {
+          const item = STORE_ITEMS.find((i) => i.id === chosenColorId && i.type === "namecolor");
+          if (item) activeColor = { id: chosenColorId, color: item.color, title: item.title };
+        }
+        if (!activeColor) {
+          // Sem escolha explícita: usa a cor de maior prestígio que o jogador possui.
+          const colorPriority = ["color_diamante", "color_dourado", "color_rubi", "color_esmeralda"];
+          for (const cid of colorPriority) {
+            if (purchases.includes(cid)) {
+              const item = STORE_ITEMS.find((i) => i.id === cid);
+              if (item) {
+                activeColor = { id: cid, color: item.color, title: item.title };
+                break;
+              }
             }
           }
         }
+
+        let activeAchievement = null;
+        try {
+          const activeAchId = await kv.get(`achievement_active:${uk}`);
+          if (activeAchId) {
+            const def = ACHIEVEMENT_DEFS.find((a) => a.id === activeAchId);
+            if (def) activeAchievement = { id: def.id, icon: def.icon, title: def.title };
+          }
+        } catch {}
+
+        const activeEmoji = (await kv.get(`emoji_active:${uk}`)) || null;
+
+        computed[u.name] = { nameColor: activeColor, achievement: activeAchievement, emoji: activeEmoji };
       }
 
-      let activeAchievement = null;
-      try {
-        const activeAchId = await kv.get(`achievement_active:${uk}`);
-        if (activeAchId) {
-          const def = ACHIEVEMENT_DEFS.find((a) => a.id === activeAchId);
-          if (def) activeAchievement = { id: def.id, icon: def.icon, title: def.title };
-        }
-      } catch {}
-
-      const activeEmoji = (await kv.get(`emoji_active:${uk}`)) || null;
-
-      profiles[u.name] = { nameColor: activeColor, achievement: activeAchievement, emoji: activeEmoji };
-    }
+      return computed;
+    });
 
     res.json(profiles);
   } catch (e) {
