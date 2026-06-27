@@ -20,6 +20,38 @@ let msGameOver = false;
 let msFirstClick = true;
 let msRevealedCount = 0;
 
+/**
+ * Abre a janela do Campo Minado, inicializa o tabuleiro e valida a sessão.
+ */
+function openMinesweeperWindow() {
+  openWindow("win-minesweeper");
+  initMinesweeper();
+  checkMsSessionValidity();
+}
+
+/**
+ * Testa se a sessão atual consegue salvar o rank ao final da partida.
+ * Mostra um aviso Win95 caso o token esteja ausente/inválido/expirado.
+ */
+async function checkMsSessionValidity() {
+  const warningEl = document.getElementById("ms-session-warning");
+  if (!warningEl) return;
+
+  if (!currentUser || !sessionToken) {
+    warningEl.style.display = "block";
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/session-check`, {
+      headers: authHeaders(sessionToken),
+    });
+    warningEl.style.display = res.ok ? "none" : "block";
+  } catch (e) {
+    warningEl.style.display = "block";
+  }
+}
+
 // ─── DIFFICULTY SWITCHING ──────────────────
 
 function setMsDifficulty(diff) {
@@ -202,6 +234,31 @@ function checkMsWin() {
     triggerMsGameOver(true);
   }
 }
+
+/**
+ * Atalho de teste: força uma vitória imediata sem precisar revelar o tabuleiro.
+ * Use no console (msTestWin()) ou Ctrl+Shift+W com a janela do Campo Minado aberta.
+ */
+function msTestWin(fakeTimer) {
+  if (msGameOver) return;
+  if (msFirstClick) {
+    msFirstClick = false;
+    placeMsMines(0, 0);
+    calculateMsNeighbors();
+  }
+  stopMsTimer();
+  msTimer = fakeTimer !== undefined ? fakeTimer : msTimer;
+  msRevealedCount = MS_ROWS * MS_COLS - MS_MINES;
+  triggerMsGameOver(true);
+}
+
+document.addEventListener("keydown", (e) => {
+  const win = document.getElementById("win-minesweeper");
+  if (win && win.style.display !== "none" && e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "w") {
+    e.preventDefault();
+    msTestWin();
+  }
+});
 
 /**
  * Finaliza o jogo — vitória usa o tempo como pontuação (menor é melhor → score = 9999 - tempo)

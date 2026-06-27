@@ -710,6 +710,18 @@ body {
   box-shadow: 4px 4px 0 black;
 }
 
+/* ─── MINESWEEPER SESSION WARNING ─────────── */
+.ms-session-warning {
+  background: #ffffe1;
+  box-shadow: var(--shadow-in);
+  border-left: 3px solid #aa0000;
+  color: #aa0000;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 5px 8px;
+  margin-bottom: 6px;
+}
+
 /* ─── ADMIN RESULT ────────────────────────── */
 .admin-rankings {
   margin-top: 8px;

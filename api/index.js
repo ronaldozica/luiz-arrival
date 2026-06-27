@@ -696,6 +696,11 @@ app.get("/api/overall-rank", async (req, res) => {
   }
 });
 
+// GET /api/session-check — verifica se o token de sessão atual ainda é válido
+app.get("/api/session-check", requireAuth, async (req, res) => {
+  res.json({ valid: true });
+});
+
 // GET /api/game-rank
 app.get("/api/game-rank", async (req, res) => {
   try {
@@ -735,17 +740,12 @@ app.post("/api/game-rank", requireAuth, async (req, res) => {
 
     const SCORE_LIMITS = {
       snake: 99999,           // Snake: fisicamente impossível passar disso
-      minesweeper: 1,         // Minesweeper: score é apenas 0 (falhou) ou 1 (completou)
+      minesweeper: 9999,      // Minesweeper: score = 9999 - tempo(s), só enviado ao vencer
     };
 
     const maxScore = SCORE_LIMITS[game];
     if (maxScore !== undefined && scoreNum > maxScore) {
       return res.status(400).json({ error: "Score fora dos limites permitidos." });
-    }
-
-    // Para minesweeper, o score deve ser exatamente 0 ou 1
-    if (game === "minesweeper" && scoreNum !== 0 && scoreNum !== 1) {
-      return res.status(400).json({ error: "Score de minesweeper inválido." });
     }
 
     // Valida difficulty para minesweeper
@@ -777,8 +777,8 @@ app.post("/api/game-rank", requireAuth, async (req, res) => {
       coinsEarned = Math.floor(scoreNum / 100) * 5;
       if (scoreNum >= 250) coinsEarned += 10;
       if (scoreNum >= 500) coinsEarned += 10;
-    } else if (game === "minesweeper" && scoreNum === 1) {
-      // Só ganha moedas se realmente completou (score=1)
+    } else if (game === "minesweeper") {
+      // O score só é enviado quando o jogador vence a partida
       if (difficulty === "expert") coinsEarned = 25;
       else if (difficulty === "intermediate") coinsEarned = 10;
       else if (difficulty === "beginner") coinsEarned = 1;
@@ -801,7 +801,7 @@ app.post("/api/game-rank", requireAuth, async (req, res) => {
       achUnlocked.push("snake_500");
       newAchievements.push("snake_500");
     }
-    if (game === "minesweeper" && scoreNum === 1) {
+    if (game === "minesweeper") {
       const achId =
         difficulty === "beginner"
           ? "minesweeper_beginner"

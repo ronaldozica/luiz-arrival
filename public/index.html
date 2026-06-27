@@ -62,7 +62,7 @@
       <hr />
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
-      <button onclick="openWindow('win-minesweeper'); initMinesweeper(); closeStartMenu()">💣 Campo Minado</button>
+      <button onclick="openMinesweeperWindow(); closeStartMenu()">💣 Campo Minado</button>
       <button onclick="openWindow('win-gamerank'); loadGameRank('snake'); closeStartMenu()">🎮 Rank Jogos</button>
       <hr />
       <button onclick="openWindow('win-login'); closeStartMenu()">🔑 Login / Trocar Conta</button>
@@ -96,7 +96,7 @@
       <div class="icon-label">Snake 95</div>
     </div>
     <div class="desktop-icon" data-icon-id="icon-minesweeper"
-      data-action="openWindow('win-minesweeper'); initMinesweeper()">
+      data-action="openMinesweeperWindow()">
       <div class="icon-img">💣</div>
       <div class="icon-label">Campo<br>Minado</div>
     </div>
@@ -383,6 +383,11 @@
       </div>
     </div>
     <div class="win95-body" style="background: var(--win-gray); padding: 6px;">
+
+      <div class="ms-session-warning" id="ms-session-warning" style="display:none">
+        ⚠️ <strong>Sessão inválida.</strong> Você não conseguirá salvar seu recorde ao terminar a partida.
+        Saia e faça login novamente para corrigir.
+      </div>
 
       <!-- Difficulty selector -->
       <div class="ms-difficulty-bar">
