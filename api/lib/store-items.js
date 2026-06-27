@@ -22,14 +22,14 @@ function emojiPriceForCount(ownedCount) {
 }
 
 // ─── Preço pago "congelado" (compras passadas não mudam de valor) ──────────
-// Mudar STORE_ITEMS.price ou EMOJI_BASE_PRICE/EMOJI_PRICE_STEP daqui pra
+// Mudar STORE_ITEMS.price ou EMOJI_BASE_PRICE/EMOJI_PRICE_STEP daqui para
 // frente só afeta NOVAS compras: cada compra nova é guardada como
 // `{ id/emoji, pricePaid }`, não apenas o id/emoji. Assim o valor gasto fica
 // fixo no momento da compra, independente de o item mudar de preço depois.
 //
 // Compras feitas ANTES desta mudança foram salvas como string solta (sem
 // pricePaid). Pra elas, usamos os snapshots abaixo — congelados para sempre,
-// nunca sincronizados com STORE_ITEMS/EMOJI_BASE_PRICE — só pra não alterar
+// nunca sincronizados com STORE_ITEMS/EMOJI_BASE_PRICE — só para não alterar
 // retroativamente o saldo de quem já comprou. NUNCA edite estes valores.
 const LEGACY_STORE_PRICES = {
   palinha: 10,
