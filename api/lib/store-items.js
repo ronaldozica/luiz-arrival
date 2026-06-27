@@ -14,9 +14,9 @@ const STORE_ITEMS = [
 ];
 
 // ─── Emoji de ranking (compra livre, não é um item fixo da loja) ────────────
-// Sem limite de quantidade; cada emoji novo custa 100 LuizCoins mais que o anterior.
-const EMOJI_BASE_PRICE = 500;
-const EMOJI_PRICE_STEP = 100;
+// Sem limite de quantidade; cada emoji novo custa 125 LuizCoins mais que o anterior.
+const EMOJI_BASE_PRICE = 125;
+const EMOJI_PRICE_STEP = 125;
 function emojiPriceForCount(ownedCount) {
   return EMOJI_BASE_PRICE + EMOJI_PRICE_STEP * ownedCount;
 }
