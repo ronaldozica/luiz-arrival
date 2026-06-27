@@ -13,6 +13,7 @@ const { todayKey, timeStrToMinutes, brasiliaWallTimeToInstant, getWeekKey } = re
 const { userKey, absDiff, parseRedisNumber } = require("../lib/utils");
 const { unlockAchievement } = require("../lib/achievement-defs");
 const { countPlayedDaysBefore, computeWeekRanking, MIN_DAYS_FOR_OVERALL_RANK } = require("../lib/rankings");
+const { calcBalance } = require("../lib/store-items");
 
 // Apostas feitas a menos de 30min do horário real de chegada são suspeitas de
 // "sniping" (jogador viu o Luiz chegar e apostou antes do admin registrar).
@@ -167,6 +168,29 @@ router.post("/admin/users", requireAdminAuth, async (req, res) => {
 
     await saveUsers(kv, users);
     res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/coins/all — saldo de LuizCoins de todos os jogadores de uma vez (admin only)
+router.get("/admin/coins/all", requireAdminAuth, async (req, res) => {
+  try {
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const balances = [];
+    for (const user of users) {
+      const { earnedCoins, spentCoins, gameCoins } = await calcBalance(kv, user, users);
+      balances.push({
+        name: user.name,
+        balance: Math.max(0, earnedCoins - spentCoins),
+        earnedCoins,
+        spentCoins,
+        gameCoins,
+      });
+    }
+    balances.sort((a, b) => b.balance - a.balance);
+    res.json(balances);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

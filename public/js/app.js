@@ -1296,6 +1296,41 @@ async function adjustAdminCoins(sign) {
   }
 }
 
+async function loadAdminCoinsAll() {
+  const result = document.getElementById("admin-coins-all-result");
+  const msg = document.getElementById("admin-coins-msg");
+  showLoading("Consultando saldo de todos...");
+  try {
+    const res = await fetch(`${API}/admin/coins/all`, {
+      headers: { "Authorization": `Bearer ${adminToken}` },
+    });
+    const balances = await res.json();
+    if (!res.ok) {
+      showMsg(msg, `❌ ${balances.error || "Erro ao carregar."}`, "err");
+      handleAdminAuthError(res.status);
+      return;
+    }
+    let html = `<table class="win95-table"><thead><tr>
+      <th>Jogador</th><th>Saldo</th><th>Ganho</th><th>Gasto</th><th>Minigames</th>
+    </tr></thead><tbody>`;
+    balances.forEach((b) => {
+      html += `<tr>
+        <td>${escHtml(b.name)}</td>
+        <td><strong>${b.balance}</strong></td>
+        <td>${b.earnedCoins}</td>
+        <td>${b.spentCoins}</td>
+        <td>${b.gameCoins}</td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+    result.innerHTML = html;
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
 async function loadAdminTags() {
   const msg = document.getElementById("admin-tags-msg");
   const result = document.getElementById("admin-tags-result");
