@@ -60,6 +60,7 @@
       <button onclick="openStore(); closeStartMenu()">🛒 Loja</button>
       <button onclick="openAchievements(); closeStartMenu()">🏅 Conquistas</button>
       <button onclick="openProfileWindow(); closeStartMenu()">🧑‍🎨 Perfil</button>
+      <button onclick="openReleaseNotes(); closeStartMenu()">📰 Novidades</button>
       <hr />
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
@@ -118,6 +119,10 @@
     <div class="desktop-icon" data-icon-id="icon-profile" data-action="openProfileWindow()">
       <div class="icon-img">🧑‍🎨</div>
       <div class="icon-label">Perfil</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-release-notes" data-action="openReleaseNotes()">
+      <div class="icon-img">📰</div>
+      <div class="icon-label">Novidades</div>
     </div>
   </div>
 
@@ -599,6 +604,22 @@
     <div class="win95-body">
       <div class="win95-tabs" id="emoji-picker-tabs"></div>
       <div class="emoji-picker-grid" id="emoji-picker-grid"></div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: NOVIDADES / RELEASE NOTES ══ -->
+  <div class="win95-window" id="win-release-notes" style="left:140px;top:60px;width:460px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-release-notes')">
+      <span class="win95-title">📰 Novidades do LuizOS</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-release-notes')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-release-notes')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body win95-body-scroll">
+      <div id="release-notes-content">
+        <div class="loading">⏳ Carregando...</div>
+      </div>
     </div>
   </div>
 

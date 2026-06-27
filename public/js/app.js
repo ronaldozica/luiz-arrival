@@ -228,6 +228,7 @@ function updateTaskbar() {
     "win-gamerank": "🎮 Rank Jogos",
     "win-achievements": "🏅 Conquistas",
     "win-profile": "🧑‍🎨 Perfil",
+    "win-release-notes": "📰 Novidades",
   };
   for (const [id, label] of Object.entries(windows)) {
     const w = document.getElementById(id);
@@ -2230,3 +2231,78 @@ function showAchievementToast(achievementIds) {
     }, idx * 1000);
   });
 }
+
+// ─── Release Notes ────────────────────────────────────────────────────────────
+// Sempre que uma feature ou correção for implementada nesta sessão de código,
+// adicione um item na entrada de versão atual (ou crie uma nova entrada no topo
+// do array, seguindo semver, se a mudança merecer uma versão própria). Cada
+// entrada vira automaticamente a tela exibida ao usuário que ainda não viu essa
+// versão (ver RELEASE_NOTES_CURRENT_VERSION/checkReleaseNotes abaixo) — não pule
+// esta atualização mesmo que não tenha sido pedida explicitamente.
+const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
+const RELEASE_NOTES = [
+  {
+    version: "1.1.0",
+    date: "27/06/2026",
+    isNew: true,
+    title: "Loja renovada, emojis e mais performance",
+    items: [
+      "🙂 Emoji de ranking: compre emojis para exibir ao lado do seu nome, na aba Perfil ou direto na Loja. Sem limite de quantidade — cada novo emoji custa 100 LuizCoins mais que o anterior.",
+      "🔓 Sessão não expira mais — você continua logado sem precisar refazer login toda hora.",
+      "🛡️ Novas ferramentas de admin: remover pontuações falsas dos jogos e ajustar LuizCoins de qualquer usuário manualmente.",
+      "💣 Correção no cálculo de pontuação do Campo Minado.",
+      "⚡ Cache de leituras pesadas no servidor e no navegador, deixando o app mais rápido e reduzindo a carga no banco de dados.",
+    ],
+  },
+  {
+    version: "1.0.0",
+    date: "21/06/2026",
+    isNew: false,
+    title: "Versão inicial do LuizOS",
+    items: [
+      "🎯 Aposte no horário de chegada do Luiz, veja as apostas abertas do dia e o histórico de dias anteriores.",
+      "📅 Suporte a apostar para o próximo dia útil quando o dia atual já fechou.",
+      "🏆 Ranking geral e LuizCoins™: ganhe moedas acertando ou ficando bem posicionado no palpite do dia.",
+      "🛒 Loja do Luiz: troque LuizCoins™ por skins/gifs do Luiz e cores especiais para o seu nome no ranking.",
+      "🏅 Conquistas: desbloqueie badges e exiba a favorita ao lado do seu nome.",
+      "🐍💣 Mini-games Snake 95 e Campo Minado, com ranking próprio.",
+      "👤 Login e cadastro de usuários, painel administrativo.",
+      "🖼️ Customização de papel de parede e posição dos ícones da área de trabalho.",
+      "🔒 Melhorias de segurança no login e nas sessões.",
+    ],
+  },
+];
+const RELEASE_NOTES_CURRENT_VERSION = RELEASE_NOTES[0].version;
+
+function renderReleaseNotes() {
+  const container = document.getElementById("release-notes-content");
+  if (!container) return;
+  let html = "";
+  RELEASE_NOTES.forEach((release) => {
+    html += `<div class="release-version-block">
+      <div class="release-version-header">
+        <span>🗂️ Versão ${release.version} — ${escHtml(release.title)}${release.isNew ? '<span class="release-version-badge">NOVO</span>' : ""}</span>
+        <span class="release-version-date">${release.date}</span>
+      </div>
+      <ul class="release-version-items">
+        ${release.items.map((item) => `<li>${item}</li>`).join("")}
+      </ul>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function openReleaseNotes() {
+  renderReleaseNotes();
+  openWindow("win-release-notes");
+  localStorage.setItem(RELEASE_NOTES_SEEN_KEY, RELEASE_NOTES_CURRENT_VERSION);
+}
+
+function checkReleaseNotes() {
+  const seenVersion = localStorage.getItem(RELEASE_NOTES_SEEN_KEY);
+  if (seenVersion !== RELEASE_NOTES_CURRENT_VERSION) {
+    openReleaseNotes();
+  }
+}
+
+checkReleaseNotes();
