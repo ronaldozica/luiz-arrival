@@ -33,15 +33,14 @@ if (!ADMIN_PASSWORD_HASH) {
 
 // ─── Session tokens ──────────────────────────────────────────────────────────
 // Tokens de sessão persistidos no Redis para suportar execução serverless.
-// Expiração: 24 horas.
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+// Sessões são permanentes: só são removidas no logout explícito.
 const SESSION_PREFIX = "session:";
 const ADMIN_SESSION_KEY = "admin_session";
 const ADMIN_SESSION_EXPIRY_KEY = "admin_session_expiry";
 
 async function createUserSession(kv, name) {
   const token = crypto.randomBytes(32).toString("hex");
-  const session = { name, expiresAt: Date.now() + SESSION_TTL_MS };
+  const session = { name };
   await kv.set(`${SESSION_PREFIX}${token}`, JSON.stringify(session));
   console.log("[SESSION CREATE]", token, session);
   return token;
@@ -62,10 +61,7 @@ async function resolveUserSession(kv, token) {
     console.log("[SESSION RESOLVE] invalid session payload", error);
     return null;
   }
-  if (!session || Date.now() > session.expiresAt) {
-    await kv.del(`${SESSION_PREFIX}${token}`);
-    return null;
-  }
+  if (!session) return null;
   return session.name;
 }
 
