@@ -713,6 +713,29 @@ app.get("/api/game-rank", async (req, res) => {
   }
 });
 
+// POST /api/admin/game-rank/delete — remove o recorde de um jogador (anti-trapaça)
+// Funciona para qualquer jogo (game[:difficulty]) presente ou futuro.
+app.post("/api/admin/game-rank/delete", requireAdminAuth, async (req, res) => {
+  try {
+    const { game, difficulty, name } = req.body;
+    if (!game || !name) {
+      return res.status(400).json({ error: "game e name são obrigatórios." });
+    }
+    const rankKey = difficulty
+      ? `gamerank:${game}:${difficulty}`
+      : `gamerank:${game}`;
+    const kv = getKV();
+    let scores = (await kv.get(rankKey)) || [];
+    scores = scores.filter(
+      (s) => String(s.name).toLowerCase() !== String(name).toLowerCase(),
+    );
+    await kv.set(rankKey, scores);
+    res.json({ success: true, rank: scores });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/game-rank — requer sessão válida; playerName vem do token, não do body
 // Proteção contra burla: o servidor ignora qualquer playerName enviado pelo cliente.
 // O score é validado contra limites razoáveis por jogo.

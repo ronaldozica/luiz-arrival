@@ -1092,6 +1092,99 @@ async function adminLogin() {
   }
 }
 
+function setAdminTab(tab) {
+  document.querySelectorAll("#win-admin .rank-tab").forEach((b) => {
+    b.classList.toggle("active", b.dataset.adminTab === tab);
+  });
+  document.getElementById("admin-tab-arrival").style.display = tab === "arrival" ? "block" : "none";
+  document.getElementById("admin-tab-rankcheat").style.display = tab === "rankcheat" ? "block" : "none";
+}
+
+function onAdminRankGameChange() {
+  const game = document.getElementById("admin-rank-game").value;
+  document.getElementById("admin-rank-difficulty-group").style.display = game === "minesweeper" ? "block" : "none";
+}
+
+function handleAdminAuthError(status, msg) {
+  if (status !== 401) return false;
+  adminToken = "";
+  document.getElementById("admin-login-panel").style.display = "block";
+  document.getElementById("admin-panel").style.display = "none";
+  showMsg(document.getElementById("admin-login-msg"), "Sessão expirada. Faça login novamente.", "err");
+  return true;
+}
+
+async function loadAdminRankCheat() {
+  const game = document.getElementById("admin-rank-game").value;
+  const difficulty = game === "minesweeper" ? document.getElementById("admin-rank-difficulty").value : null;
+  const msg = document.getElementById("admin-rankcheat-msg");
+  const result = document.getElementById("admin-rankcheat-result");
+  showMsg(msg, "", "ok");
+  showLoading("Carregando ranking...");
+  try {
+    const params = difficulty ? `?game=${game}&difficulty=${difficulty}` : `?game=${game}`;
+    const res = await fetch(`${API}/game-rank${params}`);
+    const scores = await res.json();
+    if (!res.ok) {
+      showMsg(msg, `❌ ${scores.error || "Erro ao carregar."}`, "err");
+      result.innerHTML = "";
+      return;
+    }
+    renderAdminRankCheat(scores, game, difficulty);
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+function renderAdminRankCheat(scores, game, difficulty) {
+  const result = document.getElementById("admin-rankcheat-result");
+  if (!scores || scores.length === 0) {
+    result.innerHTML = '<div class="no-data">Nenhum recorde neste ranking.</div>';
+    return;
+  }
+  let html = `<table class="win95-table"><thead><tr>
+    <th>Jogador</th><th>Pontuação</th><th>Data</th><th></th>
+  </tr></thead><tbody>`;
+  scores.forEach((s) => {
+    const date = new Date(s.date).toLocaleDateString("pt-BR");
+    html += `<tr>
+      <td>${s.name}</td>
+      <td><strong>${s.score}</strong></td>
+      <td>${date}</td>
+      <td><button class="win95-action-btn" style="font-size:10px;padding:1px 6px" onclick="deleteAdminRankEntry('${game}', ${difficulty ? `'${difficulty}'` : null}, '${String(s.name).replace(/'/g, "\\'")}')">🗑️</button></td>
+    </tr>`;
+  });
+  html += "</tbody></table>";
+  result.innerHTML = html;
+}
+
+async function deleteAdminRankEntry(game, difficulty, name) {
+  const msg = document.getElementById("admin-rankcheat-msg");
+  if (!confirm(`Remover o recorde de "${name}"?`)) return;
+  showLoading("Removendo registro...");
+  try {
+    const res = await fetch(`${API}/admin/game-rank/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+      body: JSON.stringify({ game, difficulty, name }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showMsg(msg, `✅ Recorde de "${name}" removido.`, "ok");
+      renderAdminRankCheat(data.rank, game, difficulty);
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+      handleAdminAuthError(res.status);
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
 async function setArrival() {
   const time = document.getElementById("admin-arrival-time").value;
   const date = document.getElementById("admin-date").value || undefined;
@@ -1119,12 +1212,7 @@ async function setArrival() {
       todayStatusCache = null;
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
-      if (res.status === 401) {
-        adminToken = "";
-        document.getElementById("admin-login-panel").style.display = "block";
-        document.getElementById("admin-panel").style.display = "none";
-        showMsg(document.getElementById("admin-login-msg"), "Sessão expirada. Faça login novamente.", "err");
-      }
+      handleAdminAuthError(res.status);
     }
   } catch {
     showMsg(msg, "Erro de conexão.", "err");

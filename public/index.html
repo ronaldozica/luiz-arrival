@@ -326,21 +326,53 @@
         <div class="win95-msg" id="admin-login-msg"></div>
       </div>
       <div id="admin-panel" style="display:none">
-        <p><strong>Registrar chegada do Luiz</strong></p>
-        <div class="field-group">
-          <label>Data (deixe vazio para hoje):</label>
-          <input type="date" id="admin-date" />
+        <div class="win95-tabs">
+          <button class="rank-tab active" data-admin-tab="arrival" onclick="setAdminTab('arrival')">📍 Chegada do Luiz</button>
+          <button class="rank-tab" data-admin-tab="rankcheat" onclick="setAdminTab('rankcheat')">🗑️ Ranking de Jogos</button>
         </div>
-        <div class="field-group">
-          <label>Horário de chegada:</label>
-          <input type="time" id="admin-arrival-time" />
+
+        <div id="admin-tab-arrival">
+          <p><strong>Registrar chegada do Luiz</strong></p>
+          <div class="field-group">
+            <label>Data (deixe vazio para hoje):</label>
+            <input type="date" id="admin-date" />
+          </div>
+          <div class="field-group">
+            <label>Horário de chegada:</label>
+            <input type="time" id="admin-arrival-time" />
+          </div>
+          <div class="btn-row">
+            <button class="win95-action-btn" onclick="setArrival()">📍 Registrar Chegada</button>
+          </div>
+          <div class="win95-msg" id="admin-msg"></div>
+          <hr />
+          <div id="admin-result"></div>
         </div>
-        <div class="btn-row">
-          <button class="win95-action-btn" onclick="setArrival()">📍 Registrar Chegada</button>
+
+        <div id="admin-tab-rankcheat" style="display:none">
+          <p><strong>Remover registros de ranking (anti-trapaça)</strong></p>
+          <div class="field-group">
+            <label>Jogo:</label>
+            <select id="admin-rank-game" onchange="onAdminRankGameChange()">
+              <option value="snake">🐍 Snake</option>
+              <option value="minesweeper">💣 Campo Minado</option>
+            </select>
+          </div>
+          <div class="field-group" id="admin-rank-difficulty-group" style="display:none">
+            <label>Dificuldade:</label>
+            <select id="admin-rank-difficulty">
+              <option value="beginner">Iniciante</option>
+              <option value="intermediate">Intermediário</option>
+              <option value="expert">Especialista</option>
+            </select>
+          </div>
+          <div class="btn-row">
+            <button class="win95-action-btn" onclick="loadAdminRankCheat()">🔍 Carregar Ranking</button>
+          </div>
+          <div class="win95-msg" id="admin-rankcheat-msg"></div>
+          <hr />
+          <div id="admin-rankcheat-result"></div>
         </div>
-        <div class="win95-msg" id="admin-msg"></div>
-        <hr />
-        <div id="admin-result"></div>
       </div>
     </div>
   </div>
