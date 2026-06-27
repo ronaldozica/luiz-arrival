@@ -2375,9 +2375,26 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "1.2.0",
+    version: "1.3.0",
     date: "27/06/2026",
     isNew: true,
+    title: "Economia rebalanceada: loja mais acessível e mais justa",
+    items: [
+      "🛒 Preços da loja recalibrados — gifs, Esmeralda e Rubi ficam acessíveis em poucos dias; Dourada em menos de 1 mês; Diamante (2,5x o preço da Dourada) em menos de 2 meses, em vez de praticamente inalcançável.",
+      "🙂 Primeiro emoji de ranking caiu de 500 para 125 LuizCoins (cada novo continua subindo 125).",
+      "🔒 Correção importante: o preço pago agora é \"congelado\" na hora da compra (loja e emoji) — mudar o preço de um item no futuro não altera mais retroativamente o saldo de quem já comprou.",
+      "🎮 Novo teto diário de 20 LuizCoins ganhos em minigames (Snake/Campo Minado), já que não há cooldown entre partidas.",
+      "🐍 Curva de pontos do Snake achatada nos scores fáceis (200-300 pontos): recompensa cheia agora exige chegar nos 500 pontos da conquista.",
+      "🚫 Removido o bônus automático de 125 LuizCoins que todo cadastro novo recebia (saldo de quem já tinha não foi alterado).",
+      "📊 Painel admin: botão para consultar o saldo de todos os jogadores de uma vez.",
+      "🏷️ Loja: itens já comprados agora mostram quanto custam hoje, mesmo depois de desbloqueados.",
+      "📐 Regras de Pontuação agora abre com uma explicação simples por padrão, com os detalhes técnicos escondidos atrás de um botão.",
+    ],
+  },
+  {
+    version: "1.2.0",
+    date: "27/06/2026",
+    isNew: false,
     title: "Novo sistema de apostas: precisão, anti-sniping e rankings semanais",
     items: [
       "🎯 Pontuação agora é por precisão absoluta (quão perto você chegou do horário real), não mais por posição relativa aos outros apostadores do dia.",
