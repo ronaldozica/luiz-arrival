@@ -198,17 +198,40 @@ async function saveUsers(kv, users) {
 // por usuário). Para não estourar o limite de comandos do plano gratuito do
 // Redis, o resultado computado é guardado sob uma única chave e só é
 // recalculado quando os dados de origem mudam (ver invalidateCache nos pontos
-// de escrita: setDayData, saveUsers e as rotas de perfil).
+// de escrita: setDayData, saveUsers e o middleware invalidatesCache).
+//
+// O TTL abaixo é só uma rede de segurança: se algum caminho de escrita futuro
+// esquecer de invalidar a chave, o cache se autocorrige sozinho em poucos
+// minutos em vez de ficar errado indefinidamente.
+const CACHE_SAFETY_TTL_SECONDS = 5 * 60;
+
 async function getCachedOrCompute(kv, cacheKey, computeFn) {
   const cached = await kv.get(cacheKey);
   if (cached !== null && cached !== undefined) return cached;
   const value = await computeFn();
-  await kv.set(cacheKey, value);
+  await kv.set(cacheKey, value, { ex: CACHE_SAFETY_TTL_SECONDS });
   return value;
 }
 
 async function invalidateCache(kv, ...keys) {
   if (keys.length) await kv.del(...keys);
+}
+
+// Middleware: invalida as chaves de cache informadas depois que a rota
+// responde com sucesso (status < 400). Centraliza a invalidação na
+// declaração da rota em vez de espalhar `invalidateCache` pelo corpo de cada
+// handler — uma rota nova que use este middleware nunca esquece de invalidar.
+function invalidatesCache(...cacheKeys) {
+  return (req, res, next) => {
+    res.on("finish", () => {
+      if (res.statusCode >= 400) return;
+      const kv = getKV();
+      invalidateCache(kv, ...cacheKeys).catch((e) =>
+        console.error("[CACHE INVALIDATE]", cacheKeys, e),
+      );
+    });
+    next();
+  };
 }
 
 // Verifica a senha de um usuário comparando com o hash armazenado.
@@ -1009,7 +1032,7 @@ app.get("/api/store", requireAuth, async (req, res) => {
 });
 
 // POST /api/store/buy — requer sessão válida
-app.post("/api/store/buy", requireAuth, async (req, res) => {
+app.post("/api/store/buy", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
   try {
     const { itemId } = req.body;
     const kv = getKV();
@@ -1031,7 +1054,6 @@ app.post("/api/store/buy", requireAuth, async (req, res) => {
 
     purchases.push(itemId);
     await kv.set(`purchases:${userKey(user.name)}`, JSON.stringify(purchases));
-    await invalidateCache(kv, "cache:profiles");
 
     res.json({ success: true, newBalance: balance - item.price });
   } catch (e) {
@@ -1040,7 +1062,7 @@ app.post("/api/store/buy", requireAuth, async (req, res) => {
 });
 
 // POST /api/profile/color — define qual cor de nome (já comprada) é exibida no ranking
-app.post("/api/profile/color", requireAuth, async (req, res) => {
+app.post("/api/profile/color", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
   try {
     const { colorId } = req.body;
     const kv = getKV();
@@ -1059,7 +1081,6 @@ app.post("/api/profile/color", requireAuth, async (req, res) => {
         return res.status(400).json({ error: "Você não possui essa cor." });
       await kv.set(activeKey, colorId);
     }
-    await invalidateCache(kv, "cache:profiles");
 
     res.json({ success: true });
   } catch (e) {
@@ -1082,7 +1103,7 @@ app.get("/api/profile/emoji", requireAuth, async (req, res) => {
 });
 
 // POST /api/profile/emoji/buy — compra um emoji novo (qualquer emoji válido) por 500 LuizCoins
-app.post("/api/profile/emoji/buy", requireAuth, async (req, res) => {
+app.post("/api/profile/emoji/buy", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
   try {
     const { emoji } = req.body;
     if (!emoji || typeof emoji !== "string" || !EMOJI_REGEX.test(emoji)) {
@@ -1112,7 +1133,6 @@ app.post("/api/profile/emoji/buy", requireAuth, async (req, res) => {
     if (newOwned.length === 1) {
       await kv.set(`emoji_active:${uk}`, emoji);
     }
-    await invalidateCache(kv, "cache:profiles");
 
     res.json({ success: true, owned: newOwned, newBalance: balance - EMOJI_PRICE });
   } catch (e) {
@@ -1121,7 +1141,7 @@ app.post("/api/profile/emoji/buy", requireAuth, async (req, res) => {
 });
 
 // POST /api/profile/emoji/remove — remove um emoji possuído (sem reembolso), liberando vaga para comprar outro
-app.post("/api/profile/emoji/remove", requireAuth, async (req, res) => {
+app.post("/api/profile/emoji/remove", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
   try {
     const { emoji } = req.body;
     if (!emoji) return res.status(400).json({ error: "emoji é obrigatório." });
@@ -1139,7 +1159,6 @@ app.post("/api/profile/emoji/remove", requireAuth, async (req, res) => {
     const activeKey = `emoji_active:${uk}`;
     const active = await kv.get(activeKey);
     if (active === emoji) await kv.del(activeKey);
-    await invalidateCache(kv, "cache:profiles");
 
     res.json({ success: true, owned: newOwned });
   } catch (e) {
@@ -1148,7 +1167,7 @@ app.post("/api/profile/emoji/remove", requireAuth, async (req, res) => {
 });
 
 // POST /api/profile/emoji/set-active — define qual emoji possuído é exibido no ranking
-app.post("/api/profile/emoji/set-active", requireAuth, async (req, res) => {
+app.post("/api/profile/emoji/set-active", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
   try {
     const { emoji } = req.body;
     const kv = getKV();
@@ -1163,7 +1182,6 @@ app.post("/api/profile/emoji/set-active", requireAuth, async (req, res) => {
         return res.status(400).json({ error: "Você não possui esse emoji." });
       await kv.set(activeKey, emoji);
     }
-    await invalidateCache(kv, "cache:profiles");
 
     res.json({ success: true });
   } catch (e) {
@@ -1201,7 +1219,7 @@ app.get("/api/achievements", requireAuth, async (req, res) => {
 });
 
 // POST /api/achievements/set-active — requer sessão válida
-app.post("/api/achievements/set-active", requireAuth, async (req, res) => {
+app.post("/api/achievements/set-active", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
   try {
     const { achievementId } = req.body;
     const kv = getKV();
@@ -1219,7 +1237,6 @@ app.post("/api/achievements/set-active", requireAuth, async (req, res) => {
         return res.status(400).json({ error: "Conquista não desbloqueada." });
       await kv.set(activeKey, achievementId);
     }
-    await invalidateCache(kv, "cache:profiles");
 
     res.json({ success: true });
   } catch (e) {

@@ -1347,6 +1347,7 @@ async function deleteAdminRankEntry(game, difficulty, name) {
     const data = await res.json();
     if (res.ok) {
       showMsg(msg, `✅ Recorde de "${name}" removido.`, "ok");
+      try { localStorage.removeItem(CACHE_PREFIX + `game_rank_${game}_${difficulty || "default"}`); } catch {}
       renderAdminRankCheat(data.rank, game, difficulty);
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
