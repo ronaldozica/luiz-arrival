@@ -876,12 +876,6 @@ async function doLogin() {
   }
 }
 
-function continueAsGuest() {
-  currentUser = null;
-  updateUserDisplay();
-  closeWindow("win-login");
-}
-
 // ─── Load Users ───────────────────────────────────────────────────────────────
 async function loadUsers() {
   try {
