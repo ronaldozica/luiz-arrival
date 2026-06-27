@@ -14,6 +14,8 @@ const { todayKey } = require("../lib/datetime");
 // ganho diário via minigames na mesma ordem de grandeza de uma boa aposta.
 const GAME_COINS_DAILY_CAP = 20;
 
+const RANK_SIZE = 50;
+
 // GET /api/game-rank
 router.get("/game-rank", async (req, res) => {
   try {
@@ -80,7 +82,7 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       );
       scores.push({ name: playerName, score: scoreNum, date: new Date().toISOString() });
       scores.sort((a, b) => b.score - a.score);
-      scores = scores.slice(0, 10);
+      scores = scores.slice(0, RANK_SIZE);
       await kv.set(rankKey, scores);
     }
 

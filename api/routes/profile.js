@@ -6,7 +6,7 @@ const { requireAuth } = require("../lib/auth-middleware");
 const { invalidatesCache, getCachedOrCompute } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisArray } = require("../lib/utils");
-const { STORE_ITEMS, emojiPriceForCount, EMOJI_REGEX, calcBalance, purchaseIds, emojiList } = require("../lib/store-items");
+const { emojiPriceForCount, EMOJI_REGEX, calcBalance, purchaseIds, emojiList, getExclusiveColorIds, findNameColorItem } = require("../lib/store-items");
 const { ACHIEVEMENT_DEFS } = require("../lib/achievement-defs");
 
 // POST /api/profile/color — define qual cor de nome (já comprada) é exibida no ranking
@@ -24,8 +24,9 @@ router.post("/profile/color", requireAuth, invalidatesCache("cache:profiles"), a
     } else {
       const purchasesKey = `purchases:${userKey(user.name)}`;
       const purchases = purchaseIds(parseRedisArray(await kv.get(purchasesKey)));
-      const item = STORE_ITEMS.find((i) => i.id === colorId && i.type === "namecolor");
-      if (!item || !purchases.includes(colorId))
+      const ownedColorIds = [...purchases, ...getExclusiveColorIds(user.name)];
+      const item = findNameColorItem(colorId);
+      if (!item || !ownedColorIds.includes(colorId))
         return res.status(400).json({ error: "Você não possui essa cor." });
       await kv.set(activeKey, colorId);
     }
@@ -132,19 +133,21 @@ router.get("/profiles", async (req, res) => {
         const uk = userKey(u.name);
         const purchasesKey = `purchases:${uk}`;
         const purchases = purchaseIds(parseRedisArray(await kv.get(purchasesKey)));
+        const ownedColorIds = [...purchases, ...getExclusiveColorIds(u.name)];
 
         let activeColor = null;
         const chosenColorId = await kv.get(`color_active:${uk}`);
-        if (chosenColorId && purchases.includes(chosenColorId)) {
-          const item = STORE_ITEMS.find((i) => i.id === chosenColorId && i.type === "namecolor");
+        if (chosenColorId && ownedColorIds.includes(chosenColorId)) {
+          const item = findNameColorItem(chosenColorId);
           if (item) activeColor = { id: chosenColorId, color: item.color, title: item.title };
         }
         if (!activeColor) {
           // Sem escolha explícita: usa a cor de maior prestígio que o jogador possui.
-          const colorPriority = ["color_diamante", "color_dourado", "color_rubi", "color_esmeralda"];
+          // "Coração" é exclusiva e fica acima até do Diamante.
+          const colorPriority = ["color_coracao", "color_diamante", "color_dourado", "color_rubi", "color_esmeralda"];
           for (const cid of colorPriority) {
-            if (purchases.includes(cid)) {
-              const item = STORE_ITEMS.find((i) => i.id === cid);
+            if (ownedColorIds.includes(cid)) {
+              const item = findNameColorItem(cid);
               if (item) {
                 activeColor = { id: cid, color: item.color, title: item.title };
                 break;

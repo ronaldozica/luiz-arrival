@@ -18,6 +18,29 @@ const STORE_ITEMS = [
   { id: "color_diamante", price: 225, type: "namecolor", color: "#b3e5fc", title: "Diamante" },
 ];
 
+// ─── Cores exclusivas (fora da loja) ────────────────────────────────────────
+// Não aparecem em STORE_ITEMS (não são compráveis) e não passam por
+// purchases:USERID — a posse é concedida diretamente aqui, por userKey, à mão.
+// "Coração" é um presente único para a Rosane, nunca disponível pra compra.
+const EXCLUSIVE_COLORS = [
+  { id: "color_coracao", color: "#ff1744", title: "Coração" },
+];
+
+const EXCLUSIVE_COLOR_GRANTS = {
+  rosane: ["color_coracao"],
+};
+
+function getExclusiveColorIds(name) {
+  return EXCLUSIVE_COLOR_GRANTS[userKey(name)] || [];
+}
+
+function findNameColorItem(id) {
+  return (
+    STORE_ITEMS.find((i) => i.id === id && i.type === "namecolor") ||
+    EXCLUSIVE_COLORS.find((i) => i.id === id)
+  );
+}
+
 // ─── Emoji de ranking (compra livre, não é um item fixo da loja) ────────────
 // Sem limite de quantidade; cada emoji novo custa 125 LuizCoins mais que o anterior.
 const EMOJI_BASE_PRICE = 125;
@@ -177,6 +200,9 @@ async function calcBalance(kv, user, users) {
 
 module.exports = {
   STORE_ITEMS,
+  EXCLUSIVE_COLORS,
+  getExclusiveColorIds,
+  findNameColorItem,
   EMOJI_BASE_PRICE,
   EMOJI_PRICE_STEP,
   emojiPriceForCount,

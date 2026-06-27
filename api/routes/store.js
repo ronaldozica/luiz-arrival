@@ -6,7 +6,7 @@ const { requireAuth } = require("../lib/auth-middleware");
 const { invalidatesCache } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisArray } = require("../lib/utils");
-const { STORE_ITEMS, calcBalance } = require("../lib/store-items");
+const { STORE_ITEMS, EXCLUSIVE_COLORS, getExclusiveColorIds, calcBalance } = require("../lib/store-items");
 
 // GET /api/store — requer sessão válida
 router.get("/store", requireAuth, async (req, res) => {
@@ -29,12 +29,21 @@ router.get("/store", requireAuth, async (req, res) => {
 
     const activeColorId = (await kv.get(`color_active:${userKey(user.name)}`)) || null;
 
+    // Cores exclusivas (ex.: "Coração") não entram em STORE_ITEMS — não são
+    // compráveis e não devem aparecer na vitrine da loja. Mas se o jogador
+    // já foi contemplado com uma, ela precisa aparecer como opção no
+    // seletor de cor do Perfil — daí o campo separado abaixo.
+    const exclusiveColors = EXCLUSIVE_COLORS.filter((c) =>
+      getExclusiveColorIds(user.name).includes(c.id),
+    ).map((c) => ({ id: c.id, title: c.title, color: c.color, type: "namecolor" }));
+
     res.json({
       balance: Math.max(0, earnedCoins - spentCoins),
       coinsFromGames: gameCoins,
       spentCoins,
       purchases,
       items: responseItems,
+      exclusiveColors,
       activeColorId,
     });
   } catch (e) {

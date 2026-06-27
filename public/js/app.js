@@ -1246,17 +1246,19 @@ function getColorEffect(colorId) {
   switch (colorId) {
     case "color_esmeralda": return "text-shadow: 0 0 6px #00e676, 0 0 12px #00c853; font-weight:bold;";
     case "color_rubi": return "text-shadow: 0 0 6px #ff5252, 0 0 12px #e53935; font-weight:bold;";
-    // dourado e diamante usam classes CSS (.name-gold-blink / .name-diamond-shine) em vez de inline style
+    // dourado, diamante e coração usam classes CSS em vez de inline style
     default: return "";
   }
 }
 
-// Dourado e diamante precisam de classes CSS (animação de piscar / brilho deslizante
-// com background-clip:text), o que não é possível via inline style simples.
+// Dourado, diamante e coração precisam de classes CSS (brilho/animação que
+// inline style simples não cobre — gradiente com background-clip:text no
+// diamante, corações flutuantes no coração).
 function getColorClass(colorId) {
   switch (colorId) {
     case "color_dourado": return "name-gold-blink";
     case "color_diamante": return "name-diamond-shine";
+    case "color_coracao": return "name-heart-particles";
     default: return "";
   }
 }
@@ -1651,7 +1653,7 @@ async function loadGameRank(game, difficulty) {
 
     const gameLabel = game === "snake" ? "🐍 Snake 95" : "💣 Campo Minado";
     const diffLabel = difficulty ? ` — ${getDifficultyLabel(difficulty)}` : "";
-    let html = `<div class="section-label">${gameLabel}${diffLabel} — Top 10</div>`;
+    let html = `<div class="section-label">${gameLabel}${diffLabel} — Top 50</div>`;
 
     if (scores.length === 0) {
       html += '<div class="no-data">Nenhum recorde ainda. Seja o primeiro!</div>';
@@ -1660,10 +1662,9 @@ async function loadGameRank(game, difficulty) {
         <th>#</th><th>Jogador</th><th>Pontuação</th><th>Data</th>
       </tr></thead><tbody>`;
       scores.forEach((s, i) => {
-        const medal = ["🥇", "🥈", "🥉"][i] || `${i + 1}º`;
         const date = new Date(s.date).toLocaleDateString("pt-BR");
         const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-        html += `<tr class="${medalClass}"><td>${medal}</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
+        html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
       });
       html += `</tbody></table>`;
     }
@@ -1680,7 +1681,7 @@ function renderGameRank() {
   const { game, difficulty } = currentGameRankMeta;
   const gameLabel = game === "snake" ? "🐍 Snake 95" : "💣 Campo Minado";
   const diffLabel = difficulty ? ` — ${getDifficultyLabel(difficulty)}` : "";
-  let html = `<div class="section-label">${gameLabel}${diffLabel} — Top 10</div>`;
+  let html = `<div class="section-label">${gameLabel}${diffLabel} — Top 50</div>`;
 
   if (currentGameRankData.length === 0) {
     html += '<div class="no-data">Nenhum recorde ainda. Seja o primeiro!</div>';
@@ -1689,10 +1690,9 @@ function renderGameRank() {
       <th>#</th><th>Jogador</th><th>Pontuação</th><th>Data</th>
     </tr></thead><tbody>`;
     currentGameRankData.forEach((s, i) => {
-      const medal = ["🥇", "🥈", "🥉"][i] || `${i + 1}º`;
       const date = new Date(s.date).toLocaleDateString("pt-BR");
       const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-      html += `<tr class="${medalClass}"><td>${medal}</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
+      html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
     });
     html += `</tbody></table>`;
   }
@@ -2167,9 +2167,12 @@ async function loadProfileColor() {
 function renderProfileColor() {
   const result = document.getElementById("profile-color-result");
   if (!profileColorData) return;
-  const ownedColors = profileColorData.items.filter(
-    (i) => i.type === "namecolor" && profileColorData.purchases.includes(i.id),
-  );
+  const ownedColors = [
+    ...profileColorData.items.filter(
+      (i) => i.type === "namecolor" && profileColorData.purchases.includes(i.id),
+    ),
+    ...(profileColorData.exclusiveColors || []),
+  ];
   if (ownedColors.length === 0) {
     result.innerHTML = '<div class="no-data">Você ainda não comprou nenhuma cor. Visite a Loja!</div>';
     return;
@@ -2192,6 +2195,7 @@ function getColorEffectPreview(colorId) {
     case "color_rubi": return "text-shadow:0 0 4px #ff5252; font-weight:bold;";
     case "color_dourado": return "font-weight:bold;";
     case "color_diamante": return "font-weight:bold;";
+    case "color_coracao": return "text-shadow:0 0 4px #ff1744; font-weight:bold;";
     default: return "";
   }
 }

@@ -1511,6 +1511,52 @@ body {
   }
 }
 
+/* ─── HEART NAME (vermelho brilhante + coraçõezinhos aparecendo) ─── */
+/* Cor exclusiva, não compra na loja — ver EXCLUSIVE_COLORS em lib/store-items.js */
+/* Sem transform/scale/translate nos corações: qualquer movimento combinado
+   com overflow:hidden cortava o emoji no meio do caminho e parecia torto.
+   Os corações só piscam (opacity) numa posição fixa ao lado do nome, e o
+   brilho do texto é estático (sem pulsar), pra não parecer borrado. */
+.name-heart-particles {
+  position: relative;
+  display: inline-block;
+  font-weight: bold;
+  color: #ff1744;
+  padding: 0 13px;
+  text-shadow: 0 0 4px #ff5252, 0 0 8px #e53935;
+}
+
+.name-heart-particles::before,
+.name-heart-particles::after {
+  content: "💗";
+  position: absolute;
+  bottom: 1px;
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  animation: heart-appear 2.4s ease-in-out infinite;
+}
+
+.name-heart-particles::before {
+  left: 0;
+  animation-delay: 0s;
+}
+
+.name-heart-particles::after {
+  right: 0;
+  animation-delay: 1.2s;
+}
+
+@keyframes heart-appear {
+  0%, 100% {
+    opacity: 0;
+  }
+  40%, 60% {
+    opacity: 1;
+  }
+}
+
 /* ─── ACHIEVEMENTS WINDOW ────────────────── */
 .achievements-hint {
   font-size: 11px;
