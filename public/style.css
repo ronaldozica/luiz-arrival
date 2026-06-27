@@ -1341,9 +1341,11 @@ body {
   font-size: 10px;
   font-weight: normal;
   color: var(--win-dark);
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 2px;
+  margin-bottom: 6px;
 }
 
 .gallery-img-container {
