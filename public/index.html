@@ -59,6 +59,7 @@
       <button onclick="openWindow('win-register'); closeStartMenu()">👤 Novo Usuário</button>
       <button onclick="openStore(); closeStartMenu()">🛒 Loja</button>
       <button onclick="openAchievements(); closeStartMenu()">🏅 Conquistas</button>
+      <button onclick="openProfileWindow(); closeStartMenu()">🧑‍🎨 Perfil</button>
       <hr />
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
@@ -113,6 +114,10 @@
     <div class="desktop-icon" data-icon-id="icon-achievements" data-action="openAchievements()">
       <div class="icon-img">🏅</div>
       <div class="icon-label">Conquistas</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-profile" data-action="openProfileWindow()">
+      <div class="icon-img">🧑‍🎨</div>
+      <div class="icon-label">Perfil</div>
     </div>
   </div>
 
@@ -521,6 +526,79 @@
       <div id="achievements-content">
         <div class="loading">⏳ Carregando...</div>
       </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: PERFIL ══ -->
+  <div class="win95-window" id="win-profile" style="left:160px;top:70px;width:460px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-profile')">
+      <span class="win95-title">🧑‍🎨 Personalizar Perfil</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-profile')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-profile')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body win95-body-scroll">
+      <div class="win95-tabs">
+        <button class="rank-tab active" data-profile-tab="color" onclick="setProfileTab('color')">🎨 Cor</button>
+        <button class="rank-tab" data-profile-tab="achievement" onclick="setProfileTab('achievement')">🏅 Conquista</button>
+        <button class="rank-tab" data-profile-tab="emoji" onclick="setProfileTab('emoji')">🙂 Emoji</button>
+        <button class="rank-tab" data-profile-tab="wallpaper" onclick="setProfileTab('wallpaper')">🖼️ Papel de Parede</button>
+      </div>
+
+      <div id="profile-tab-color">
+        <p><strong>Cor do seu nome no ranking</strong></p>
+        <div class="info-box">Escolha entre as cores que você já comprou na Loja.</div>
+        <div id="profile-color-result" style="margin-top:8px"></div>
+        <div class="win95-msg" id="profile-color-msg"></div>
+      </div>
+
+      <div id="profile-tab-achievement" style="display:none">
+        <p><strong>Conquista exibida ao lado do seu nome</strong></p>
+        <div class="info-box">Apenas conquistas já desbloqueadas podem ser exibidas.</div>
+        <div id="profile-achievement-result" style="margin-top:8px"></div>
+        <div class="win95-msg" id="profile-achievement-msg"></div>
+      </div>
+
+      <div id="profile-tab-emoji" style="display:none">
+        <p><strong>Emoji exibido ao lado do seu nome</strong></p>
+        <div class="info-box">Compre até 3 emojis por 500 LuizCoins cada. Para comprar um novo após ter 3, remova um existente.</div>
+        <div id="profile-emoji-owned" style="margin-top:8px"></div>
+        <div class="field-group" style="margin-top:8px">
+          <label>Comprar novo emoji:</label>
+          <div class="btn-row">
+            <button class="win95-action-btn emoji-picker-trigger" id="profile-emoji-picked" style="font-size:18px;min-width:44px" onclick="openEmojiPicker()" title="Escolher emoji">➕</button>
+            <button class="win95-action-btn" onclick="buyProfileEmoji()">🛒 Comprar (500 LuizCoins)</button>
+          </div>
+        </div>
+        <div class="win95-msg" id="profile-emoji-msg"></div>
+      </div>
+
+      <div id="profile-tab-wallpaper" style="display:none">
+        <p><strong>Plano de fundo da área de trabalho</strong></p>
+        <div class="btn-row" style="flex-wrap:wrap">
+          <button class="win95-action-btn" data-wp="padrao" onclick="applyWallpaper('padrao')">Padrão</button>
+          <button class="win95-action-btn" data-wp="windows" onclick="applyWallpaper('windows')">Windows</button>
+          <button class="win95-action-btn" data-wp="michaelsoft" onclick="applyWallpaper('michaelsoft')">Michaelsoft</button>
+          <button class="win95-action-btn" data-wp="luiz" onclick="applyWallpaper('luiz')">Luiz</button>
+          <button class="win95-action-btn" data-wp="custom" onclick="openCustomColorPicker()">Personalizado</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ DIALOG: SELETOR DE EMOJI ══ -->
+  <div class="win95-window win95-dialog" id="win-emoji-picker"
+    style="left:200px;top:120px;width:360px;display:none;z-index:9500">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-emoji-picker')">
+      <span class="win95-title">🙂 Escolher Emoji</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-emoji-picker')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body">
+      <div class="win95-tabs" id="emoji-picker-tabs"></div>
+      <div class="emoji-picker-grid" id="emoji-picker-grid"></div>
     </div>
   </div>
 

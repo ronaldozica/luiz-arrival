@@ -91,7 +91,8 @@ function renderPlayerName(name, includeAchievement) {
     showDecorations && includeAchievement && profile.achievement
       ? `<span class="achievement-badge" title="${escHtml(profile.achievement.title)}">${profile.achievement.icon}</span>`
       : "";
-  return `<span class="${colorClass}" ${style}>${escHtml(name)}</span>${achievementBadge}`;
+  const emojiPrefix = showDecorations && profile.emoji ? `<span class="profile-emoji-badge">${profile.emoji}</span> ` : "";
+  return `${emojiPrefix}<span class="${colorClass}" ${style}>${escHtml(name)}</span>${achievementBadge}`;
 }
 
 // ─── Loading overlay ─────────────────────────────────────────────────────────
@@ -186,6 +187,7 @@ function updateTaskbar() {
     "win-admin": "🔒 Admin",
     "win-gamerank": "🎮 Rank Jogos",
     "win-achievements": "🏅 Conquistas",
+    "win-profile": "🧑‍🎨 Perfil",
   };
   for (const [id, label] of Object.entries(windows)) {
     const w = document.getElementById(id);
@@ -200,6 +202,7 @@ function updateTaskbar() {
         else {
           bringToFront(w);
           if (id === "win-store") loadStore();
+          if (id === "win-profile") loadProfileTabData(currentProfileTab);
         }
       };
       bar.appendChild(btn);
@@ -445,8 +448,11 @@ function applyWallpaper(key) {
     desktop.style.backgroundPosition = "center";
   }
   localStorage.setItem(WALLPAPER_KEY, key);
-  document.querySelectorAll(".ctx-wallpaper-item").forEach((el) => {
+  document.querySelectorAll(".ctx-wallpaper-item[data-wp]").forEach((el) => {
     el.classList.toggle("checked", el.dataset.wp === key);
+  });
+  document.querySelectorAll("#profile-tab-wallpaper [data-wp]").forEach((el) => {
+    el.classList.toggle("active", el.dataset.wp === key);
   });
   closeContextMenu();
 }
@@ -991,9 +997,10 @@ function renderRankTab(tab) {
       showDecorations && profile.achievement
         ? `<span class="achievement-badge" title="${escHtml(profile.achievement.title)}">${profile.achievement.icon}</span>`
         : "";
+    const emojiPrefix = showDecorations && profile.emoji ? `<span class="profile-emoji-badge">${profile.emoji}</span> ` : "";
     html += `<tr class="${medalClass}">
       <td>${i + 1}º</td>
-      <td><span class="${nameColorClass}" ${nameStyle}>${escHtml(r.name)}</span>${hcmBadge}${achBadge}
+      <td>${emojiPrefix}<span class="${nameColorClass}" ${nameStyle}>${escHtml(r.name)}</span>${hcmBadge}${achBadge}</td>
       <td><strong>${r.points}</strong></td>
       <td>${r.wins}</td>
       <td>${r.days}</td>
@@ -1826,6 +1833,337 @@ async function toggleActiveAchievement(achievementId) {
     }
   } catch {
     alert("Erro de conexão.");
+  }
+}
+
+// ─── Perfil (cor, conquista, emoji, papel de parede) ─────────────────────────
+let currentProfileTab = "color";
+let profileColorData = null;
+let profileAchievementData = null;
+let profileEmojiData = null;
+
+async function openProfileWindow() {
+  if (!currentUser) {
+    alert("Você precisa fazer login para personalizar seu perfil.");
+    openWindow("win-login");
+    return;
+  }
+  openWindow("win-profile");
+  setProfileTab(currentProfileTab);
+}
+
+function setProfileTab(tab) {
+  currentProfileTab = tab;
+  document.querySelectorAll("#win-profile .rank-tab").forEach((b) => {
+    b.classList.toggle("active", b.dataset.profileTab === tab);
+  });
+  ["color", "achievement", "emoji", "wallpaper"].forEach((t) => {
+    document.getElementById(`profile-tab-${t}`).style.display = t === tab ? "block" : "none";
+  });
+  loadProfileTabData(tab);
+}
+
+function loadProfileTabData(tab) {
+  if (tab === "color") loadProfileColor();
+  else if (tab === "achievement") loadProfileAchievement();
+  else if (tab === "emoji") loadProfileEmoji();
+}
+
+async function loadProfileColor() {
+  const result = document.getElementById("profile-color-result");
+  const msg = document.getElementById("profile-color-msg");
+  result.innerHTML = '<div class="loading">⏳ Carregando...</div>';
+  try {
+    const res = await fetch(`${API}/store`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    profileColorData = data;
+    renderProfileColor();
+  } catch (e) {
+    showMsg(msg, `Erro: ${e.message}`, "err");
+  }
+}
+
+function renderProfileColor() {
+  const result = document.getElementById("profile-color-result");
+  if (!profileColorData) return;
+  const ownedColors = profileColorData.items.filter(
+    (i) => i.type === "namecolor" && profileColorData.purchases.includes(i.id),
+  );
+  if (ownedColors.length === 0) {
+    result.innerHTML = '<div class="no-data">Você ainda não comprou nenhuma cor. Visite a Loja!</div>';
+    return;
+  }
+  const activeColorId = profileColorData.activeColorId;
+  let html = `<div class="btn-row" style="flex-wrap:wrap">`;
+  html += `<button class="win95-action-btn${!activeColorId ? " active" : ""}" onclick="selectProfileColor(null)">Padrão</button>`;
+  ownedColors.forEach((c) => {
+    html += `<button class="win95-action-btn${activeColorId === c.id ? " active" : ""}"
+      style="color:${c.color};${getColorEffectPreview(c.id)}"
+      onclick="selectProfileColor('${c.id}')">${escHtml(c.title)}</button>`;
+  });
+  html += `</div>`;
+  result.innerHTML = html;
+}
+
+function getColorEffectPreview(colorId) {
+  switch (colorId) {
+    case "color_esmeralda": return "text-shadow:0 0 4px #00e676; font-weight:bold;";
+    case "color_rubi": return "text-shadow:0 0 4px #ff5252; font-weight:bold;";
+    case "color_dourado": return "font-weight:bold;";
+    case "color_diamante": return "font-weight:bold;";
+    default: return "";
+  }
+}
+
+async function selectProfileColor(colorId) {
+  const msg = document.getElementById("profile-color-msg");
+  showLoading("Atualizando cor...");
+  try {
+    const res = await fetch(`${API}/profile/color`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ colorId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      profileColorData.activeColorId = colorId;
+      renderProfileColor();
+      showMsg(msg, "✅ Cor atualizada.", "ok");
+      loadProfiles();
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+async function loadProfileAchievement() {
+  const result = document.getElementById("profile-achievement-result");
+  const msg = document.getElementById("profile-achievement-msg");
+  result.innerHTML = '<div class="loading">⏳ Carregando...</div>';
+  try {
+    const res = await fetch(`${API}/achievements`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    profileAchievementData = data;
+    renderProfileAchievement();
+  } catch (e) {
+    showMsg(msg, `Erro: ${e.message}`, "err");
+  }
+}
+
+function renderProfileAchievement() {
+  const result = document.getElementById("profile-achievement-result");
+  if (!profileAchievementData) return;
+  const { definitions, unlocked, active } = profileAchievementData;
+  const unlockedDefs = definitions.filter((d) => unlocked.includes(d.id));
+  if (unlockedDefs.length === 0) {
+    result.innerHTML = '<div class="no-data">Você ainda não desbloqueou nenhuma conquista.</div>';
+    return;
+  }
+  let html = `<div class="btn-row" style="flex-wrap:wrap">`;
+  html += `<button class="win95-action-btn${!active ? " active" : ""}" onclick="selectProfileAchievement(null)">Nenhuma</button>`;
+  unlockedDefs.forEach((d) => {
+    html += `<button class="win95-action-btn${active === d.id ? " active" : ""}"
+      onclick="selectProfileAchievement('${d.id}')">${d.icon} ${escHtml(d.title)}</button>`;
+  });
+  html += `</div>`;
+  result.innerHTML = html;
+}
+
+async function selectProfileAchievement(achievementId) {
+  const msg = document.getElementById("profile-achievement-msg");
+  showLoading("Atualizando conquista...");
+  try {
+    const res = await fetch(`${API}/achievements/set-active`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ achievementId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      profileAchievementData.active = achievementId;
+      renderProfileAchievement();
+      showMsg(msg, "✅ Conquista atualizada.", "ok");
+      loadProfiles();
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+async function loadProfileEmoji() {
+  const result = document.getElementById("profile-emoji-owned");
+  const msg = document.getElementById("profile-emoji-msg");
+  result.innerHTML = '<div class="loading">⏳ Carregando...</div>';
+  try {
+    const res = await fetch(`${API}/profile/emoji`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    profileEmojiData = data;
+    renderProfileEmoji();
+  } catch (e) {
+    showMsg(msg, `Erro: ${e.message}`, "err");
+  }
+}
+
+function renderProfileEmoji() {
+  const result = document.getElementById("profile-emoji-owned");
+  if (!profileEmojiData) return;
+  const { owned, active, max } = profileEmojiData;
+  if (owned.length === 0) {
+    result.innerHTML = `<div class="no-data">Você ainda não comprou nenhum emoji (0/${max}).</div>`;
+    return;
+  }
+  let html = `<div class="info-box" style="margin-bottom:6px">Emojis comprados: ${owned.length}/${max}</div>`;
+  html += `<div class="btn-row" style="flex-wrap:wrap">`;
+  owned.forEach((e) => {
+    const isActive = active === e;
+    html += `<span class="emoji-owned-item${isActive ? " active" : ""}">
+      <button class="win95-action-btn" style="font-size:18px;padding:2px 8px" title="${isActive ? "Exibindo no ranking" : "Clique para exibir no ranking"}"
+        onclick="setActiveProfileEmoji('${isActive ? "" : e}')">${e}</button>
+      <button class="win95-action-btn" style="font-size:10px;padding:1px 5px" title="Remover" onclick="removeProfileEmoji('${e}')">🗑️</button>
+    </span>`;
+  });
+  html += `</div>`;
+  result.innerHTML = html;
+}
+
+async function setActiveProfileEmoji(emoji) {
+  const msg = document.getElementById("profile-emoji-msg");
+  showLoading("Atualizando emoji...");
+  try {
+    const res = await fetch(`${API}/profile/emoji/set-active`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ emoji: emoji || null }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      profileEmojiData.active = emoji || null;
+      renderProfileEmoji();
+      showMsg(msg, "✅ Emoji atualizado.", "ok");
+      loadProfiles();
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+async function removeProfileEmoji(emoji) {
+  const msg = document.getElementById("profile-emoji-msg");
+  if (!confirm(`Remover o emoji ${emoji}? Você não será reembolsado.`)) return;
+  showLoading("Removendo emoji...");
+  try {
+    const res = await fetch(`${API}/profile/emoji/remove`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ emoji }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      profileEmojiData.owned = data.owned;
+      if (profileEmojiData.active === emoji) profileEmojiData.active = null;
+      renderProfileEmoji();
+      showMsg(msg, "✅ Emoji removido.", "ok");
+      loadProfiles();
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+// ─── Seletor de emoji ─────────────────────────────────────────────────────────
+const EMOJI_CATEGORIES = {
+  "😀 Carinhas": ["😀","😁","😂","🤣","😊","😍","😘","😜","🤔","😎","🥳","😭","😡","🥺","😴","🤯","🤩","😇","🙄","😬","🤗","🥶","🤤","🫡"],
+  "🐶 Animais": ["🐶","🐱","🦊","🐻","🐼","🐨","🦁","🐯","🐸","🐵","🐔","🐧","🦄","🐢","🐍","🦈","🐙","🦋","🐝","🦂","🐲","🦖","🐳","🦔"],
+  "🍕 Comida": ["🍕","🍔","🌮","🍣","🍩","🍪","🍰","🍫","🍿","🍉","🍎","🍌","🥑","🌶️","🍺","☕","🧃","🍷","🥩","🍦","🍇","🍓","🥨","🍙"],
+  "⚽ Atividades": ["⚽","🏀","🏈","🎮","🎲","🎸","🎯","🏆","🥇","🎳","🏓","🥊","🛹","🎤","🎨","🚀","🏁","🎰","🃏","♟️","🎢","🪂","🏄","⛳"],
+  "🚗 Viagens": ["🚗","✈️","🚀","🚲","🏖️","🗽","🌋","🏔️","🛸","⛵","🚂","🏰","🗿","🌍","🚁","🛺","🏕️","🎡","🛶","🚤","🚓","🛵","🚆","🌉"],
+  "💎 Objetos": ["💎","👑","🔥","⭐","💰","🎁","🔮","🗝️","💣","🧨","🪄","⚔️","🛡️","🎩","👻","🤖","💀","🧿","🪙","📿","🧰","🔱","🏹","🎭"],
+  "❤️ Símbolos": ["❤️","💜","💙","💚","🧡","💛","🖤","🤍","💯","✅","❌","⚡","✨","☀️","🌙","🌈","♻️","☢️","☣️","♾️","🔱","🆗","🔰","🎵"],
+  "🏳️ Bandeiras": ["🏳️","🏴","🏁","🚩","🏳️‍🌈","🇧🇷","🇺🇸","🇯🇵","🇩🇪","🇫🇷","🇬🇧","🇪🇸","🇮🇹","🇵🇹","🇦🇷","🇨🇦","🇲🇽","🇰🇷","🇨🇳","🇷🇺"],
+};
+let pickedEmoji = null;
+let activeEmojiCategory = Object.keys(EMOJI_CATEGORIES)[0];
+
+function openEmojiPicker() {
+  renderEmojiPickerTabs();
+  renderEmojiPickerGrid();
+  openWindow("win-emoji-picker");
+}
+
+function renderEmojiPickerTabs() {
+  const tabs = document.getElementById("emoji-picker-tabs");
+  tabs.innerHTML = Object.keys(EMOJI_CATEGORIES)
+    .map((cat) => `<button class="rank-tab${cat === activeEmojiCategory ? " active" : ""}" onclick="setEmojiPickerCategory('${cat}')">${cat.split(" ")[0]}</button>`)
+    .join("");
+}
+
+function setEmojiPickerCategory(cat) {
+  activeEmojiCategory = cat;
+  renderEmojiPickerTabs();
+  renderEmojiPickerGrid();
+}
+
+function renderEmojiPickerGrid() {
+  const grid = document.getElementById("emoji-picker-grid");
+  grid.innerHTML = EMOJI_CATEGORIES[activeEmojiCategory]
+    .map((e) => `<button class="emoji-picker-btn" title="${e}" onclick="setPickedEmoji('${e}')">${e}</button>`)
+    .join("");
+}
+
+function setPickedEmoji(emoji) {
+  pickedEmoji = emoji;
+  const btn = document.getElementById("profile-emoji-picked");
+  if (btn) btn.textContent = emoji || "➕";
+  if (emoji) closeWindow("win-emoji-picker");
+}
+
+async function buyProfileEmoji() {
+  const emoji = pickedEmoji;
+  const msg = document.getElementById("profile-emoji-msg");
+  if (!emoji) {
+    showMsg(msg, "Escolha um emoji primeiro.", "err");
+    return;
+  }
+  showLoading("Comprando emoji...");
+  try {
+    const res = await fetch(`${API}/profile/emoji/buy`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ emoji }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      profileEmojiData.owned = data.owned;
+      renderProfileEmoji();
+      showMsg(msg, `✅ Emoji ${emoji} comprado!`, "ok");
+      setPickedEmoji(null);
+      loadProfiles();
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
   }
 }
 

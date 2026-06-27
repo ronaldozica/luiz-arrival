@@ -881,6 +881,17 @@ const STORE_ITEMS = [
   { id: "color_diamante", price: 10000, type: "namecolor", color: "#b3e5fc", title: "Diamante" },
 ];
 
+// ─── Emoji de ranking (compra livre, não é um item fixo da loja) ────────────
+const EMOJI_PRICE = 500;
+const EMOJI_MAX_OWNED = 3;
+// Aceita um único emoji (incluindo sequências com ZWJ/seletor de variação/modificador de tom de pele) ou uma bandeira (par de Regional Indicator).
+const ZWJ = "‍";
+const VS16 = "️";
+const EMOJI_REGEX = new RegExp(
+  "^(?:\\p{Regional_Indicator}{2}|\\p{Extended_Pictographic}" + VS16 + "?\\p{Emoji_Modifier}?(?:" + ZWJ + "\\p{Extended_Pictographic}" + VS16 + "?\\p{Emoji_Modifier}?)*)$",
+  "u"
+);
+
 async function calcBalance(kv, user, users) {
   const hcmNames = new Set(
     users.filter((u) => u.isHCM).map((u) => userKey(u.name)),
@@ -931,7 +942,11 @@ async function calcBalance(kv, user, users) {
     if (item) spentCoins += item.price;
   });
 
-  return { earnedCoins, spentCoins, purchases, gameCoins };
+  const emojiOwnedKey = `emoji_owned:${userKey(user.name)}`;
+  const emojiOwned = parseRedisArray(await kv.get(emojiOwnedKey));
+  spentCoins += emojiOwned.length * EMOJI_PRICE;
+
+  return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned };
 }
 
 // GET /api/store — requer sessão válida
@@ -953,12 +968,15 @@ app.get("/api/store", requireAuth, async (req, res) => {
       return { ...base, src: isUnlocked ? item.src : null };
     });
 
+    const activeColorId = (await kv.get(`color_active:${userKey(user.name)}`)) || null;
+
     res.json({
       balance: Math.max(0, earnedCoins - spentCoins),
       coinsFromGames: gameCoins,
       spentCoins,
       purchases,
       items: responseItems,
+      activeColorId,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -990,6 +1008,134 @@ app.post("/api/store/buy", requireAuth, async (req, res) => {
     await kv.set(`purchases:${userKey(user.name)}`, JSON.stringify(purchases));
 
     res.json({ success: true, newBalance: balance - item.price });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/profile/color — define qual cor de nome (já comprada) é exibida no ranking
+app.post("/api/profile/color", requireAuth, async (req, res) => {
+  try {
+    const { colorId } = req.body;
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const activeKey = `color_active:${userKey(user.name)}`;
+    if (!colorId) {
+      await kv.del(activeKey);
+    } else {
+      const purchasesKey = `purchases:${userKey(user.name)}`;
+      const purchases = parseRedisArray(await kv.get(purchasesKey));
+      const item = STORE_ITEMS.find((i) => i.id === colorId && i.type === "namecolor");
+      if (!item || !purchases.includes(colorId))
+        return res.status(400).json({ error: "Você não possui essa cor." });
+      await kv.set(activeKey, colorId);
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Emoji de ranking ────────────────────────────────────────────────────────
+// GET /api/profile/emoji — emojis comprados, emoji ativo, preço e limite
+app.get("/api/profile/emoji", requireAuth, async (req, res) => {
+  try {
+    const kv = getKV();
+    const uk = userKey(req.sessionName);
+    const owned = parseRedisArray(await kv.get(`emoji_owned:${uk}`));
+    const active = (await kv.get(`emoji_active:${uk}`)) || null;
+    res.json({ owned, active, price: EMOJI_PRICE, max: EMOJI_MAX_OWNED });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/profile/emoji/buy — compra um emoji novo (qualquer emoji válido) por 500 LuizCoins
+app.post("/api/profile/emoji/buy", requireAuth, async (req, res) => {
+  try {
+    const { emoji } = req.body;
+    if (!emoji || typeof emoji !== "string" || !EMOJI_REGEX.test(emoji)) {
+      return res.status(400).json({ error: "Emoji inválido." });
+    }
+
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const uk = userKey(user.name);
+    const ownedKey = `emoji_owned:${uk}`;
+    const { earnedCoins, spentCoins, emojiOwned } = await calcBalance(kv, user, users);
+
+    if (emojiOwned.includes(emoji))
+      return res.status(400).json({ error: "Você já possui este emoji." });
+    if (emojiOwned.length >= EMOJI_MAX_OWNED)
+      return res.status(400).json({ error: `Você já possui ${EMOJI_MAX_OWNED} emojis. Remova um antes de comprar outro.` });
+
+    const balance = earnedCoins - spentCoins;
+    if (balance < EMOJI_PRICE)
+      return res.status(400).json({ error: "LuizCoins™ insuficientes." });
+
+    const newOwned = [...emojiOwned, emoji];
+    await kv.set(ownedKey, JSON.stringify(newOwned));
+    if (newOwned.length === 1) {
+      await kv.set(`emoji_active:${uk}`, emoji);
+    }
+
+    res.json({ success: true, owned: newOwned, newBalance: balance - EMOJI_PRICE });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/profile/emoji/remove — remove um emoji possuído (sem reembolso), liberando vaga para comprar outro
+app.post("/api/profile/emoji/remove", requireAuth, async (req, res) => {
+  try {
+    const { emoji } = req.body;
+    if (!emoji) return res.status(400).json({ error: "emoji é obrigatório." });
+
+    const kv = getKV();
+    const uk = userKey(req.sessionName);
+    const ownedKey = `emoji_owned:${uk}`;
+    const owned = parseRedisArray(await kv.get(ownedKey));
+    const newOwned = owned.filter((e) => e !== emoji);
+    if (newOwned.length === owned.length)
+      return res.status(404).json({ error: "Emoji não encontrado." });
+
+    await kv.set(ownedKey, JSON.stringify(newOwned));
+
+    const activeKey = `emoji_active:${uk}`;
+    const active = await kv.get(activeKey);
+    if (active === emoji) await kv.del(activeKey);
+
+    res.json({ success: true, owned: newOwned });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/profile/emoji/set-active — define qual emoji possuído é exibido no ranking
+app.post("/api/profile/emoji/set-active", requireAuth, async (req, res) => {
+  try {
+    const { emoji } = req.body;
+    const kv = getKV();
+    const uk = userKey(req.sessionName);
+    const activeKey = `emoji_active:${uk}`;
+
+    if (!emoji) {
+      await kv.del(activeKey);
+    } else {
+      const owned = parseRedisArray(await kv.get(`emoji_owned:${uk}`));
+      if (!owned.includes(emoji))
+        return res.status(400).json({ error: "Você não possui esse emoji." });
+      await kv.set(activeKey, emoji);
+    }
+
+    res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -1062,14 +1208,22 @@ app.get("/api/profiles", async (req, res) => {
       const purchasesKey = `purchases:${uk}`;
       const purchases = parseRedisArray(await kv.get(purchasesKey));
 
-      const colorPriority = ["color_diamante", "color_dourado", "color_rubi", "color_esmeralda"];
       let activeColor = null;
-      for (const cid of colorPriority) {
-        if (purchases.includes(cid)) {
-          const item = STORE_ITEMS.find((i) => i.id === cid);
-          if (item) {
-            activeColor = { id: cid, color: item.color, title: item.title };
-            break;
+      const chosenColorId = await kv.get(`color_active:${uk}`);
+      if (chosenColorId && purchases.includes(chosenColorId)) {
+        const item = STORE_ITEMS.find((i) => i.id === chosenColorId && i.type === "namecolor");
+        if (item) activeColor = { id: chosenColorId, color: item.color, title: item.title };
+      }
+      if (!activeColor) {
+        // Sem escolha explícita: usa a cor de maior prestígio que o jogador possui.
+        const colorPriority = ["color_diamante", "color_dourado", "color_rubi", "color_esmeralda"];
+        for (const cid of colorPriority) {
+          if (purchases.includes(cid)) {
+            const item = STORE_ITEMS.find((i) => i.id === cid);
+            if (item) {
+              activeColor = { id: cid, color: item.color, title: item.title };
+              break;
+            }
           }
         }
       }
@@ -1083,7 +1237,9 @@ app.get("/api/profiles", async (req, res) => {
         }
       } catch {}
 
-      profiles[u.name] = { nameColor: activeColor, achievement: activeAchievement };
+      const activeEmoji = (await kv.get(`emoji_active:${uk}`)) || null;
+
+      profiles[u.name] = { nameColor: activeColor, achievement: activeAchievement, emoji: activeEmoji };
     }
 
     res.json(profiles);

@@ -471,6 +471,54 @@ body {
   background: #d4d0c8;
 }
 
+.win95-action-btn.active {
+  box-shadow: var(--shadow-in);
+  background: #d4d0c8;
+  font-weight: bold;
+  outline: 1px dotted var(--win-darker);
+  outline-offset: -3px;
+}
+
+/* ─── PROFILE: OWNED EMOJI ────────────────── */
+.emoji-owned-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ─── EMOJI PICKER ─────────────────────────── */
+.emoji-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--win-white);
+  box-shadow: var(--shadow-in);
+  padding: 4px;
+}
+
+.emoji-picker-btn {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.emoji-picker-btn:hover {
+  background: var(--win-blue);
+  box-shadow: var(--shadow-out);
+}
+
+.emoji-owned-item.active .win95-action-btn:first-child {
+  box-shadow: var(--shadow-in);
+  background: #d4d0c8;
+  outline: 1px dotted var(--win-darker);
+  outline-offset: -3px;
+}
+
 /* ─── MESSAGES ────────────────────────────── */
 .win95-msg {
   font-size: 12px;
@@ -1320,9 +1368,26 @@ body {
 }
 
 /* ─── RANK DECORATIONS ───────────────────── */
+/* Conquista: emblema com moldura Win95 (relevo "para fora"), como um troféu fixado. */
 .achievement-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 5px;
+  font-size: 12px;
+  width: 18px;
+  height: 18px;
+  background: var(--win-gray);
+  box-shadow: var(--shadow-out);
+  border-radius: 3px;
+  vertical-align: middle;
+  cursor: default;
+}
+
+/* Emoji de perfil: ícone solto antes do nome, sem moldura (é um "avatar", não um prêmio). */
+.profile-emoji-badge {
   display: inline-block;
-  margin-left: 4px;
+  margin-right: 1px;
   font-size: 14px;
   cursor: default;
 }
