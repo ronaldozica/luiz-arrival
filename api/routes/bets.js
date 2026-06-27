@@ -94,7 +94,7 @@ router.get("/today", async (req, res) => {
 // POST /api/guess — requer sessão válida
 router.post("/guess", requireAuth, async (req, res) => {
   try {
-    const { time } = req.body;
+    const { time, placa } = req.body;
     const name = req.sessionName;
 
     if (!time) {
@@ -136,14 +136,36 @@ router.post("/guess", requireAuth, async (req, res) => {
       });
     }
 
-    day.guesses.push({
+    // Luiz de Placa: o front confia no localStorage pra exibir o checkbox,
+    // mas a verdade sempre vem daqui — se o jogador já usou o boost nesta
+    // semana ISO, a aposta inteira é cancelada (ele precisa desmarcar e
+    // reenviar). Isso impede usar o boost duas vezes mesmo trocando de
+    // navegador/dispositivo (onde o localStorage local estaria "limpo").
+    const guess = {
       name: user.name,
       time,
       createdAt: new Date().toISOString(),
-    });
+    };
+
+    if (placa) {
+      const weekKey = getWeekKey(activeBetDate);
+      const usedWeekKey = `placa_used_week:${userKey(name)}`;
+      const usedWeek = await kv.get(usedWeekKey);
+      if (usedWeek === weekKey) {
+        return res.status(409).json({
+          error: "Você já usou o Luiz de Placa nesta semana.",
+          placaAlreadyUsed: true,
+          placaWeekKey: weekKey,
+        });
+      }
+      guess.placa = true;
+      await kv.set(usedWeekKey, weekKey);
+    }
+
+    day.guesses.push(guess);
 
     await setDayData(kv, activeBetDate, day);
-    res.json({ success: true });
+    res.json({ success: true, placa: !!guess.placa, placaWeekKey: getWeekKey(activeBetDate) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

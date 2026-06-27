@@ -111,12 +111,17 @@ function legacyCoinsForGuess(r) {
   return bonus + PARTICIPATION_COINS;
 }
 
+// "Luiz de Placa": jogador ativa antes de apostar (ver routes/bets.js) e ganha
+// o dobro de moedas pela aposta daquele dia, uma vez por semana. Apostas
+// invalidadas por sniping não dobram — o jogador já está sendo penalizado e
+// não há "precisão" nenhuma a recompensar em dobro.
 function coinsForGuess(rankingEntry) {
   if (!rankingEntry) return PARTICIPATION_COINS;
   if (rankingEntry.invalidated === undefined) return legacyCoinsForGuess(rankingEntry);
   if (rankingEntry.invalidated) return PARTICIPATION_COINS;
   const band = PRECISION_BANDS.find((b) => rankingEntry.diff <= b.maxDiff);
-  return band ? band.coins : PARTICIPATION_COINS;
+  const coins = band ? band.coins : PARTICIPATION_COINS;
+  return rankingEntry.placa ? coins * 2 : coins;
 }
 
 async function calcBalance(kv, user, users) {

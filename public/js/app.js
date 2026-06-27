@@ -671,6 +671,7 @@ async function refreshTodayStatus() {
   const loading = document.getElementById("guess-loading");
 
   setGuessFormOpen(false);
+  if (currentUser) setPlacaLoading(); else hidePlaca();
   if (loading) {
     loading.textContent = "⏳ Verificando...";
     loading.style.display = "block";
@@ -713,13 +714,20 @@ async function refreshTodayStatus() {
       const msg = document.getElementById("guess-msg");
       showMsg(msg, "⚠️ Faça login para apostar.", "err");
       setGuessFormOpen(false);
+      hidePlaca();
     } else if (data.viewerHasGuessed && bettingOpen) {
       const msg = document.getElementById("guess-msg");
       const dayLabel = isNextDay ? "para o próximo dia" : "hoje";
       showMsg(msg, `✅ Você já apostou ${dayLabel}: ${data.viewerGuess.time}. Só 1 palpite por dia!`, "ok");
       setGuessFormOpen(false);
+      hidePlaca();
     } else {
       setGuessFormOpen(bettingOpen);
+      if (bettingOpen) {
+        renderPlacaCheckbox(getClientWeekKey(data.activeBetDate));
+      } else {
+        hidePlaca();
+      }
     }
   } catch {
     if (banner) {
@@ -727,6 +735,7 @@ async function refreshTodayStatus() {
       banner.className = "win95-status-bar show closed";
     }
     setGuessFormOpen(false);
+    hidePlaca();
   } finally {
     if (loading) loading.style.display = "none";
   }
@@ -765,6 +774,90 @@ function setGuessFormOpen(isOpen) {
   if (!isOpen && timeOptions) timeOptions.classList.remove("show");
   if (loading) loading.style.display = "none";
   if (loginHint) loginHint.style.display = !currentUser && !isOpen ? "block" : "none";
+}
+
+// ─── Luiz de Placa (boost de pontos em dobro, 1x por semana) ──────────────────
+// Não faz requisição nenhuma ao marcar o checkbox — só envia `placa: true`
+// junto com a aposta em si. A disponibilidade exibida no front é um "cache"
+// otimista no localStorage (chaveado por usuário + semana ISO); o backend
+// sempre revalida na hora de gravar a aposta e cancela tudo se já tiver sido
+// usado (ver POST /api/guess).
+let currentPlacaWeekKey = null;
+
+// Replica o cálculo de semana ISO do backend (ver lib/datetime.js) a partir
+// da data já retornada por /api/today — evita uma requisição extra só pra
+// descobrir em que semana estamos.
+function getClientWeekKey(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const isoDay = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + (4 - isoDay));
+  const isoYear = date.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+  const weekNum = Math.ceil(((date - yearStart) / 86400000 + 1) / 7);
+  return `${isoYear}-W${String(weekNum).padStart(2, "0")}`;
+}
+
+function placaStorageKey() {
+  if (!currentUser) return null;
+  return `placaUsedWeek_${String(currentUser.name || "").trim().toLowerCase()}`;
+}
+
+function isPlacaUsedThisWeek(weekKey) {
+  const key = placaStorageKey();
+  return key ? localStorage.getItem(key) === weekKey : false;
+}
+
+function markPlacaUsed(weekKey) {
+  const key = placaStorageKey();
+  if (key && weekKey) localStorage.setItem(key, weekKey);
+}
+
+function setPlacaLoading() {
+  const group = document.getElementById("placa-group");
+  const checkbox = document.getElementById("placa-checkbox");
+  const hint = document.getElementById("placa-hint");
+  if (!group || !checkbox || !hint) return;
+  group.style.display = "flex";
+  checkbox.checked = false;
+  checkbox.disabled = true;
+  hint.textContent = "(verificando disponibilidade...)";
+}
+
+function hidePlaca() {
+  const group = document.getElementById("placa-group");
+  const checkbox = document.getElementById("placa-checkbox");
+  if (group) group.style.display = "none";
+  if (checkbox) checkbox.checked = false;
+  currentPlacaWeekKey = null;
+}
+
+function renderPlacaCheckbox(weekKey) {
+  const group = document.getElementById("placa-group");
+  const checkbox = document.getElementById("placa-checkbox");
+  const hint = document.getElementById("placa-hint");
+  if (!group || !checkbox || !hint) return;
+
+  currentPlacaWeekKey = weekKey;
+  const used = isPlacaUsedThisWeek(weekKey);
+
+  group.style.display = "flex";
+  checkbox.disabled = used;
+  if (used) checkbox.checked = false;
+  hint.textContent = used
+    ? "(já usado nesta semana)"
+    : checkbox.checked
+      ? "(ativado: pontos em dobro nesta aposta!)"
+      : "(dobra os pontos desta aposta — 1x por semana)";
+}
+
+function togglePlaca() {
+  const checkbox = document.getElementById("placa-checkbox");
+  const hint = document.getElementById("placa-hint");
+  if (!checkbox || !hint) return;
+  hint.textContent = checkbox.checked
+    ? "(ativado: pontos em dobro nesta aposta!)"
+    : "(dobra os pontos desta aposta — 1x por semana)";
 }
 
 function setGuessTime(time) {
@@ -829,20 +922,29 @@ async function submitGuess() {
     return;
   }
 
+  const placaCheckbox = document.getElementById("placa-checkbox");
+  const usePlaca = !!(placaCheckbox && placaCheckbox.checked && !placaCheckbox.disabled);
+
   showLoading("Registrando aposta...");
   try {
-    // Envia apenas o time — o servidor identifica o usuário pelo token
+    // Envia time + placa — o servidor identifica o usuário pelo token e
+    // revalida o uso semanal do Luiz de Placa antes de gravar (o front só
+    // confiou no localStorage pra decidir se mostrava o checkbox habilitado).
     const res = await fetch(`${API}/guess`, {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ time }),
+      body: JSON.stringify({ time, placa: usePlaca }),
     });
     const data = await res.json();
     if (res.ok) {
-      showMsg(msg, `✅ Aposta registrada! Você apostou ${time}.`, "ok");
+      if (data.placa) markPlacaUsed(data.placaWeekKey);
+      const placaNote = data.placa ? " 🏆 Luiz de Placa ativado — pontos em dobro!" : "";
+      showMsg(msg, `✅ Aposta registrada! Você apostou ${time}.${placaNote}`, "ok");
       setGuessFormOpen(false);
+      hidePlaca();
       todayStatusCache = null;
     } else {
+      if (data.placaAlreadyUsed) markPlacaUsed(data.placaWeekKey || currentPlacaWeekKey);
       showMsg(msg, `❌ ${data.error}`, "err");
       if (res.status === 409) await refreshTodayStatus();
     }
@@ -1746,9 +1848,12 @@ function renderRankingsTable(rankings, arrival) {
     const invalidatedBadge = r.invalidated
       ? ' <span class="invalidated-badge" title="Aposta feita a menos de 30 min da chegada real — não concorre a precisão nem ao pódio do dia.">⚠️ invalidada</span>'
       : "";
+    const placaBadge = r.placa
+      ? ' <span class="placa-badge" title="Luiz de Placa: pontos em dobro nesta aposta">🏆 placa</span>'
+      : "";
     html += `<tr>
       <td>${medal}</td>
-      <td>${renderPlayerName(r.name, false)}${invalidatedBadge}</td>
+      <td>${renderPlayerName(r.name, false)}${invalidatedBadge}${placaBadge}</td>
       <td><strong>${r.time}</strong></td>
       ${arrival ? `<td>${diffStr}</td>` : ""}
     </tr>`;
@@ -2375,9 +2480,19 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "1.3.0",
+    version: "1.4.0",
     date: "27/06/2026",
     isNew: true,
+    title: "Luiz de Placa: dobre seus pontos uma vez por semana",
+    items: [
+      "🏆 Novo boost \"Luiz de Placa\": ative o checkbox antes de apostar e ganhe o dobro de LuizCoins pela aposta do dia. Disponível 1 vez por semana para cada jogador.",
+      "📋 Apostas com o boost ativado aparecem com uma marquinha 🏆 nas tabelas de apostas e rankings.",
+    ],
+  },
+  {
+    version: "1.3.0",
+    date: "27/06/2026",
+    isNew: false,
     title: "Economia rebalanceada: loja mais acessível e mais justa",
     items: [
       "🛒 Preços da loja recalibrados — gifs, Esmeralda e Rubi ficam acessíveis em poucos dias; Dourada em menos de 1 mês; Diamante (2,5x o preço da Dourada) em menos de 2 meses, em vez de praticamente inalcançável.",

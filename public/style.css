@@ -1184,6 +1184,28 @@ body {
   display: inline-block;
 }
 
+.placa-badge {
+  background: #ffe082;
+  color: #6d4c00;
+  border: 1px solid #c9971c;
+  font-size: 9px;
+  padding: 1px 4px;
+  margin-left: 4px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.placa-checkbox-label {
+  white-space: nowrap;
+  align-self: flex-start;
+}
+
+.placa-hint {
+  font-size: 11px;
+  color: #444;
+  margin-top: 2px;
+}
+
 /* ─── SCROLLABLE WINDOW BODIES ────────────── */
 /* Better scroll for lists — fix #7 */
 .win95-body-scroll {
