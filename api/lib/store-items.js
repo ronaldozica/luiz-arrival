@@ -14,8 +14,12 @@ const STORE_ITEMS = [
 ];
 
 // ─── Emoji de ranking (compra livre, não é um item fixo da loja) ────────────
-const EMOJI_PRICE = 500;
-const EMOJI_MAX_OWNED = 3;
+// Sem limite de quantidade; cada emoji novo custa 100 LuizCoins mais que o anterior.
+const EMOJI_BASE_PRICE = 500;
+const EMOJI_PRICE_STEP = 100;
+function emojiPriceForCount(ownedCount) {
+  return EMOJI_BASE_PRICE + EMOJI_PRICE_STEP * ownedCount;
+}
 // Aceita um único emoji (incluindo sequências com ZWJ/seletor de variação/modificador de tom de pele) ou uma bandeira (par de Regional Indicator).
 const ZWJ = "‍";
 const VS16 = "️";
@@ -76,9 +80,9 @@ async function calcBalance(kv, user, users) {
 
   const emojiOwnedKey = `emoji_owned:${userKey(user.name)}`;
   const emojiOwned = parseRedisArray(await kv.get(emojiOwnedKey));
-  spentCoins += emojiOwned.length * EMOJI_PRICE;
+  for (let i = 0; i < emojiOwned.length; i++) spentCoins += emojiPriceForCount(i);
 
   return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned };
 }
 
-module.exports = { STORE_ITEMS, EMOJI_PRICE, EMOJI_MAX_OWNED, EMOJI_REGEX, calcBalance };
+module.exports = { STORE_ITEMS, EMOJI_BASE_PRICE, EMOJI_PRICE_STEP, emojiPriceForCount, EMOJI_REGEX, calcBalance };

@@ -6,7 +6,7 @@ const { requireAuth } = require("../lib/auth-middleware");
 const { invalidatesCache, getCachedOrCompute } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisArray } = require("../lib/utils");
-const { STORE_ITEMS, EMOJI_PRICE, EMOJI_MAX_OWNED, EMOJI_REGEX, calcBalance } = require("../lib/store-items");
+const { STORE_ITEMS, EMOJI_BASE_PRICE, emojiPriceForCount, EMOJI_REGEX, calcBalance } = require("../lib/store-items");
 const { ACHIEVEMENT_DEFS } = require("../lib/achievement-defs");
 
 // POST /api/profile/color — define qual cor de nome (já comprada) é exibida no ranking
@@ -44,7 +44,7 @@ router.get("/profile/emoji", requireAuth, async (req, res) => {
     const uk = userKey(req.sessionName);
     const owned = parseRedisArray(await kv.get(`emoji_owned:${uk}`));
     const active = (await kv.get(`emoji_active:${uk}`)) || null;
-    res.json({ owned, active, price: EMOJI_PRICE, max: EMOJI_MAX_OWNED });
+    res.json({ owned, active, nextPrice: emojiPriceForCount(owned.length) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -69,11 +69,10 @@ router.post("/profile/emoji/buy", requireAuth, invalidatesCache("cache:profiles"
 
     if (emojiOwned.includes(emoji))
       return res.status(400).json({ error: "Você já possui este emoji." });
-    if (emojiOwned.length >= EMOJI_MAX_OWNED)
-      return res.status(400).json({ error: `Você já possui ${EMOJI_MAX_OWNED} emojis. Remova um antes de comprar outro.` });
 
     const balance = earnedCoins - spentCoins;
-    if (balance < EMOJI_PRICE)
+    const price = emojiPriceForCount(emojiOwned.length);
+    if (balance < price)
       return res.status(400).json({ error: "LuizCoins™ insuficientes." });
 
     const newOwned = [...emojiOwned, emoji];
@@ -82,33 +81,13 @@ router.post("/profile/emoji/buy", requireAuth, invalidatesCache("cache:profiles"
       await kv.set(`emoji_active:${uk}`, emoji);
     }
 
-    res.json({ success: true, owned: newOwned, newBalance: balance - EMOJI_PRICE });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// POST /api/profile/emoji/remove — remove um emoji possuído (sem reembolso), liberando vaga para comprar outro
-router.post("/profile/emoji/remove", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
-  try {
-    const { emoji } = req.body;
-    if (!emoji) return res.status(400).json({ error: "emoji é obrigatório." });
-
-    const kv = getKV();
-    const uk = userKey(req.sessionName);
-    const ownedKey = `emoji_owned:${uk}`;
-    const owned = parseRedisArray(await kv.get(ownedKey));
-    const newOwned = owned.filter((e) => e !== emoji);
-    if (newOwned.length === owned.length)
-      return res.status(404).json({ error: "Emoji não encontrado." });
-
-    await kv.set(ownedKey, JSON.stringify(newOwned));
-
-    const activeKey = `emoji_active:${uk}`;
-    const active = await kv.get(activeKey);
-    if (active === emoji) await kv.del(activeKey);
-
-    res.json({ success: true, owned: newOwned });
+    res.json({
+      success: true,
+      owned: newOwned,
+      newBalance: balance - price,
+      pricePaid: price,
+      nextPrice: emojiPriceForCount(newOwned.length),
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -175,7 +175,7 @@ function openWindow(id) {
     centerWindow(w);
     refreshTodayStatus();
   }
-  if (id === "win-store") loadStore();
+  if (id === "win-store") { loadStore(); loadProfileEmoji(); }
   if (id === "win-achievements") loadAchievements();
   delete minimizedWindows[id];
   bringToFront(w);
@@ -241,7 +241,7 @@ function updateTaskbar() {
         if (minimizedWindows[id]) openWindow(id);
         else {
           bringToFront(w);
-          if (id === "win-store") loadStore();
+          if (id === "win-store") { loadStore(); loadProfileEmoji(); }
           if (id === "win-profile") loadProfileTabData(currentProfileTab);
         }
       };
@@ -1659,7 +1659,6 @@ async function openStore() {
     return;
   }
   openWindow("win-store");
-  await loadStore();
 }
 
 async function loadStore() {
@@ -2063,25 +2062,31 @@ async function loadProfileEmoji() {
 }
 
 function renderProfileEmoji() {
-  const result = document.getElementById("profile-emoji-owned");
   if (!profileEmojiData) return;
-  const { owned, active, max } = profileEmojiData;
+  const { owned, active, nextPrice } = profileEmojiData;
+
+  let html;
   if (owned.length === 0) {
-    result.innerHTML = `<div class="no-data">Você ainda não comprou nenhum emoji (0/${max}).</div>`;
-    return;
+    html = `<div class="no-data">Você ainda não comprou nenhum emoji.</div>`;
+  } else {
+    html = `<div class="info-box" style="margin-bottom:6px">Emojis comprados: ${owned.length} (próximo custa ${nextPrice} LuizCoins)</div>`;
+    html += `<div class="btn-row" style="flex-wrap:wrap">`;
+    owned.forEach((e) => {
+      const isActive = active === e;
+      html += `<span class="emoji-owned-item${isActive ? " active" : ""}">
+        <button class="win95-action-btn" style="font-size:18px;padding:2px 8px" title="${isActive ? "Exibindo no ranking" : "Clique para exibir no ranking"}"
+          onclick="setActiveProfileEmoji('${isActive ? "" : e}')">${e}</button>
+      </span>`;
+    });
+    html += `</div>`;
   }
-  let html = `<div class="info-box" style="margin-bottom:6px">Emojis comprados: ${owned.length}/${max}</div>`;
-  html += `<div class="btn-row" style="flex-wrap:wrap">`;
-  owned.forEach((e) => {
-    const isActive = active === e;
-    html += `<span class="emoji-owned-item${isActive ? " active" : ""}">
-      <button class="win95-action-btn" style="font-size:18px;padding:2px 8px" title="${isActive ? "Exibindo no ranking" : "Clique para exibir no ranking"}"
-        onclick="setActiveProfileEmoji('${isActive ? "" : e}')">${e}</button>
-      <button class="win95-action-btn" style="font-size:10px;padding:1px 5px" title="Remover" onclick="removeProfileEmoji('${e}')">🗑️</button>
-    </span>`;
+
+  ["profile", "store"].forEach((ctx) => {
+    const result = document.getElementById(`${ctx}-emoji-owned`);
+    const buyBtn = document.getElementById(`${ctx}-emoji-buy-btn`);
+    if (result) result.innerHTML = html;
+    if (buyBtn) buyBtn.textContent = `🛒 Comprar (${nextPrice} LuizCoins)`;
   });
-  html += `</div>`;
-  result.innerHTML = html;
 }
 
 async function setActiveProfileEmoji(emoji) {
@@ -2110,34 +2115,6 @@ async function setActiveProfileEmoji(emoji) {
   }
 }
 
-async function removeProfileEmoji(emoji) {
-  const msg = document.getElementById("profile-emoji-msg");
-  if (!confirm(`Remover o emoji ${emoji}? Você não será reembolsado.`)) return;
-  showLoading("Removendo emoji...");
-  try {
-    const res = await fetch(`${API}/profile/emoji/remove`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({ emoji }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      profileEmojiData.owned = data.owned;
-      if (profileEmojiData.active === emoji) profileEmojiData.active = null;
-      renderProfileEmoji();
-      showMsg(msg, "✅ Emoji removido.", "ok");
-      invalidateProfileCache();
-      loadProfiles();
-    } else {
-      showMsg(msg, `❌ ${data.error}`, "err");
-    }
-  } catch {
-    showMsg(msg, "Erro de conexão.", "err");
-  } finally {
-    hideLoading();
-  }
-}
-
 // ─── Seletor de emoji ─────────────────────────────────────────────────────────
 const EMOJI_CATEGORIES = {
   "😀 Carinhas": ["😀","😁","😂","🤣","😊","😍","😘","😜","🤔","😎","🥳","😭","😡","🥺","😴","🤯","🤩","😇","🙄","😬","🤗","🥶","🤤","🫡"],
@@ -2151,8 +2128,10 @@ const EMOJI_CATEGORIES = {
 };
 let pickedEmoji = null;
 let activeEmojiCategory = Object.keys(EMOJI_CATEGORIES)[0];
+let emojiPickerContext = "profile";
 
-function openEmojiPicker() {
+function openEmojiPicker(context = "profile") {
+  emojiPickerContext = context;
   renderEmojiPickerTabs();
   renderEmojiPickerGrid();
   openWindow("win-emoji-picker");
@@ -2180,14 +2159,16 @@ function renderEmojiPickerGrid() {
 
 function setPickedEmoji(emoji) {
   pickedEmoji = emoji;
-  const btn = document.getElementById("profile-emoji-picked");
-  if (btn) btn.textContent = emoji || "➕";
+  ["profile", "store"].forEach((ctx) => {
+    const btn = document.getElementById(`${ctx}-emoji-picked`);
+    if (btn) btn.textContent = emoji || "➕";
+  });
   if (emoji) closeWindow("win-emoji-picker");
 }
 
-async function buyProfileEmoji() {
+async function buyProfileEmoji(context = "profile") {
   const emoji = pickedEmoji;
-  const msg = document.getElementById("profile-emoji-msg");
+  const msg = document.getElementById(`${context}-emoji-msg`);
   if (!emoji) {
     showMsg(msg, "Escolha um emoji primeiro.", "err");
     return;
@@ -2202,11 +2183,13 @@ async function buyProfileEmoji() {
     const data = await res.json();
     if (res.ok) {
       profileEmojiData.owned = data.owned;
+      profileEmojiData.nextPrice = data.nextPrice;
       renderProfileEmoji();
-      showMsg(msg, `✅ Emoji ${emoji} comprado!`, "ok");
+      showMsg(msg, `✅ Emoji ${emoji} comprado por ${data.pricePaid} LuizCoins! O próximo emoji custará ${data.nextPrice} LuizCoins.`, "ok");
       setPickedEmoji(null);
       invalidateProfileCache();
       loadProfiles();
+      if (document.getElementById("win-store")?.style.display !== "none") loadStore();
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
     }
