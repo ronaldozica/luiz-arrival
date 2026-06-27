@@ -329,6 +329,7 @@
         <div class="win95-tabs">
           <button class="rank-tab active" data-admin-tab="arrival" onclick="setAdminTab('arrival')">📍 Chegada do Luiz</button>
           <button class="rank-tab" data-admin-tab="rankcheat" onclick="setAdminTab('rankcheat')">🗑️ Ranking de Jogos</button>
+          <button class="rank-tab" data-admin-tab="tags" onclick="setAdminTab('tags')">🏷️ Tags</button>
         </div>
 
         <div id="admin-tab-arrival">
@@ -372,6 +373,16 @@
           <div class="win95-msg" id="admin-rankcheat-msg"></div>
           <hr />
           <div id="admin-rankcheat-result"></div>
+        </div>
+
+        <div id="admin-tab-tags" style="display:none">
+          <p><strong>Gerenciar tags dos jogadores</strong></p>
+          <div class="btn-row">
+            <button class="win95-action-btn" onclick="loadAdminTags()">🔄 Carregar Jogadores</button>
+          </div>
+          <div class="win95-msg" id="admin-tags-msg"></div>
+          <hr />
+          <div id="admin-tags-result"></div>
         </div>
       </div>
     </div>

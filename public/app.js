@@ -10,7 +10,6 @@ let allUsers = [];
 let currentUser = null;   // { name, isHCM } — sem senha
 let sessionToken = null;  // token JWT-like retornado pelo servidor
 let todayStatusCache = null;
-let todayPollTimer = null;
 
 const windows = {
   "win-login": "🔑 Login",
@@ -680,23 +679,6 @@ async function refreshTodayStatus() {
   }
 }
 
-function startTodayPoll() {
-  stopTodayPoll();
-  todayPollTimer = setInterval(() => {
-    const winGuess = document.getElementById("win-guess");
-    if (winGuess && winGuess.style.display !== "none" && !minimizedWindows["win-guess"]) {
-      refreshTodayStatus();
-    }
-  }, 30000);
-}
-
-function stopTodayPoll() {
-  if (todayPollTimer) {
-    clearInterval(todayPollTimer);
-    todayPollTimer = null;
-  }
-}
-
 function loadUserPhoto() {
   const sel = document.getElementById("guess-user-select");
   const name = sel ? sel.value : currentUser ? currentUser.name : "";
@@ -1098,6 +1080,74 @@ function setAdminTab(tab) {
   });
   document.getElementById("admin-tab-arrival").style.display = tab === "arrival" ? "block" : "none";
   document.getElementById("admin-tab-rankcheat").style.display = tab === "rankcheat" ? "block" : "none";
+  document.getElementById("admin-tab-tags").style.display = tab === "tags" ? "block" : "none";
+}
+
+async function loadAdminTags() {
+  const msg = document.getElementById("admin-tags-msg");
+  const result = document.getElementById("admin-tags-result");
+  showMsg(msg, "", "ok");
+  showLoading("Carregando jogadores...");
+  try {
+    const res = await fetch(`${API}/admin/users`, {
+      headers: { "Authorization": `Bearer ${adminToken}` },
+    });
+    const users = await res.json();
+    if (!res.ok) {
+      showMsg(msg, `❌ ${users.error || "Erro ao carregar."}`, "err");
+      handleAdminAuthError(res.status);
+      return;
+    }
+    renderAdminTags(users);
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+function renderAdminTags(users) {
+  const result = document.getElementById("admin-tags-result");
+  if (!users || users.length === 0) {
+    result.innerHTML = '<div class="no-data">Nenhum jogador cadastrado.</div>';
+    return;
+  }
+  let html = `<table class="win95-table"><thead><tr>
+    <th>Jogador</th><th>HCM</th>
+  </tr></thead><tbody>`;
+  users.forEach((u) => {
+    html += `<tr>
+      <td>${u.name}</td>
+      <td style="text-align:center">
+        <input type="checkbox" ${u.isHCM ? "checked" : ""} onchange="toggleAdminHCM('${String(u.name).replace(/'/g, "\\'")}', this.checked)" />
+      </td>
+    </tr>`;
+  });
+  html += "</tbody></table>";
+  result.innerHTML = html;
+}
+
+async function toggleAdminHCM(name, isHCM) {
+  const msg = document.getElementById("admin-tags-msg");
+  showLoading("Atualizando tag...");
+  try {
+    const res = await fetch(`${API}/admin/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+      body: JSON.stringify({ name, isHCM }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showMsg(msg, `✅ Tag HCM de "${name}" ${isHCM ? "ativada" : "removida"}.`, "ok");
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+      handleAdminAuthError(res.status);
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
 }
 
 function onAdminRankGameChange() {
@@ -1468,8 +1518,6 @@ loadUsers().then(() => {
   }
 });
 
-setInterval(refreshTodayStatus, 60000);
-startTodayPoll();
 updateTaskbar();
 loadIconPositions();
 loadWallpaper();

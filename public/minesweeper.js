@@ -236,31 +236,6 @@ function checkMsWin() {
 }
 
 /**
- * Atalho de teste: força uma vitória imediata sem precisar revelar o tabuleiro.
- * Use no console (msTestWin()) ou Ctrl+Shift+W com a janela do Campo Minado aberta.
- */
-function msTestWin(fakeTimer) {
-  if (msGameOver) return;
-  if (msFirstClick) {
-    msFirstClick = false;
-    placeMsMines(0, 0);
-    calculateMsNeighbors();
-  }
-  stopMsTimer();
-  msTimer = fakeTimer !== undefined ? fakeTimer : msTimer;
-  msRevealedCount = MS_ROWS * MS_COLS - MS_MINES;
-  triggerMsGameOver(true);
-}
-
-document.addEventListener("keydown", (e) => {
-  const win = document.getElementById("win-minesweeper");
-  if (win && win.style.display !== "none" && e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "w") {
-    e.preventDefault();
-    msTestWin();
-  }
-});
-
-/**
  * Finaliza o jogo — vitória usa o tempo como pontuação (menor é melhor → score = 9999 - tempo)
  */
 function triggerMsGameOver(won, killerRow = -1, killerCol = -1) {
