@@ -176,7 +176,43 @@
       <div class="info-box" style="margin-top:4px;font-size:11px">
         Ainda não tem uma conta?
         <a href="#" onclick="closeWindow('win-login'); openWindow('win-register'); return false">👤 Criar novo usuário</a>
+        <br />
+        Esqueceu a senha?
+        <a href="#" onclick="forgotPassword(); return false">🔄 Esqueci minha senha</a>
       </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: TROCAR SENHA (obrigatório após reset) ══ -->
+  <div class="win95-window" id="win-change-password" style="left:220px;top:140px;width:340px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-change-password')">
+      <span class="win95-title">🔑 Defina uma nova senha</span>
+    </div>
+    <div class="win95-body">
+      <div class="info-box" style="font-size:11px">
+        Sua senha foi resetada. Defina uma nova senha para continuar usando sua conta.
+      </div>
+      <div class="field-group">
+        <label>Nova senha:</label>
+        <div class="password-field">
+          <input type="password" id="change-password-new" placeholder="Nova senha" />
+          <button type="button" class="password-toggle" onclick="togglePassword('change-password-new', this)"
+            title="Mostrar senha">&#128065;</button>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Confirme a nova senha:</label>
+        <div class="password-field">
+          <input type="password" id="change-password-confirm" placeholder="Repita a nova senha"
+            onkeydown="if(event.key==='Enter') submitChangePassword()" />
+          <button type="button" class="password-toggle" onclick="togglePassword('change-password-confirm', this)"
+            title="Mostrar senha">&#128065;</button>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="win95-action-btn" onclick="submitChangePassword()">✅ Salvar nova senha</button>
+      </div>
+      <div class="win95-msg" id="change-password-msg"></div>
     </div>
   </div>
 
@@ -374,6 +410,7 @@
           <button class="rank-tab" data-admin-tab="rankcheat" onclick="setAdminTab('rankcheat')">🗑️ Ranking de Jogos</button>
           <button class="rank-tab" data-admin-tab="tags" onclick="setAdminTab('tags')">🏷️ Tags</button>
           <button class="rank-tab" data-admin-tab="coins" onclick="setAdminTab('coins')">💰 Moedas</button>
+          <button class="rank-tab" data-admin-tab="passwords" onclick="setAdminTab('passwords')">🔑 Senhas temporárias</button>
         </div>
 
         <div id="admin-tab-arrival">
@@ -447,6 +484,19 @@
             <button class="win95-action-btn" onclick="loadAdminCoinsAll()">📊 Consultar Saldo de Todos</button>
           </div>
           <div id="admin-coins-all-result"></div>
+        </div>
+
+        <div id="admin-tab-passwords" style="display:none">
+          <p><strong>Senhas temporárias pendentes</strong></p>
+          <div class="info-box" style="font-size:11px">
+            Gerado quando alguém clica em "Esqueci minha senha" no login. Copie e envie particularmente para a pessoa — ao fazer login com ela, é obrigatório definir uma nova senha.
+          </div>
+          <div class="btn-row">
+            <button class="win95-action-btn" onclick="loadAdminPasswordResets()">🔄 Atualizar Lista</button>
+          </div>
+          <div class="win95-msg" id="admin-passwords-msg"></div>
+          <hr />
+          <div id="admin-passwords-result"></div>
         </div>
       </div>
     </div>

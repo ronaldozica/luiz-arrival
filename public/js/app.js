@@ -863,9 +863,88 @@ async function doLogin() {
       currentUser = { name: data.name, isHCM: data.isHCM };
       saveSession(currentUser, sessionToken);
       updateUserDisplay();
-      closeWindow("win-login");
       showMsg(msg, "", "ok");
       document.getElementById("login-password").value = "";
+      if (data.mustChangePassword) {
+        closeWindow("win-login");
+        openWindow("win-change-password");
+      } else {
+        closeWindow("win-login");
+      }
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+// ─── Esqueci minha senha ──────────────────────────────────────────────────────
+async function forgotPassword() {
+  const name = document.getElementById("login-name-select").value;
+  const msg = document.getElementById("login-msg");
+
+  if (!name) {
+    showMsg(msg, "Selecione seu nome na lista primeiro.", "err");
+    return;
+  }
+  if (!confirm(`Resetar a senha de "${name}"? Você vai precisar entrar em contato com o admin para receber a senha temporária.`)) {
+    return;
+  }
+
+  showLoading("Solicitando reset...");
+  try {
+    const res = await fetch(`${API}/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showMsg(
+        msg,
+        "✅ Senha resetada. Entre em contato com o Ronaldo para receber sua senha temporária — no primeiro login com ela, você vai escolher uma nova senha.",
+        "ok",
+      );
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+// ─── Trocar senha (obrigatório após reset) ───────────────────────────────────
+async function submitChangePassword() {
+  const newPassword = document.getElementById("change-password-new").value;
+  const confirmPassword = document.getElementById("change-password-confirm").value;
+  const msg = document.getElementById("change-password-msg");
+
+  if (!newPassword || newPassword.length < 4) {
+    showMsg(msg, "A senha deve ter ao menos 4 caracteres.", "err");
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    showMsg(msg, "As senhas não coincidem.", "err");
+    return;
+  }
+
+  showLoading("Salvando nova senha...");
+  try {
+    const res = await fetch(`${API}/change-password`, {
+      method: "POST",
+      headers: authHeaders(sessionToken),
+      body: JSON.stringify({ newPassword }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById("change-password-new").value = "";
+      document.getElementById("change-password-confirm").value = "";
+      closeWindow("win-change-password");
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
     }
@@ -1589,7 +1668,77 @@ function setAdminTab(tab) {
   document.getElementById("admin-tab-rankcheat").style.display = tab === "rankcheat" ? "block" : "none";
   document.getElementById("admin-tab-tags").style.display = tab === "tags" ? "block" : "none";
   document.getElementById("admin-tab-coins").style.display = tab === "coins" ? "block" : "none";
+  document.getElementById("admin-tab-passwords").style.display = tab === "passwords" ? "block" : "none";
   if (tab === "coins") loadAdminCoinsPlayers();
+  if (tab === "passwords") loadAdminPasswordResets();
+}
+
+async function loadAdminPasswordResets() {
+  const msg = document.getElementById("admin-passwords-msg");
+  const result = document.getElementById("admin-passwords-result");
+  showLoading("Carregando senhas temporárias...");
+  try {
+    const res = await fetch(`${API}/admin/password-resets`, {
+      headers: { "Authorization": `Bearer ${adminToken}` },
+    });
+    const resets = await res.json();
+    if (!res.ok) {
+      showMsg(msg, `❌ ${resets.error || "Erro ao carregar."}`, "err");
+      handleAdminAuthError(res.status);
+      return;
+    }
+    renderAdminPasswordResets(resets);
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+function renderAdminPasswordResets(resets) {
+  const result = document.getElementById("admin-passwords-result");
+  if (!resets || resets.length === 0) {
+    result.innerHTML = '<div class="no-data">Nenhuma senha temporária pendente.</div>';
+    return;
+  }
+  let html = `<table class="win95-table"><thead><tr>
+    <th>Jogador</th><th>Senha temporária</th><th>Gerada em</th><th></th>
+  </tr></thead><tbody>`;
+  resets.forEach((r) => {
+    const date = new Date(r.createdAt).toLocaleString("pt-BR");
+    const safeName = escHtml(r.name).replace(/'/g, "\\'");
+    html += `<tr>
+      <td>${escHtml(r.name)}</td>
+      <td><code>${escHtml(r.password)}</code></td>
+      <td>${date}</td>
+      <td><button class="win95-action-btn" style="font-size:10px;padding:2px 6px" onclick="dismissAdminPasswordReset('${safeName}')">✖ Remover</button></td>
+    </tr>`;
+  });
+  html += "</tbody></table>";
+  result.innerHTML = html;
+}
+
+async function dismissAdminPasswordReset(name) {
+  const msg = document.getElementById("admin-passwords-msg");
+  showLoading("Removendo...");
+  try {
+    const res = await fetch(`${API}/admin/password-resets/dismiss`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      renderAdminPasswordResets(data.resets);
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+      handleAdminAuthError(res.status);
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
 }
 
 async function loadAdminCoinsPlayers() {
@@ -2766,9 +2915,21 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "1.6.0",
+    version: "1.7.0",
     date: "27/06/2026",
     isNew: true,
+    title: "Recuperação de senha e cadastro mais claro",
+    items: [
+      "🔄 Novo \"Esqueci minha senha\" na tela de login: reseta a senha para uma temporária (gerenciada pelo admin) e exige a troca por uma nova no primeiro login.",
+      "🔑 Painel admin ganhou a aba \"Senhas temporárias\", onde o admin vê e repassa particularmente as senhas geradas pelos resets.",
+      "👤 Tela de login agora tem um link direto para criar uma conta nova, no lugar da opção de visitante.",
+      "🔒 Tela de cadastro avisa que a senha é armazenada de forma criptografada, mas recomenda uma senha exclusiva para este site.",
+    ],
+  },
+  {
+    version: "1.6.0",
+    date: "27/06/2026",
+    isNew: false,
     title: "Janelas maximizáveis e zoom nos jogos",
     items: [
       "🗖 Todas as janelas agora têm um botão de maximizar na barra de título, ocupando toda a área útil da tela.",
