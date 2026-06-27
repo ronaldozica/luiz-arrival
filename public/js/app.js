@@ -1179,7 +1179,7 @@ async function registerUser() {
     if (res.ok) {
       showMsg(
         msg,
-        `✅ Usuário "${name}" criado! Como compensação pela instabilidade do aplicativo, todos os novos usuários ganham 125 LuizCoins™. Faça login para entrar.`,
+        `✅ Usuário "${name}" criado! Faça login para entrar.`,
         "ok"
       );
       document.getElementById("reg-name").value = "";

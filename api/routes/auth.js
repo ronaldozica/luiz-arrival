@@ -77,9 +77,6 @@ router.post("/register", async (req, res) => {
     users.push(newUser);
     await saveUsers(kv, users);
 
-    const coinsKey = `gamecoins:${userKey(newUser.name)}`;
-    await kv.set(coinsKey, String(125));
-
     res.json({ success: true, name: newUser.name, isHCM: false });
   } catch (e) {
     res.status(500).json({ error: e.message });

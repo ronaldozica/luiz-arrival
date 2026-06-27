@@ -3,14 +3,19 @@ const { isWeekday } = require("./datetime");
 const { getDayData } = require("./days");
 
 // ─── Loja de Prêmios ─────────────────────────────────────────────────────────
+// Preços calibrados pra ~6 LuizCoins/dia (jogador engajado apostando todo dia
+// útil, sem contar minigame — ver GAME_COINS_DAILY_CAP em routes/game-rank.js
+// pro teto que mantém esse canal na mesma ordem de grandeza). Alvos: gifs em
+// poucos dias; esmeralda em até ~4 dias; rubi em menos de 2 semanas; dourado
+// em menos de 1 mês; diamante (2,5x o dourado) em menos de 2 meses.
 const STORE_ITEMS = [
-  { id: "palinha", price: 10, src: "/photos/palinha.gif", title: "Luiz dando uma palinha" },
-  { id: "baixista", price: 10, src: "/photos/baixista.gif", title: "Luiz Fernando baixista" },
-  { id: "confusp", price: 25, src: "/photos/confuso.gif", title: "Luiz confuso" },
-  { id: "color_esmeralda", price: 100, type: "namecolor", color: "#00c853", title: "Esmeralda" },
-  { id: "color_rubi", price: 250, type: "namecolor", color: "#e53935", title: "Rubi" },
-  { id: "color_dourado", price: 1000, type: "namecolor", color: "#ffd600", title: "Dourada" },
-  { id: "color_diamante", price: 10000, type: "namecolor", color: "#b3e5fc", title: "Diamante" },
+  { id: "palinha", price: 15, src: "/photos/palinha.gif", title: "Luiz dando uma palinha" },
+  { id: "baixista", price: 15, src: "/photos/baixista.gif", title: "Luiz Fernando baixista" },
+  { id: "confusp", price: 20, src: "/photos/confuso.gif", title: "Luiz confuso" },
+  { id: "color_esmeralda", price: 20, type: "namecolor", color: "#00c853", title: "Esmeralda" },
+  { id: "color_rubi", price: 50, type: "namecolor", color: "#e53935", title: "Rubi" },
+  { id: "color_dourado", price: 90, type: "namecolor", color: "#ffd600", title: "Dourada" },
+  { id: "color_diamante", price: 225, type: "namecolor", color: "#b3e5fc", title: "Diamante" },
 ];
 
 // ─── Emoji de ranking (compra livre, não é um item fixo da loja) ────────────

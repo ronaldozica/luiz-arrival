@@ -3,7 +3,16 @@ const router = express.Router();
 
 const { getKV } = require("../lib/redis");
 const { requireAuth } = require("../lib/auth-middleware");
-const { userKey, parseRedisArray } = require("../lib/utils");
+const { userKey, parseRedisArray, parseRedisNumber } = require("../lib/utils");
+const { todayKey } = require("../lib/datetime");
+
+// Minigames não têm cooldown entre partidas (dá pra jogar e ganhar quantas
+// vezes quiser), diferente da aposta (1x por dia útil). Sem um teto, alguém
+// disposto a repetir partidas rapidamente (ex: Campo Minado Iniciante em
+// ~20s) acumularia moedas muito mais rápido que jogando "normalmente" — o
+// que tornaria o preço dos itens da loja sem sentido. Este teto mantém o
+// ganho diário via minigames na mesma ordem de grandeza de uma boa aposta.
+const GAME_COINS_DAILY_CAP = 20;
 
 // GET /api/game-rank
 router.get("/game-rank", async (req, res) => {
@@ -78,9 +87,13 @@ router.post("/game-rank", requireAuth, async (req, res) => {
     // ─── AWARD COINS BASED ON GAME PERFORMANCE ───
     let coinsEarned = 0;
     if (game === "snake") {
-      coinsEarned = Math.floor(scoreNum / 100) * 5;
-      if (scoreNum >= 250) coinsEarned += 10;
-      if (scoreNum >= 500) coinsEarned += 10;
+      // Comida = 10 pontos e o jogo não acelera muito (1 nível a cada 50
+      // pontos), então 200-300 pontos são fáceis de alcançar. A curva é
+      // achatada nesses scores fáceis e reserva a recompensa cheia (= teto
+      // diário de minigames) só pra quem chega nos 500 pontos da conquista.
+      coinsEarned = Math.floor(scoreNum / 100) * 2;
+      if (scoreNum >= 250) coinsEarned += 5;
+      if (scoreNum >= 500) coinsEarned += 5;
     } else if (game === "minesweeper") {
       // O score só é enviado quando o jogador vence a partida
       if (difficulty === "expert") coinsEarned = 25;
@@ -89,11 +102,18 @@ router.post("/game-rank", requireAuth, async (req, res) => {
     }
 
     if (coinsEarned > 0) {
-      const coinsKey = `gamecoins:${userKey(playerName)}`;
-      const existingCoins = Number(await kv.get(coinsKey));
-      const totalCoins =
-        (Number.isFinite(existingCoins) ? existingCoins : 0) + coinsEarned;
-      await kv.set(coinsKey, String(totalCoins));
+      const dailyKey = `gamecoins_daily:${userKey(playerName)}:${todayKey()}`;
+      const dailySoFar = parseRedisNumber(await kv.get(dailyKey));
+      const allowedCoins = Math.max(0, Math.min(coinsEarned, GAME_COINS_DAILY_CAP - dailySoFar));
+
+      if (allowedCoins > 0) {
+        const coinsKey = `gamecoins:${userKey(playerName)}`;
+        const existingCoins = parseRedisNumber(await kv.get(coinsKey));
+        await kv.set(coinsKey, String(existingCoins + allowedCoins));
+        // TTL curto: só precisa sobreviver até a virada do dia, não acumular pra sempre.
+        await kv.set(dailyKey, String(dailySoFar + allowedCoins), { ex: 2 * 24 * 60 * 60 });
+      }
+      coinsEarned = allowedCoins;
     }
 
     // ─── AWARD ACHIEVEMENTS ───
