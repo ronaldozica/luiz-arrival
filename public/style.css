@@ -217,9 +217,14 @@ body {
 .icon-label {
   color: white;
   font-size: 11px;
+  line-height: 1.3;
   text-align: center;
   text-shadow: 1px 1px 1px black;
   word-break: break-word;
+  height: 28.6px; /* 2 linhas (1.3 * 11px * 2) — mantém todos os ícones do mesmo tamanho */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ─── WIN95 WINDOWS ───────────────────────── */
