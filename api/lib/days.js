@@ -1,8 +1,10 @@
 const { invalidateCache } = require("./cache");
-const { isWeekday } = require("./datetime");
+const { getWeekKey } = require("./datetime");
 
-const MAX_DAYS = 22;
-
+// Histórico fica retido indefinidamente — cada dia ocupa poucos bytes e, com
+// ~30 usuários, levaria anos para se aproximar do limite do plano gratuito do
+// Redis. Se isso um dia virar um problema real, monitore o uso no painel da
+// Upstash e decida o que arquivar/remover; não há remoção automática aqui.
 async function getDayData(kv, dateKey) {
   if (!kv) return { guesses: [], arrival: null };
   const data = await kv.get(`day:${dateKey}`);
@@ -15,15 +17,15 @@ async function setDayData(kv, dateKey, data) {
   if (!index.includes(dateKey)) {
     index.push(dateKey);
     index.sort();
-    const weekdays = index.filter(isWeekday);
-    if (weekdays.length > MAX_DAYS) {
-      const toRemove = weekdays.slice(0, weekdays.length - MAX_DAYS);
-      for (const k of toRemove) await kv.del(`day:${k}`);
-      index = index.filter((d) => !toRemove.includes(d));
-    }
     await kv.set("days_index", index);
   }
-  await invalidateCache(kv, "cache:history", "cache:overall_rank");
+  await invalidateCache(
+    kv,
+    "cache:history",
+    "cache:overall_rank",
+    `cache:week_rank:${getWeekKey(dateKey)}`,
+    "cache:weekly_history",
+  );
 }
 
-module.exports = { MAX_DAYS, getDayData, setDayData };
+module.exports = { getDayData, setDayData };

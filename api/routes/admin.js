@@ -9,8 +9,16 @@ const { setAdminSession } = require("../lib/session");
 const { requireAdminAuth } = require("../lib/auth-middleware");
 const { getUsers, saveUsers } = require("../lib/users");
 const { getDayData, setDayData } = require("../lib/days");
-const { todayKey, timeStrToMinutes } = require("../lib/datetime");
-const { userKey, absDiff, parseRedisNumber, parseRedisArray } = require("../lib/utils");
+const { todayKey, timeStrToMinutes, brasiliaWallTimeToInstant, getWeekKey } = require("../lib/datetime");
+const { userKey, absDiff, parseRedisNumber } = require("../lib/utils");
+const { unlockAchievement } = require("../lib/achievement-defs");
+const { countPlayedDaysBefore, computeWeekRanking, MIN_DAYS_FOR_OVERALL_RANK } = require("../lib/rankings");
+
+// Apostas feitas a menos de 30min do horário real de chegada são suspeitas de
+// "sniping" (jogador viu o Luiz chegar e apostou antes do admin registrar).
+// Penalização é suave: a aposta continua valendo para fins de participação
+// (1 LuizCoin), mas não concorre a precisão nem ao pódio do dia.
+const SNIPING_WINDOW_MS = 30 * 60 * 1000;
 
 // POST /api/admin/login — autentica com bcrypt e retorna token de admin
 router.post("/admin/login", async (req, res) => {
@@ -53,38 +61,64 @@ router.post("/admin/arrival", requireAdminAuth, async (req, res) => {
 
     if (day.guesses.length > 0) {
       const arrivalMins = timeStrToMinutes(time);
-      const ranked = day.guesses
-        .map((g) => ({
+      const arrivalInstant = brasiliaWallTimeToInstant(key, time);
+
+      // Quem apostou nos 30min antes da chegada real entra como "invalidated"
+      // (suspeita de sniping) — ainda aparece na lista, mas não concorre a
+      // precisão/pódio. Empates de diferença são desempatados por quem
+      // apostou primeiro (createdAt mais antigo vence), então não há mais
+      // posições compartilhadas.
+      const withDiff = day.guesses.map((g) => {
+        const createdAtMs = Date.parse(g.createdAt) || 0;
+        const sinceArrivalMs = arrivalInstant - createdAtMs;
+        return {
           ...g,
           diff: absDiff(timeStrToMinutes(g.time), arrivalMins),
-        }))
-        .sort((a, b) => a.diff - b.diff);
-      let pos = 1;
-      for (let i = 0; i < ranked.length; i++) {
-        if (i > 0 && ranked[i].diff === ranked[i - 1].diff) {
-          ranked[i].position = ranked[i - 1].position;
-        } else {
-          ranked[i].position = pos;
-        }
-        pos++;
-      }
-      day.rankings = ranked;
+          invalidated: sinceArrivalMs >= 0 && sinceArrivalMs <= SNIPING_WINDOW_MS,
+        };
+      });
+
+      const valid = withDiff
+        .filter((g) => !g.invalidated)
+        .sort((a, b) => a.diff - b.diff || Date.parse(a.createdAt) - Date.parse(b.createdAt));
+      valid.forEach((g, i) => { g.position = i + 1; });
+
+      const invalidated = withDiff.filter((g) => g.invalidated);
+      invalidated.forEach((g) => { g.position = null; });
+
+      day.rankings = [...valid, ...invalidated];
     } else {
       day.rankings = [];
     }
 
     await setDayData(kv, key, day);
 
-    // Auto-unlock bet_winner achievement for 1st place winner(s)
+    // Conquistas ligadas ao resultado do dia
     if (day.rankings && day.rankings.length > 0) {
-      const winners = day.rankings.filter((r) => r.position === 1);
-      for (const winner of winners) {
-        const unlockedKey = `achievements:${userKey(winner.name)}`;
-        const unlocked = parseRedisArray(await kv.get(unlockedKey));
-        if (!unlocked.includes("bet_winner")) {
-          unlocked.push("bet_winner");
-          await kv.set(unlockedKey, JSON.stringify(unlocked));
+      const top3 = day.rankings.filter((r) => r.position && r.position <= 3);
+      for (const entry of top3) {
+        if (entry.position === 1) await unlockAchievement(kv, entry.name, "bet_winner");
+
+        const playedBefore = await countPlayedDaysBefore(kv, entry.name, key);
+        if (playedBefore < MIN_DAYS_FOR_OVERALL_RANK) {
+          await unlockAchievement(kv, entry.name, "novato_em_ascensao");
         }
+      }
+    }
+
+    // Conquistas semanais: avaliadas quando o dia resolvido é uma sexta-feira,
+    // tratada como "fim de semana de apostas" (não há cron job no projeto —
+    // se uma sexta não tiver chegada registrada, a conquista daquela semana
+    // simplesmente não dispara).
+    const [y, m, d] = key.split("-").map(Number);
+    const isFriday = new Date(y, m - 1, d).getDay() === 5;
+    if (isFriday) {
+      const users = await getUsers(kv);
+      const weekKey = getWeekKey(key);
+      const { ranking } = await computeWeekRanking(kv, users, weekKey);
+      for (let i = 0; i < Math.min(3, ranking.length); i++) {
+        if (i === 0) await unlockAchievement(kv, ranking[i].name, "weekly_champion");
+        await unlockAchievement(kv, ranking[i].name, "weekly_top3");
       }
     }
 

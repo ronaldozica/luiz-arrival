@@ -1134,7 +1134,8 @@ body {
   flex-wrap: wrap;
 }
 
-.rank-tab {
+.rank-tab,
+.rank-main-tab {
   background: var(--win-gray);
   border: none;
   box-shadow: var(--shadow-out);
@@ -1147,11 +1148,13 @@ body {
   border-bottom: 2px solid var(--win-gray);
 }
 
-.rank-tab:hover {
+.rank-tab:hover,
+.rank-main-tab:hover {
   background: #d4d0c8;
 }
 
-.rank-tab.active {
+.rank-tab.active,
+.rank-main-tab.active {
   background: var(--win-gray);
   box-shadow: inset -1px 0 var(--win-black), inset 1px 1px var(--win-white), inset -2px 0 var(--win-dark), inset 2px 2px var(--win-gray);
   font-weight: bold;
@@ -1163,6 +1166,17 @@ body {
 .hcm-badge {
   background: var(--win-blue);
   color: white;
+  font-size: 9px;
+  padding: 1px 4px;
+  margin-left: 4px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.invalidated-badge {
+  background: #fff3cd;
+  color: #7a5c00;
+  border: 1px solid #aa8800;
   font-size: 9px;
   padding: 1px 4px;
   margin-left: 4px;
@@ -1608,4 +1622,24 @@ body {
 
 .release-version-items li:last-child {
   border-bottom: none;
+}
+
+/* ─── REGRAS DE PONTUAÇÃO ──────────────────── */
+.rules-code {
+  background: var(--win-gray);
+  border: 2px solid var(--win-white);
+  border-right-color: var(--win-black);
+  border-bottom-color: var(--win-black);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  padding: 6px 8px;
+  margin: 6px 0 10px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+#scoring-rules-content code {
+  font-family: 'Courier New', monospace;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 0 3px;
 }

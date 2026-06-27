@@ -3,7 +3,7 @@ const router = express.Router();
 
 const { getKV } = require("../lib/redis");
 const { getUsers } = require("../lib/users");
-const { getDayData, setDayData, MAX_DAYS } = require("../lib/days");
+const { getDayData, setDayData } = require("../lib/days");
 const {
   todayKey,
   isWeekday,
@@ -11,11 +11,13 @@ const {
   timeStrToMinutes,
   minutesToTimeStr,
   getNextWeekdayStr,
+  getWeekKey,
 } = require("../lib/datetime");
 const { userKey } = require("../lib/utils");
 const { getBearerToken, resolveUserSession } = require("../lib/session");
 const { requireAuth } = require("../lib/auth-middleware");
 const { getCachedOrCompute } = require("../lib/cache");
+const { computeWeekRanking, computeOverallRanking, listPastWeeks } = require("../lib/rankings");
 
 // GET /api/today
 router.get("/today", async (req, res) => {
@@ -165,7 +167,6 @@ router.get("/history", async (req, res) => {
             guesses: day.guesses || [],
           });
         }
-        if (computed.length >= MAX_DAYS) break;
       }
       return computed;
     });
@@ -175,48 +176,46 @@ router.get("/history", async (req, res) => {
   }
 });
 
-// GET /api/overall-rank
+// GET /api/overall-rank — média de pontos por dia jogado, com mínimo de dias
+// para entrar no ranking "oficial" (ver MIN_DAYS_FOR_OVERALL_RANK em lib/rankings)
 router.get("/overall-rank", async (req, res) => {
   try {
     const kv = getKV();
-    const ranked = await getCachedOrCompute(kv, "cache:overall_rank", async () => {
-      let index = (await kv.get("days_index")) || [];
-      const scores = {};
+    const result = await getCachedOrCompute(kv, "cache:overall_rank", async () => {
       const users = await getUsers(kv);
-      const hcmNames = new Set(
-        users.filter((u) => u.isHCM).map((u) => userKey(u.name)),
-      );
-
-      for (const dateKey of index) {
-        if (!isWeekday(dateKey)) continue;
-        const day = await getDayData(kv, dateKey);
-        if (!day.arrival || !day.rankings) continue;
-        const total = day.rankings.length;
-        for (const r of day.rankings) {
-          const key = r.name;
-          if (!scores[key])
-            scores[key] = {
-              name: r.name,
-              points: 0,
-              wins: 0,
-              days: 0,
-              totalDiff: 0,
-              isHCM: hcmNames.has(userKey(r.name)),
-            };
-          scores[key].points += total - r.position + 1;
-          scores[key].totalDiff += r.diff;
-          scores[key].days += 1;
-          if (r.position === 1) scores[key].wins += 1;
-        }
-      }
-      return Object.values(scores)
-        .map((s) => ({
-          ...s,
-          avgDiffMins: s.days > 0 ? Math.round(s.totalDiff / s.days) : 0,
-        }))
-        .sort((a, b) => b.points - a.points || a.avgDiffMins - b.avgDiffMins);
+      return computeOverallRanking(kv, users);
     });
-    res.json(ranked);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/weekly-rank — ranking da semana atual (segunda a domingo, ISO)
+router.get("/weekly-rank", async (req, res) => {
+  try {
+    const kv = getKV();
+    const weekKey = getWeekKey(todayKey());
+    const result = await getCachedOrCompute(kv, `cache:week_rank:${weekKey}`, async () => {
+      const users = await getUsers(kv);
+      return computeWeekRanking(kv, users, weekKey);
+    });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/weekly-history — ranking final de cada semana anterior à atual
+router.get("/weekly-history", async (req, res) => {
+  try {
+    const kv = getKV();
+    const result = await getCachedOrCompute(kv, "cache:weekly_history", async () => {
+      const users = await getUsers(kv);
+      const currentWeekKey = getWeekKey(todayKey());
+      return listPastWeeks(kv, users, currentWeekKey);
+    });
+    res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -177,6 +177,7 @@ function openWindow(id) {
   }
   if (id === "win-store") { loadStore(); loadProfileEmoji(); }
   if (id === "win-achievements") loadAchievements();
+  if (id === "win-scoring-rules") renderScoringRules();
   delete minimizedWindows[id];
   bringToFront(w);
   updateTaskbar();
@@ -229,6 +230,7 @@ function updateTaskbar() {
     "win-achievements": "🏅 Conquistas",
     "win-profile": "🧑‍🎨 Perfil",
     "win-release-notes": "📰 Novidades",
+    "win-scoring-rules": "📐 Regras",
   };
   for (const [id, label] of Object.entries(windows)) {
     const w = document.getElementById(id);
@@ -964,22 +966,45 @@ function toggleHistory(header) {
   header.querySelector("span:last-child").textContent = isOpen ? "▼" : "▲";
 }
 
-// ─── Overall Rank ─────────────────────────────────────────────────────────────
-let overallRankData = [];
+// ─── Ranking (semana atual / total / anteriores) ─────────────────────────────
+let activeRankMainTab = "week";
 let activeRankTab = "all";
+let weekRankData = null;
+let overallRankData = null;
+let weeklyHistoryData = null;
 
+// Função chamada ao abrir a janela de ranking (mantida com este nome porque
+// já está referenciada no HTML do menu Iniciar / ícone da área de trabalho).
 async function loadOverallRank() {
+  userProfiles = (await cachedFetchJSON("profiles", `${API}/profiles`, CACHE_TTL_MS)) || {};
+  await loadRankMainTab(activeRankMainTab);
+}
+
+function switchRankMainTab(tab) {
+  activeRankMainTab = tab;
+  document.querySelectorAll(".rank-main-tab").forEach((t) => {
+    t.classList.toggle("active", t.dataset.mainTab === tab);
+  });
+  const filterTabs = document.getElementById("rank-filter-tabs");
+  if (filterTabs) filterTabs.style.display = tab === "previous" ? "none" : "flex";
+  loadRankMainTab(tab);
+}
+
+async function loadRankMainTab(tab) {
   const container = document.getElementById("rank-content");
   container.innerHTML = '<div class="loading">⏳ Calculando ranking...</div>';
   showLoading("Calculando ranking...");
   try {
-    const [rank, profiles] = await Promise.all([
-      cachedFetchJSON("overall_rank", `${API}/overall-rank`, CACHE_TTL_MS),
-      cachedFetchJSON("profiles", `${API}/profiles`, CACHE_TTL_MS),
-    ]);
-    overallRankData = rank;
-    userProfiles = profiles || {};
-    renderRankTab(activeRankTab);
+    if (tab === "week") {
+      weekRankData = await cachedFetchJSON("weekly_rank", `${API}/weekly-rank`, CACHE_TTL_MS);
+      renderRankTab(activeRankTab);
+    } else if (tab === "total") {
+      overallRankData = await cachedFetchJSON("overall_rank", `${API}/overall-rank`, CACHE_TTL_MS);
+      renderRankTab(activeRankTab);
+    } else {
+      weeklyHistoryData = await cachedFetchJSON("weekly_history", `${API}/weekly-history`, CACHE_TTL_MS);
+      renderPreviousWeeks();
+    }
   } catch {
     container.innerHTML = '<div class="loading">Erro ao carregar.</div>';
   } finally {
@@ -991,7 +1016,8 @@ function toggleDecorations(checked) {
   showDecorations = typeof checked === "boolean" ? checked : !showDecorations;
   saveShowDecorations();
   syncDecorationsCheckboxes();
-  renderRankTab(activeRankTab);
+  if (activeRankMainTab === "previous") renderPreviousWeeks();
+  else renderRankTab(activeRankTab);
   if (currentGameRankData.length > 0) renderGameRank();
 }
 
@@ -1003,52 +1029,114 @@ function switchRankTab(tab) {
   renderRankTab(tab);
 }
 
-function renderRankTab(tab) {
-  const container =
-    document.getElementById("rank-table-container") ||
-    document.getElementById("rank-content");
-  if (!container) return;
-
-  const ranks = tab === "hcm" ? overallRankData.filter((r) => r.isHCM) : overallRankData;
-
-  if (ranks.length === 0) {
-    container.innerHTML = '<div class="no-data">Nenhum dado disponível ainda.</div>';
-    return;
+function renderPlayerCell(r) {
+  const hcmBadge = r.isHCM ? ' <span class="hcm-badge">HCM</span>' : "";
+  const profile = userProfiles[r.name] || {};
+  let nameStyle = "";
+  let nameColorClass = "";
+  if (showDecorations && profile.nameColor) {
+    nameColorClass = getColorClass(profile.nameColor.id);
+    if (!nameColorClass) {
+      nameStyle = `style="color:${profile.nameColor.color};${getColorEffect(profile.nameColor.id)}"`;
+    }
   }
+  const achBadge =
+    showDecorations && profile.achievement
+      ? `<span class="achievement-badge" title="${escHtml(profile.achievement.title)}">${profile.achievement.icon}</span>`
+      : "";
+  const emojiPrefix = showDecorations && profile.emoji ? `<span class="profile-emoji-badge">${profile.emoji}</span> ` : "";
+  return `${emojiPrefix}<span class="${nameColorClass}" ${nameStyle}>${escHtml(r.name)}</span>${hcmBadge}${achBadge}`;
+}
 
+// Renderiza uma lista de jogadores (já ordenada) numa tabela win95.
+// `pointsLabel`/`pointsValue` permitem reaproveitar a mesma tabela tanto para
+// a soma semanal quanto para a média diária do ranking total.
+function renderRankTable(ranks, { pointsLabel, pointsValue }) {
   let html = `<table class="win95-table"><thead><tr>
-    <th>#</th><th>Nome</th><th>Pts</th><th>🥇</th><th>Dias</th><th>Erro médio</th>
+    <th>#</th><th>Nome</th><th>${pointsLabel}</th><th>🥇</th><th>Dias</th><th>Erro médio</th>
   </tr></thead><tbody>`;
   ranks.forEach((r, i) => {
     const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-    const hcmBadge = r.isHCM ? ' <span class="hcm-badge">HCM</span>' : "";
-    const profile = userProfiles[r.name] || {};
-    let nameStyle = "";
-    let nameColorClass = "";
-    let colorBadge = "";
-    if (showDecorations && profile.nameColor) {
-      nameColorClass = getColorClass(profile.nameColor.id);
-      if (!nameColorClass) {
-        nameStyle = `style="color:${profile.nameColor.color};${getColorEffect(profile.nameColor.id)}"`;
-      }
-      colorBadge = `<span class="name-color-badge" title="${escHtml(profile.nameColor.title)}"></span>`;
-    }
-    const achBadge =
-      showDecorations && profile.achievement
-        ? `<span class="achievement-badge" title="${escHtml(profile.achievement.title)}">${profile.achievement.icon}</span>`
-        : "";
-    const emojiPrefix = showDecorations && profile.emoji ? `<span class="profile-emoji-badge">${profile.emoji}</span> ` : "";
     html += `<tr class="${medalClass}">
       <td>${i + 1}º</td>
-      <td>${emojiPrefix}<span class="${nameColorClass}" ${nameStyle}>${escHtml(r.name)}</span>${hcmBadge}${achBadge}</td>
-      <td><strong>${r.points}</strong></td>
+      <td>${renderPlayerCell(r)}</td>
+      <td><strong>${pointsValue(r)}</strong></td>
       <td>${r.wins}</td>
       <td>${r.days}</td>
       <td>${formatMinutes(r.avgDiffMins)}</td>
     </tr>`;
   });
   html += `</tbody></table>`;
-  html += `<div class="info-box" style="margin-top:8px">Pontos: 1º lugar recebe N pts, 2º N-1, etc. Erro médio = diferença média entre chute e chegada real.</div>`;
+  return html;
+}
+
+function renderRankTab(tab) {
+  const container =
+    document.getElementById("rank-table-container") ||
+    document.getElementById("rank-content");
+  if (!container) return;
+
+  if (activeRankMainTab === "week") {
+    if (!weekRankData) return;
+    const ranks = tab === "hcm" ? weekRankData.ranking.filter((r) => r.isHCM) : weekRankData.ranking;
+    if (ranks.length === 0) {
+      container.innerHTML = '<div class="no-data">Nenhuma aposta resolvida nesta semana ainda.</div>';
+      return;
+    }
+    let html = renderRankTable(ranks, { pointsLabel: "Pts", pointsValue: (r) => r.points });
+    html += `<div class="info-box" style="margin-top:8px">Ranking da semana ISO atual (segunda a domingo). Pontos = soma das LuizCoins ganhas por precisão em cada dia.</div>`;
+    container.innerHTML = html;
+    return;
+  }
+
+  // tab === "total"
+  if (!overallRankData) return;
+  const { ranked, rookies, minDays } = overallRankData;
+  const rankedFiltered = tab === "hcm" ? ranked.filter((r) => r.isHCM) : ranked;
+  const rookiesFiltered = tab === "hcm" ? rookies.filter((r) => r.isHCM) : rookies;
+
+  if (rankedFiltered.length === 0 && rookiesFiltered.length === 0) {
+    container.innerHTML = '<div class="no-data">Nenhum dado disponível ainda.</div>';
+    return;
+  }
+
+  let html = "";
+  if (rankedFiltered.length > 0) {
+    html += renderRankTable(rankedFiltered, { pointsLabel: "Média/dia", pointsValue: (r) => r.avgPoints });
+  } else {
+    html += '<div class="no-data">Ninguém atingiu o mínimo de dias jogados ainda.</div>';
+  }
+  html += `<div class="info-box" style="margin-top:8px">Ranking total = média de LuizCoins por dia jogado (mínimo de ${minDays} dias). Erro médio = diferença média entre chute e chegada real.</div>`;
+
+  if (rookiesFiltered.length > 0) {
+    html += `<div class="section-label" style="margin-top:12px">🌱 Novatos em ascensão (menos de ${minDays} dias jogados)</div>`;
+    html += renderRankTable(rookiesFiltered, { pointsLabel: "Média/dia", pointsValue: (r) => r.avgPoints });
+  }
+  container.innerHTML = html;
+}
+
+function renderPreviousWeeks() {
+  const container = document.getElementById("rank-content");
+  if (!container) return;
+  if (!weeklyHistoryData || weeklyHistoryData.length === 0) {
+    container.innerHTML = '<div class="no-data">Nenhuma semana anterior registrada ainda.</div>';
+    return;
+  }
+  let html = "";
+  weeklyHistoryData.forEach((week) => {
+    const [sy, sm, sd] = week.startDate.split("-");
+    const [ey, em, ed] = week.endDate.split("-");
+    html += `
+      <div class="history-day">
+        <div class="history-day-header" onclick="toggleHistory(this)">
+          <span>🗂️ ${sd}/${sm} a ${ed}/${em}/${ey}</span>
+          <span>▼</span>
+        </div>
+        <div class="history-day-body">
+          ${renderRankTable(week.ranking, { pointsLabel: "Pts", pointsValue: (r) => r.points })}
+        </div>
+      </div>`;
+  });
   container.innerHTML = html;
 }
 
@@ -1389,6 +1477,8 @@ async function setArrival() {
       try {
         localStorage.removeItem(CACHE_PREFIX + "history");
         localStorage.removeItem(CACHE_PREFIX + "overall_rank");
+        localStorage.removeItem(CACHE_PREFIX + "weekly_rank");
+        localStorage.removeItem(CACHE_PREFIX + "weekly_history");
       } catch {}
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
@@ -1618,9 +1708,12 @@ function renderRankingsTable(rankings, arrival) {
   rankings.forEach((r) => {
     const medal = r.position ? medals[r.position - 1] || `${r.position}º` : "—";
     const diffStr = r.diff !== undefined ? formatMinutes(r.diff) : "";
+    const invalidatedBadge = r.invalidated
+      ? ' <span class="invalidated-badge" title="Aposta feita a menos de 30 min da chegada real — não concorre a precisão nem ao pódio do dia.">⚠️ invalidada</span>'
+      : "";
     html += `<tr>
       <td>${medal}</td>
-      <td>${renderPlayerName(r.name, false)}</td>
+      <td>${renderPlayerName(r.name, false)}${invalidatedBadge}</td>
       <td><strong>${r.time}</strong></td>
       ${arrival ? `<td>${diffStr}</td>` : ""}
     </tr>`;
@@ -2215,6 +2308,9 @@ function showAchievementToast(achievementIds) {
         minesweeper_intermediate: { title: "Detonador Intermediário", icon: "🧨" },
         minesweeper_expert: { title: "Detonador Especialista", icon: "🏆" },
         bet_winner: { title: "Profeta do Luiz", icon: "🔮" },
+        novato_em_ascensao: { title: "Novato em Ascensão", icon: "🌱" },
+        weekly_champion: { title: "Campeão da Semana", icon: "👑" },
+        weekly_top3: { title: "Pódio Semanal", icon: "📈" },
       }[id];
 
       if (!def) return;
@@ -2242,9 +2338,26 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "1.1.0",
+    version: "1.2.0",
     date: "27/06/2026",
     isNew: true,
+    title: "Novo sistema de apostas: precisão, anti-sniping e rankings semanais",
+    items: [
+      "🎯 Pontuação agora é por precisão absoluta (quão perto você chegou do horário real), não mais por posição relativa aos outros apostadores do dia.",
+      "🥇 Empates de horário são desempatados por quem apostou primeiro — sempre há um top 3 definido no dia.",
+      "⚠️ Apostas feitas a menos de 30 min do horário real de chegada são marcadas como inválidas para precisão/pódio (suspeita de \"sniping\"), mas ainda contam participação.",
+      "📅 Ranking agora tem 3 abas: Semana atual (padrão), Total e Anteriores (histórico de semanas passadas).",
+      "🌐 Ranking total passou a usar média de LuizCoins por dia jogado (mínimo 5 dias), em vez de soma — joga mais justo pra quem começou recentemente.",
+      "🌱 Nova seção \"Novatos em ascensão\" pra quem ainda não bateu o mínimo de dias.",
+      "🏅 3 conquistas novas: Novato em Ascensão, Campeão da Semana e Pódio Semanal.",
+      "🗂️ Removido o limite de retenção de 22 dias — o histórico fica guardado indefinidamente.",
+      "📐 Novo app \"Regras de Pontuação\" explicando todo o cálculo em detalhe técnico.",
+    ],
+  },
+  {
+    version: "1.1.0",
+    date: "27/06/2026",
+    isNew: false,
     title: "Loja renovada, emojis e mais performance",
     items: [
       "🙂 Emoji de ranking: compre emojis para exibir ao lado do seu nome, na aba Perfil ou direto na Loja. Sem limite de quantidade — cada novo emoji custa 100 LuizCoins mais que o anterior.",
@@ -2306,3 +2419,81 @@ function checkReleaseNotes() {
 }
 
 checkReleaseNotes();
+
+// ─── Regras de Pontuação (referência técnica) ────────────────────────────────
+// Conteúdo estático espelhando a implementação real em api/lib/store-items.js,
+// api/lib/rankings.js e api/routes/admin.js. Se a lógica de pontuação mudar,
+// atualize este texto também — é a fonte de verdade que os jogadores (todos
+// devs) vão ler para entender o cálculo.
+function renderScoringRules() {
+  const container = document.getElementById("scoring-rules-content");
+  if (!container) return;
+  container.innerHTML = `
+    <div class="section-label">🎯 Pontuação diária (por aposta)</div>
+    <div class="info-box">
+      Cada palpite resolvido gera <code>diff = abs(palpite - chegada_real)</code>, em minutos.
+      A recompensa é por <strong>banda de precisão absoluta</strong> — não depende de quantas
+      pessoas apostaram naquele dia.
+    </div>
+    <pre class="rules-code">diff == 0min        -> 30 LuizCoins  (exato)
+diff <= 2min        -> 20 LuizCoins
+diff <= 5min        -> 10 LuizCoins
+diff <= 10min       ->  5 LuizCoins
+diff > 10min        ->  1 LuizCoin  (participação)
+invalidated == true ->  1 LuizCoin  (ver anti-sniping abaixo)</pre>
+    <div class="info-box">Implementação: <code>coinsForGuess()</code> em <code>api/lib/store-items.js</code>.</div>
+
+    <div class="section-label" style="margin-top:14px">🥇 Top 3 do dia &amp; desempate</div>
+    <div class="info-box">
+      O pódio do dia é ordenado por <code>diff</code> ascendente. Em caso de empate exato no
+      <code>diff</code>, quem apostou primeiro (<code>createdAt</code> mais antigo) fica na posição
+      melhor — sem posições compartilhadas. O 1º lugar desbloqueia a conquista
+      <strong>🔮 Profeta do Luiz</strong>.
+    </div>
+    <pre class="rules-code">sort by: diff asc, então createdAt asc
+position = índice + 1 (sequencial, sem gaps/compartilhamento)</pre>
+
+    <div class="section-label" style="margin-top:14px">⚠️ Anti-sniping (janela de 30 min)</div>
+    <div class="info-box">
+      Para coibir quem aposta só depois de literalmente ver o Luiz chegar (antes do admin
+      registrar o horário), qualquer palpite feito a <strong>30 minutos ou menos</strong> antes do
+      horário real de chegada é marcado <code>invalidated: true</code>. A penalização é suave: a
+      aposta ainda conta como participação (1 LuizCoin), mas não concorre a precisão nem ao
+      pódio do dia, e some no ranking exibida com a tag "⚠️ invalidada".
+    </div>
+    <pre class="rules-code">arrivalInstant = brasiliaWallTimeToInstant(data, horario_chegada)
+invalidated = (arrivalInstant - createdAt) in [0, 30min]</pre>
+    <div class="info-box">Implementação: <code>POST /api/admin/arrival</code> em <code>api/routes/admin.js</code>.</div>
+
+    <div class="section-label" style="margin-top:14px">📅 Ranking semanal</div>
+    <div class="info-box">
+      Soma das LuizCoins ganhas em cada dia <strong>dentro da semana ISO atual</strong>
+      (segunda a domingo), recalculada a partir de <code>days_index</code> + <code>day:&lt;data&gt;</code>
+      a cada consulta (cacheada). Reseta toda semana — é a aba padrão da janela de Ranking.
+      O 1º lugar do fim de semana (avaliado na sexta-feira) desbloqueia <strong>👑 Campeão da
+      Semana</strong>; top 3 desbloqueia <strong>📈 Pódio Semanal</strong>.
+    </div>
+    <div class="info-box">Implementação: <code>computeWeekRanking()</code> em <code>api/lib/rankings.js</code>.</div>
+
+    <div class="section-label" style="margin-top:14px">🌐 Ranking geral</div>
+    <div class="info-box">
+      Métrica é <strong>média de LuizCoins por dia jogado</strong> (não soma total), pra não
+      penalizar quem começou a jogar há pouco tempo. Exige um mínimo de <strong>5 dias
+      jogados</strong> para entrar no ranking "oficial"; abaixo disso, o jogador aparece na seção
+      separada <strong>🌱 Novatos em ascensão</strong>. Terminar entre os 3 primeiros de um dia
+      com menos de 5 dias jogados desbloqueia essa conquista.
+    </div>
+    <pre class="rules-code">avgPoints = round((totalPoints / playedDays) * 10) / 10
+ranked  = jogadores com playedDays >= 5, ordenado por avgPoints desc
+rookies = jogadores com playedDays  < 5, ordenado por avgPoints desc</pre>
+    <div class="info-box">Implementação: <code>computeOverallRanking()</code> em <code>api/lib/rankings.js</code>.</div>
+
+    <div class="section-label" style="margin-top:14px">🗂️ Rankings anteriores &amp; dados históricos</div>
+    <div class="info-box">
+      A aba "Anteriores" lista o ranking final de cada semana passada (exclui a semana
+      atual). O histórico de dias <strong>não tem mais limite de retenção</strong> — fica tudo
+      guardado no Redis. Mudanças de regra de pontuação só valem para dias novos: resultados
+      já registrados antes do deploy continuam com o cálculo da época, não são recalculados.
+    </div>
+  `;
+}
