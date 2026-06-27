@@ -56,6 +56,7 @@ router.post("/game-rank", requireAuth, async (req, res) => {
     const SCORE_LIMITS = {
       snake: 99999,           // Snake: fisicamente impossível passar disso
       minesweeper: 9999,      // Minesweeper: score = 9999 - tempo(s), só enviado ao vencer
+      sudoku: 9999,           // Sudoku: score = 9999 - tempo(s), só enviado ao vencer
     };
 
     const maxScore = SCORE_LIMITS[game];
@@ -63,9 +64,13 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Score fora dos limites permitidos." });
     }
 
-    // Valida difficulty para minesweeper
-    const validDifficulties = ["beginner", "intermediate", "expert"];
-    if (game === "minesweeper" && difficulty && !validDifficulties.includes(difficulty)) {
+    // Valida difficulty por jogo
+    const DIFFICULTIES_BY_GAME = {
+      minesweeper: ["beginner", "intermediate", "expert"],
+      sudoku: ["easy", "medium", "hard"],
+    };
+    const validDifficulties = DIFFICULTIES_BY_GAME[game];
+    if (validDifficulties && difficulty && !validDifficulties.includes(difficulty)) {
       return res.status(400).json({ error: "Dificuldade inválida." });
     }
 
@@ -101,6 +106,11 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       if (difficulty === "expert") coinsEarned = 25;
       else if (difficulty === "intermediate") coinsEarned = 10;
       else if (difficulty === "beginner") coinsEarned = 1;
+    } else if (game === "sudoku") {
+      // O score só é enviado quando o jogador completa o tabuleiro corretamente
+      if (difficulty === "hard") coinsEarned = 20;
+      else if (difficulty === "medium") coinsEarned = 8;
+      else if (difficulty === "easy") coinsEarned = 2;
     }
 
     if (coinsEarned > 0) {
@@ -135,6 +145,20 @@ router.post("/game-rank", requireAuth, async (req, res) => {
             ? "minesweeper_intermediate"
             : difficulty === "expert"
               ? "minesweeper_expert"
+              : null;
+      if (achId && !achUnlocked.includes(achId)) {
+        achUnlocked.push(achId);
+        newAchievements.push(achId);
+      }
+    }
+    if (game === "sudoku") {
+      const achId =
+        difficulty === "easy"
+          ? "sudoku_easy"
+          : difficulty === "medium"
+            ? "sudoku_medium"
+            : difficulty === "hard"
+              ? "sudoku_hard"
               : null;
       if (achId && !achUnlocked.includes(achId)) {
         achUnlocked.push(achId);

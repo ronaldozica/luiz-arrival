@@ -1502,9 +1502,27 @@ async function toggleAdminHCM(name, isHCM) {
   }
 }
 
+const ADMIN_RANK_DIFFICULTY_OPTIONS = {
+  minesweeper: [
+    { value: "beginner", label: "Iniciante" },
+    { value: "intermediate", label: "Intermediário" },
+    { value: "expert", label: "Especialista" },
+  ],
+  sudoku: [
+    { value: "easy", label: "Fácil" },
+    { value: "medium", label: "Médio" },
+    { value: "hard", label: "Difícil" },
+  ],
+};
+
 function onAdminRankGameChange() {
   const game = document.getElementById("admin-rank-game").value;
-  document.getElementById("admin-rank-difficulty-group").style.display = game === "minesweeper" ? "block" : "none";
+  const options = ADMIN_RANK_DIFFICULTY_OPTIONS[game];
+  document.getElementById("admin-rank-difficulty-group").style.display = options ? "block" : "none";
+  if (options) {
+    const select = document.getElementById("admin-rank-difficulty");
+    select.innerHTML = options.map((o) => `<option value="${o.value}">${o.label}</option>`).join("");
+  }
 }
 
 function handleAdminAuthError(status, msg) {
@@ -1518,7 +1536,7 @@ function handleAdminAuthError(status, msg) {
 
 async function loadAdminRankCheat() {
   const game = document.getElementById("admin-rank-game").value;
-  const difficulty = game === "minesweeper" ? document.getElementById("admin-rank-difficulty").value : null;
+  const difficulty = ADMIN_RANK_DIFFICULTY_OPTIONS[game] ? document.getElementById("admin-rank-difficulty").value : null;
   const msg = document.getElementById("admin-rankcheat-msg");
   const result = document.getElementById("admin-rankcheat-result");
   showMsg(msg, "", "ok");
@@ -1651,7 +1669,7 @@ async function loadGameRank(game, difficulty) {
     currentGameRankData = scores;
     currentGameRankMeta = { game, difficulty };
 
-    const gameLabel = game === "snake" ? "🐍 Snake 95" : "💣 Campo Minado";
+    const gameLabel = getGameLabel(game);
     const diffLabel = difficulty ? ` — ${getDifficultyLabel(difficulty)}` : "";
     let html = `<div class="section-label">${gameLabel}${diffLabel} — Top 50</div>`;
 
@@ -1679,7 +1697,7 @@ function renderGameRank() {
   if (!container) return;
 
   const { game, difficulty } = currentGameRankMeta;
-  const gameLabel = game === "snake" ? "🐍 Snake 95" : "💣 Campo Minado";
+  const gameLabel = getGameLabel(game);
   const diffLabel = difficulty ? ` — ${getDifficultyLabel(difficulty)}` : "";
   let html = `<div class="section-label">${gameLabel}${diffLabel} — Top 50</div>`;
 
@@ -1761,7 +1779,14 @@ function getPersonalBest(game, difficulty) {
 }
 
 function getDifficultyLabel(diff) {
-  return ({ beginner: "Iniciante", intermediate: "Intermediário", expert: "Especialista" }[diff] || diff);
+  return ({
+    beginner: "Iniciante", intermediate: "Intermediário", expert: "Especialista",
+    easy: "Fácil", medium: "Médio", hard: "Difícil",
+  }[diff] || diff);
+}
+
+function getGameLabel(game) {
+  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku" }[game] || game);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -2453,6 +2478,9 @@ function showAchievementToast(achievementIds) {
         minesweeper_beginner: { title: "Detonador Iniciante", icon: "💣" },
         minesweeper_intermediate: { title: "Detonador Intermediário", icon: "🧨" },
         minesweeper_expert: { title: "Detonador Especialista", icon: "🏆" },
+        sudoku_easy: { title: "Aprendiz dos Números", icon: "🔢" },
+        sudoku_medium: { title: "Mestre dos Números", icon: "🧮" },
+        sudoku_hard: { title: "Gênio dos Números", icon: "🧠" },
         bet_winner: { title: "Profeta do Luiz", icon: "🔮" },
         novato_em_ascensao: { title: "Novato em Ascensão", icon: "🌱" },
         weekly_champion: { title: "Campeão da Semana", icon: "👑" },

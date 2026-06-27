@@ -1051,6 +1051,63 @@ body {
   background-color: red;
 }
 
+/* ─── SUDOKU 95 ───────────────────────────── */
+.sd-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 28px);
+  grid-template-rows: repeat(9, 28px);
+  background: var(--win-gray);
+}
+
+.sd-cell {
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  background: white;
+  border: 1px solid #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+  color: blue;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sd-cell.given {
+  color: black;
+  background: #eee;
+  cursor: default;
+}
+
+.sd-cell.selected {
+  background: #cde8ff;
+}
+
+.sd-cell.wrong {
+  color: red;
+  background: #ffd6d6;
+}
+
+.sd-border-left { border-left: 2px solid var(--win-dark); }
+.sd-border-top { border-top: 2px solid var(--win-dark); }
+.sd-border-right { border-right: 2px solid var(--win-dark); }
+.sd-border-bottom { border-bottom: 2px solid var(--win-dark); }
+
+.sd-numpad {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.sd-numpad .win95-action-btn {
+  padding: 4px 0;
+  font-size: 13px;
+}
+
 /* Mina que explodiu */
 
 /* ─── TASKBAR USER AREA ───────────────────── */
