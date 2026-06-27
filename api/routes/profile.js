@@ -6,7 +6,7 @@ const { requireAuth } = require("../lib/auth-middleware");
 const { invalidatesCache, getCachedOrCompute } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisArray } = require("../lib/utils");
-const { STORE_ITEMS, EMOJI_BASE_PRICE, emojiPriceForCount, EMOJI_REGEX, calcBalance } = require("../lib/store-items");
+const { STORE_ITEMS, emojiPriceForCount, EMOJI_REGEX, calcBalance, purchaseIds, emojiList } = require("../lib/store-items");
 const { ACHIEVEMENT_DEFS } = require("../lib/achievement-defs");
 
 // POST /api/profile/color — define qual cor de nome (já comprada) é exibida no ranking
@@ -23,7 +23,7 @@ router.post("/profile/color", requireAuth, invalidatesCache("cache:profiles"), a
       await kv.del(activeKey);
     } else {
       const purchasesKey = `purchases:${userKey(user.name)}`;
-      const purchases = parseRedisArray(await kv.get(purchasesKey));
+      const purchases = purchaseIds(parseRedisArray(await kv.get(purchasesKey)));
       const item = STORE_ITEMS.find((i) => i.id === colorId && i.type === "namecolor");
       if (!item || !purchases.includes(colorId))
         return res.status(400).json({ error: "Você não possui essa cor." });
@@ -42,7 +42,8 @@ router.get("/profile/emoji", requireAuth, async (req, res) => {
   try {
     const kv = getKV();
     const uk = userKey(req.sessionName);
-    const owned = parseRedisArray(await kv.get(`emoji_owned:${uk}`));
+    const rawOwned = parseRedisArray(await kv.get(`emoji_owned:${uk}`));
+    const owned = emojiList(rawOwned);
     const active = (await kv.get(`emoji_active:${uk}`)) || null;
     res.json({ owned, active, nextPrice: emojiPriceForCount(owned.length) });
   } catch (e) {
@@ -50,7 +51,7 @@ router.get("/profile/emoji", requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/profile/emoji/buy — compra um emoji novo (qualquer emoji válido) por 500 LuizCoins
+// POST /api/profile/emoji/buy — compra um emoji novo (qualquer emoji válido)
 router.post("/profile/emoji/buy", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
   try {
     const { emoji } = req.body;
@@ -75,18 +76,21 @@ router.post("/profile/emoji/buy", requireAuth, invalidatesCache("cache:profiles"
     if (balance < price)
       return res.status(400).json({ error: "LuizCoins™ insuficientes." });
 
-    const newOwned = [...emojiOwned, emoji];
-    await kv.set(ownedKey, JSON.stringify(newOwned));
-    if (newOwned.length === 1) {
+    // Grava o preço pago junto com o emoji — se a fórmula de preço mudar
+    // depois, essa compra já feita não é afetada (ver lib/store-items.js).
+    const rawOwned = parseRedisArray(await kv.get(ownedKey));
+    rawOwned.push({ emoji, pricePaid: price });
+    await kv.set(ownedKey, JSON.stringify(rawOwned));
+    if (rawOwned.length === 1) {
       await kv.set(`emoji_active:${uk}`, emoji);
     }
 
     res.json({
       success: true,
-      owned: newOwned,
+      owned: emojiList(rawOwned),
       newBalance: balance - price,
       pricePaid: price,
-      nextPrice: emojiPriceForCount(newOwned.length),
+      nextPrice: emojiPriceForCount(rawOwned.length),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -104,7 +108,7 @@ router.post("/profile/emoji/set-active", requireAuth, invalidatesCache("cache:pr
     if (!emoji) {
       await kv.del(activeKey);
     } else {
-      const owned = parseRedisArray(await kv.get(`emoji_owned:${uk}`));
+      const owned = emojiList(parseRedisArray(await kv.get(`emoji_owned:${uk}`)));
       if (!owned.includes(emoji))
         return res.status(400).json({ error: "Você não possui esse emoji." });
       await kv.set(activeKey, emoji);
@@ -127,7 +131,7 @@ router.get("/profiles", async (req, res) => {
       for (const u of users) {
         const uk = userKey(u.name);
         const purchasesKey = `purchases:${uk}`;
-        const purchases = parseRedisArray(await kv.get(purchasesKey));
+        const purchases = purchaseIds(parseRedisArray(await kv.get(purchasesKey)));
 
         let activeColor = null;
         const chosenColorId = await kv.get(`color_active:${uk}`);

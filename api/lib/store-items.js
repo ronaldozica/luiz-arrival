@@ -20,6 +20,55 @@ const EMOJI_PRICE_STEP = 125;
 function emojiPriceForCount(ownedCount) {
   return EMOJI_BASE_PRICE + EMOJI_PRICE_STEP * ownedCount;
 }
+
+// ─── Preço pago "congelado" (compras passadas não mudam de valor) ──────────
+// Mudar STORE_ITEMS.price ou EMOJI_BASE_PRICE/EMOJI_PRICE_STEP daqui pra
+// frente só afeta NOVAS compras: cada compra nova é guardada como
+// `{ id/emoji, pricePaid }`, não apenas o id/emoji. Assim o valor gasto fica
+// fixo no momento da compra, independente de o item mudar de preço depois.
+//
+// Compras feitas ANTES desta mudança foram salvas como string solta (sem
+// pricePaid). Pra elas, usamos os snapshots abaixo — congelados para sempre,
+// nunca sincronizados com STORE_ITEMS/EMOJI_BASE_PRICE — só pra não alterar
+// retroativamente o saldo de quem já comprou. NUNCA edite estes valores.
+const LEGACY_STORE_PRICES = {
+  palinha: 10,
+  baixista: 10,
+  confusp: 25,
+  color_esmeralda: 100,
+  color_rubi: 250,
+  color_dourado: 1000,
+  color_diamante: 10000,
+};
+const LEGACY_EMOJI_BASE_PRICE = 125;
+const LEGACY_EMOJI_PRICE_STEP = 125;
+
+// Extrai só os ids de uma lista de compras que pode misturar o formato antigo
+// (string) com o novo (`{ id, pricePaid }`) — usado em toda checagem de
+// "o usuário já tem esse item?".
+function purchaseIds(rawPurchases) {
+  return rawPurchases.map((p) => (typeof p === "string" ? p : p.id));
+}
+
+function purchaseSpent(rawPurchases) {
+  return rawPurchases.reduce((sum, p) => {
+    if (typeof p === "string") return sum + (LEGACY_STORE_PRICES[p] || 0);
+    return sum + (p.pricePaid || 0);
+  }, 0);
+}
+
+// Extrai só os emojis de uma lista que pode misturar string (antigo) com
+// `{ emoji, pricePaid }` (novo).
+function emojiList(rawOwned) {
+  return rawOwned.map((e) => (typeof e === "string" ? e : e.emoji));
+}
+
+function emojiSpent(rawOwned) {
+  return rawOwned.reduce((sum, e, i) => {
+    if (typeof e === "string") return sum + LEGACY_EMOJI_BASE_PRICE + LEGACY_EMOJI_PRICE_STEP * i;
+    return sum + (e.pricePaid || 0);
+  }, 0);
+}
 // Aceita um único emoji (incluindo sequências com ZWJ/seletor de variação/modificador de tom de pele) ou uma bandeira (par de Regional Indicator).
 const ZWJ = "‍";
 const VS16 = "️";
@@ -104,18 +153,28 @@ async function calcBalance(kv, user, users) {
   earnedCoins += gameCoins;
 
   const purchasesKey = `purchases:${userKey(user.name)}`;
-  const purchases = parseRedisArray(await kv.get(purchasesKey));
-  let spentCoins = 0;
-  purchases.forEach((id) => {
-    const item = STORE_ITEMS.find((i) => i.id === id);
-    if (item) spentCoins += item.price;
-  });
+  const rawPurchases = parseRedisArray(await kv.get(purchasesKey));
+  const purchases = purchaseIds(rawPurchases);
+  let spentCoins = purchaseSpent(rawPurchases);
 
   const emojiOwnedKey = `emoji_owned:${userKey(user.name)}`;
-  const emojiOwned = parseRedisArray(await kv.get(emojiOwnedKey));
-  for (let i = 0; i < emojiOwned.length; i++) spentCoins += emojiPriceForCount(i);
+  const rawEmojiOwned = parseRedisArray(await kv.get(emojiOwnedKey));
+  const emojiOwned = emojiList(rawEmojiOwned);
+  spentCoins += emojiSpent(rawEmojiOwned);
 
   return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned };
 }
 
-module.exports = { STORE_ITEMS, EMOJI_BASE_PRICE, EMOJI_PRICE_STEP, emojiPriceForCount, EMOJI_REGEX, PRECISION_BANDS, PARTICIPATION_COINS, coinsForGuess, calcBalance };
+module.exports = {
+  STORE_ITEMS,
+  EMOJI_BASE_PRICE,
+  EMOJI_PRICE_STEP,
+  emojiPriceForCount,
+  EMOJI_REGEX,
+  PRECISION_BANDS,
+  PARTICIPATION_COINS,
+  coinsForGuess,
+  purchaseIds,
+  emojiList,
+  calcBalance,
+};

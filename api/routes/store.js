@@ -5,7 +5,7 @@ const { getKV } = require("../lib/redis");
 const { requireAuth } = require("../lib/auth-middleware");
 const { invalidatesCache } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
-const { userKey } = require("../lib/utils");
+const { userKey, parseRedisArray } = require("../lib/utils");
 const { STORE_ITEMS, calcBalance } = require("../lib/store-items");
 
 // GET /api/store — requer sessão válida
@@ -63,8 +63,12 @@ router.post("/store/buy", requireAuth, invalidatesCache("cache:profiles"), async
     if (balance < item.price)
       return res.status(400).json({ error: "LuizCoins™ insuficientes." });
 
-    purchases.push(itemId);
-    await kv.set(`purchases:${userKey(user.name)}`, JSON.stringify(purchases));
+    // Grava o preço pago junto com o id — se o preço do item mudar depois,
+    // essa compra já feita não é afetada (ver lib/store-items.js).
+    const purchasesKey = `purchases:${userKey(user.name)}`;
+    const rawPurchases = parseRedisArray(await kv.get(purchasesKey));
+    rawPurchases.push({ id: itemId, pricePaid: item.price });
+    await kv.set(purchasesKey, JSON.stringify(rawPurchases));
 
     res.json({ success: true, newBalance: balance - item.price });
   } catch (e) {
