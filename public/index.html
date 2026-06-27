@@ -330,6 +330,7 @@
           <button class="rank-tab active" data-admin-tab="arrival" onclick="setAdminTab('arrival')">📍 Chegada do Luiz</button>
           <button class="rank-tab" data-admin-tab="rankcheat" onclick="setAdminTab('rankcheat')">🗑️ Ranking de Jogos</button>
           <button class="rank-tab" data-admin-tab="tags" onclick="setAdminTab('tags')">🏷️ Tags</button>
+          <button class="rank-tab" data-admin-tab="coins" onclick="setAdminTab('coins')">💰 Moedas</button>
         </div>
 
         <div id="admin-tab-arrival">
@@ -383,6 +384,24 @@
           <div class="win95-msg" id="admin-tags-msg"></div>
           <hr />
           <div id="admin-tags-result"></div>
+        </div>
+
+        <div id="admin-tab-coins" style="display:none">
+          <p><strong>Adicionar ou remover luizCoins</strong></p>
+          <div class="field-group">
+            <label>Jogador:</label>
+            <select id="admin-coins-player"></select>
+          </div>
+          <div class="field-group">
+            <label>Quantidade:</label>
+            <input type="number" id="admin-coins-amount" min="1" step="1" placeholder="Ex: 10" />
+          </div>
+          <div class="btn-row">
+            <button class="win95-action-btn" onclick="adjustAdminCoins(1)">➕ Adicionar</button>
+            <button class="win95-action-btn" onclick="adjustAdminCoins(-1)">➖ Remover</button>
+            <button class="win95-action-btn" onclick="loadAdminCoinsPlayers()">🔄 Atualizar Lista</button>
+          </div>
+          <div class="win95-msg" id="admin-coins-msg"></div>
         </div>
       </div>
     </div>

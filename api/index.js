@@ -607,6 +607,32 @@ app.post("/api/admin/users", requireAdminAuth, async (req, res) => {
   }
 });
 
+// POST /api/admin/coins/adjust — adiciona ou remove luizCoins de um jogador (admin only)
+// Body: { name, amount } — amount pode ser negativo para remover moedas.
+app.post("/api/admin/coins/adjust", requireAdminAuth, async (req, res) => {
+  try {
+    const { name, amount } = req.body;
+    const amountNum = Number(amount);
+    if (!name || !Number.isFinite(amountNum) || amountNum === 0) {
+      return res.status(400).json({ error: "name e amount (≠ 0) são obrigatórios." });
+    }
+
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find((u) => userKey(u.name) === userKey(name));
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado." });
+
+    const coinsKey = `gamecoins:${userKey(user.name)}`;
+    const currentCoins = parseRedisNumber(await kv.get(coinsKey));
+    const newCoins = Math.max(0, currentCoins + amountNum);
+    await kv.set(coinsKey, String(newCoins));
+
+    res.json({ success: true, gameCoins: newCoins });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // DELETE /api/admin/users/:name — remove um usuário (admin only)
 app.delete("/api/admin/users/:name", requireAdminAuth, async (req, res) => {
   try {

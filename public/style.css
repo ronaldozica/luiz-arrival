@@ -1344,18 +1344,57 @@ body {
   flex-wrap: wrap;
 }
 
-/* ─── DIAMOND ANIMATION ──────────────────── */
-@keyframes diamond-shine {
-  0% {
-    text-shadow: 0 0 8px #ffffff, 0 0 16px #b3e5fc, 0 0 24px #81d4fa;
-  }
+/* ─── GOLD NAME (piscando) ────────────────── */
+.name-gold-blink {
+  font-weight: bold;
+  color: #ffd700;
+  animation: gold-blink 1.4s ease-in-out infinite;
+}
 
+@keyframes gold-blink {
+  0%, 100% {
+    color: #ffd700;
+    text-shadow: 0 0 6px #ffd740, 0 0 12px #ffd600;
+  }
   50% {
-    text-shadow: 0 0 16px #ffffff, 0 0 32px #e1f5fe, 0 0 48px #b3e5fc;
+    color: #fff8d6;
+    text-shadow: 0 0 14px #fff176, 0 0 26px #ffea00, 0 0 38px #ffd600;
   }
+}
 
-  100% {
-    text-shadow: 0 0 8px #ffffff, 0 0 16px #b3e5fc, 0 0 24px #81d4fa;
+/* ─── DIAMOND NAME (brilho deslizante + piscando) ─── */
+.name-diamond-shine {
+  font-weight: bold;
+  background: linear-gradient(
+    100deg,
+    #4fc3f7 10%,
+    #b3e5fc 30%,
+    #ffffff 50%,
+    #b3e5fc 70%,
+    #4fc3f7 90%
+  );
+  background-size: 250% 100%;
+  background-position: -120% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 10px rgba(179, 229, 252, 0.9), 0 0 20px rgba(255, 255, 255, 0.7), 0 0 30px rgba(79, 195, 247, 0.6);
+  animation: diamond-shine-sweep 2.4s linear infinite, diamond-glow-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes diamond-shine-sweep {
+  to {
+    background-position: 220% 0;
+  }
+}
+
+@keyframes diamond-glow-pulse {
+  0%, 100% {
+    text-shadow: 0 0 8px rgba(179, 229, 252, 0.8), 0 0 16px rgba(255, 255, 255, 0.6), 0 0 24px rgba(79, 195, 247, 0.5);
+  }
+  50% {
+    text-shadow: 0 0 16px rgba(255, 255, 255, 1), 0 0 32px rgba(179, 229, 252, 1), 0 0 48px rgba(79, 195, 247, 0.8);
   }
 }
 

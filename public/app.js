@@ -80,14 +80,18 @@ async function loadProfiles() {
 function renderPlayerName(name, includeAchievement) {
   const profile = userProfiles[name] || {};
   let style = "";
+  let colorClass = "";
   if (showDecorations && profile.nameColor) {
-    style = `style="color:${profile.nameColor.color};${getColorEffect(profile.nameColor.id)}"`;
+    colorClass = getColorClass(profile.nameColor.id);
+    if (!colorClass) {
+      style = `style="color:${profile.nameColor.color};${getColorEffect(profile.nameColor.id)}"`;
+    }
   }
   const achievementBadge =
     showDecorations && includeAchievement && profile.achievement
       ? `<span class="achievement-badge" title="${escHtml(profile.achievement.title)}">${profile.achievement.icon}</span>`
       : "";
-  return `<span ${style}>${escHtml(name)}</span>${achievementBadge}`;
+  return `<span class="${colorClass}" ${style}>${escHtml(name)}</span>${achievementBadge}`;
 }
 
 // ─── Loading overlay ─────────────────────────────────────────────────────────
@@ -974,9 +978,13 @@ function renderRankTab(tab) {
     const hcmBadge = r.isHCM ? ' <span class="hcm-badge">HCM</span>' : "";
     const profile = userProfiles[r.name] || {};
     let nameStyle = "";
+    let nameColorClass = "";
     let colorBadge = "";
     if (showDecorations && profile.nameColor) {
-      nameStyle = `style="color:${profile.nameColor.color};${getColorEffect(profile.nameColor.id)}"`;
+      nameColorClass = getColorClass(profile.nameColor.id);
+      if (!nameColorClass) {
+        nameStyle = `style="color:${profile.nameColor.color};${getColorEffect(profile.nameColor.id)}"`;
+      }
       colorBadge = `<span class="name-color-badge" title="${escHtml(profile.nameColor.title)}"></span>`;
     }
     const achBadge =
@@ -985,7 +993,7 @@ function renderRankTab(tab) {
         : "";
     html += `<tr class="${medalClass}">
       <td>${i + 1}º</td>
-      <td><span ${nameStyle}>${escHtml(r.name)}</span>${hcmBadge}${achBadge}</td>
+      <td><span class="${nameColorClass}" ${nameStyle}>${escHtml(r.name)}</span>${hcmBadge}${achBadge}
       <td><strong>${r.points}</strong></td>
       <td>${r.wins}</td>
       <td>${r.days}</td>
@@ -1001,8 +1009,17 @@ function getColorEffect(colorId) {
   switch (colorId) {
     case "color_esmeralda": return "text-shadow: 0 0 6px #00e676, 0 0 12px #00c853; font-weight:bold;";
     case "color_rubi": return "text-shadow: 0 0 6px #ff5252, 0 0 12px #e53935; font-weight:bold;";
-    case "color_dourado": return "text-shadow: 0 0 6px #ffd740, 0 0 12px #ffd600; font-weight:bold;";
-    case "color_diamante": return "text-shadow: 0 0 8px #ffffff, 0 0 16px #b3e5fc, 0 0 24px #81d4fa; font-weight:bold; animation: diamond-shine 2s infinite alternate;";
+    // dourado e diamante usam classes CSS (.name-gold-blink / .name-diamond-shine) em vez de inline style
+    default: return "";
+  }
+}
+
+// Dourado e diamante precisam de classes CSS (animação de piscar / brilho deslizante
+// com background-clip:text), o que não é possível via inline style simples.
+function getColorClass(colorId) {
+  switch (colorId) {
+    case "color_dourado": return "name-gold-blink";
+    case "color_diamante": return "name-diamond-shine";
     default: return "";
   }
 }
@@ -1081,6 +1098,67 @@ function setAdminTab(tab) {
   document.getElementById("admin-tab-arrival").style.display = tab === "arrival" ? "block" : "none";
   document.getElementById("admin-tab-rankcheat").style.display = tab === "rankcheat" ? "block" : "none";
   document.getElementById("admin-tab-tags").style.display = tab === "tags" ? "block" : "none";
+  document.getElementById("admin-tab-coins").style.display = tab === "coins" ? "block" : "none";
+  if (tab === "coins") loadAdminCoinsPlayers();
+}
+
+async function loadAdminCoinsPlayers() {
+  const select = document.getElementById("admin-coins-player");
+  const msg = document.getElementById("admin-coins-msg");
+  try {
+    const res = await fetch(`${API}/admin/users`, {
+      headers: { "Authorization": `Bearer ${adminToken}` },
+    });
+    const users = await res.json();
+    if (!res.ok) {
+      showMsg(msg, `❌ ${users.error || "Erro ao carregar."}`, "err");
+      handleAdminAuthError(res.status);
+      return;
+    }
+    const previousValue = select.value;
+    select.innerHTML = users.map((u) => `<option value="${escHtml(u.name)}">${escHtml(u.name)}</option>`).join("");
+    if (previousValue && users.some((u) => u.name === previousValue)) select.value = previousValue;
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  }
+}
+
+async function adjustAdminCoins(sign) {
+  const name = document.getElementById("admin-coins-player").value;
+  const amountInput = document.getElementById("admin-coins-amount");
+  const amount = Number(amountInput.value);
+  const msg = document.getElementById("admin-coins-msg");
+
+  if (!name) {
+    showMsg(msg, "Selecione um jogador.", "err");
+    return;
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    showMsg(msg, "Informe uma quantidade válida (> 0).", "err");
+    return;
+  }
+
+  showLoading("Atualizando moedas...");
+  try {
+    const res = await fetch(`${API}/admin/coins/adjust`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+      body: JSON.stringify({ name, amount: amount * sign }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      const verb = sign > 0 ? "adicionadas a" : "removidas de";
+      showMsg(msg, `✅ ${amount} moedas ${verb} "${name}". Saldo atual: ${data.gameCoins}.`, "ok");
+      amountInput.value = "";
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+      handleAdminAuthError(res.status);
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
 }
 
 async function loadAdminTags() {
