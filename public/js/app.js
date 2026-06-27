@@ -110,6 +110,49 @@ function syncDecorationsCheckboxes() {
   });
 }
 
+// ─── Legacy score toggle (Sudoku/Campo Minado) ───────────────────────────────
+// Esses jogos salvam score = max(1, 9999 - tempoEmSegundos). Por padrão
+// exibimos o tempo em segundos (mais legível); o checkbox permite ver o
+// "placar legado" (9999 - tempo) de volta. Conversão é só de exibição,
+// feita no front — o valor salvo no banco não muda.
+const SHOW_LEGACY_SCORE_KEY = "luizos_show_legacy_score";
+let showLegacyScore = false;
+
+function loadShowLegacyScore() {
+  try {
+    const saved = localStorage.getItem(SHOW_LEGACY_SCORE_KEY);
+    if (saved !== null) showLegacyScore = saved === "true";
+  } catch {}
+}
+
+function saveShowLegacyScore() {
+  try {
+    localStorage.setItem(SHOW_LEGACY_SCORE_KEY, String(showLegacyScore));
+  } catch {}
+}
+
+function syncLegacyScoreCheckboxes() {
+  document.querySelectorAll("#rank-legacy-score-checkbox, .rank-legacy-score-checkbox").forEach((checkbox) => {
+    checkbox.checked = showLegacyScore;
+  });
+}
+
+function toggleLegacyScore(checked) {
+  showLegacyScore = typeof checked === "boolean" ? checked : !showLegacyScore;
+  saveShowLegacyScore();
+  syncLegacyScoreCheckboxes();
+  if (currentGameRankData.length > 0) renderGameRank();
+}
+
+// Jogos cujo score bruto é 9999 - tempoEmSegundos (menor tempo = maior score).
+const TIME_BASED_SCORE_GAMES = new Set(["sudoku", "minesweeper"]);
+
+function formatGameScore(game, score) {
+  if (!TIME_BASED_SCORE_GAMES.has(game) || showLegacyScore) return score;
+  const seconds = Math.max(0, 9999 - score);
+  return `${seconds}s`;
+}
+
 async function loadProfiles() {
   try {
     const data = await cachedFetchJSON("profiles", `${API}/profiles`, CACHE_TTL_MS);
@@ -1762,7 +1805,7 @@ async function loadGameRank(game, difficulty) {
       scores.forEach((s, i) => {
         const date = new Date(s.date).toLocaleDateString("pt-BR");
         const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-        html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
+        html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${formatGameScore(game, s.score)}</strong></td><td>${date}</td></tr>`;
       });
       html += `</tbody></table>`;
     }
@@ -1790,7 +1833,7 @@ function renderGameRank() {
     currentGameRankData.forEach((s, i) => {
       const date = new Date(s.date).toLocaleDateString("pt-BR");
       const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-      html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
+      html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${formatGameScore(game, s.score)}</strong></td><td>${date}</td></tr>`;
     });
     html += `</tbody></table>`;
   }
@@ -1971,6 +2014,8 @@ function renderRankingsTable(rankings, arrival) {
 captureDefaultIconPositions();
 loadShowDecorations();
 syncDecorationsCheckboxes();
+loadShowLegacyScore();
+syncLegacyScoreCheckboxes();
 loadProfiles();
 loadUsers().then(() => {
   // Restaura sessão: carrega token e dados do usuário (sem senha)
