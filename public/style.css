@@ -1106,6 +1106,7 @@ body {
 .sd-numpad .win95-action-btn {
   padding: 4px 0;
   font-size: 13px;
+  min-width: 0;
 }
 
 /* Mina que explodiu */

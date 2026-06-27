@@ -175,12 +175,14 @@ function openWindow(id) {
     centerWindow(w);
     refreshTodayStatus();
   }
+  if (id === "win-sudoku") centerWindow(w);
   if (id === "win-store") { loadStore(); loadProfileEmoji(); }
   if (id === "win-achievements") loadAchievements();
   if (id === "win-scoring-rules") renderScoringRules();
   delete minimizedWindows[id];
   bringToFront(w);
   updateTaskbar();
+  clampWindowToViewport(w);
 }
 
 function centerWindow(w) {
@@ -188,6 +190,19 @@ function centerWindow(w) {
   const availableHeight = window.innerHeight - taskbarHeight;
   w.style.left = `${Math.max(0, Math.round((window.innerWidth - w.offsetWidth) / 2))}px`;
   w.style.top = `${Math.max(0, Math.round((availableHeight - w.offsetHeight) / 2))}px`;
+}
+
+// Garante que a janela caiba na área visível (acima da taskbar), mesmo em
+// monitores pequenos onde o left/top fixo no HTML deixaria a janela cortada.
+function clampWindowToViewport(w) {
+  const taskbarHeight = 34;
+  const availableHeight = window.innerHeight - taskbarHeight;
+  const maxLeft = Math.max(0, window.innerWidth - w.offsetWidth);
+  const maxTop = Math.max(0, availableHeight - w.offsetHeight);
+  const left = parseInt(w.style.left, 10) || 0;
+  const top = parseInt(w.style.top, 10) || 0;
+  w.style.left = `${Math.min(Math.max(left, 0), maxLeft)}px`;
+  w.style.top = `${Math.min(Math.max(top, 0), maxTop)}px`;
 }
 
 function closeWindow(id) {
@@ -300,8 +315,18 @@ function saveIconPositions() {
 
 function loadIconPositions() {
   try {
-    const saved = JSON.parse(localStorage.getItem(ICON_POSITIONS_KEY) || "{}");
-    let updated = false;
+    let saved = JSON.parse(localStorage.getItem(ICON_POSITIONS_KEY) || "{}");
+    // Se algum ícone atual nunca foi salvo (ex.: novo app adicionado depois),
+    // a posição salva dos ícones vizinhos fica desatualizada e pode colidir
+    // com o layout padrão do ícone novo. Nesse caso, descarta o cache salvo
+    // e recomeça do layout padrão para evitar sobreposição.
+    const currentIds = Array.from(document.querySelectorAll(".desktop-icon"))
+      .map((icon) => icon.dataset.iconId)
+      .filter(Boolean);
+    const hasUnseenIcon = currentIds.some((id) => !(id in saved));
+    if (hasUnseenIcon) saved = {};
+
+    let updated = hasUnseenIcon;
     document.querySelectorAll(".desktop-icon").forEach((icon) => {
       const id = icon.dataset.iconId;
       if (!id) return;
@@ -317,6 +342,61 @@ function loadIconPositions() {
     });
     if (updated) localStorage.setItem(ICON_POSITIONS_KEY, JSON.stringify(saved));
   } catch {}
+  resolveIconOverlaps();
+}
+
+// Garante que nenhum ícone fique posicionado sobre outro, independente do
+// que esteja salvo no localStorage. Para cada ícone, na ordem do DOM, se a
+// posição atual colidir com algum ícone já posicionado, empurra para a
+// próxima célula livre de uma grade (varrendo colunas de cima para baixo).
+function resolveIconOverlaps() {
+  const ICON_CELL_W = 80;
+  const ICON_CELL_H = 78;
+  const ORIGIN = 12; // mesmo valor do padding de .desktop
+  const icons = Array.from(document.querySelectorAll(".desktop-icon")).filter(
+    (icon) => icon.dataset.iconId
+  );
+  if (!icons.length) return;
+
+  const desktop = document.querySelector(".desktop");
+  const maxRow = desktop
+    ? Math.max(Math.floor((desktop.clientHeight - ORIGIN - ICON_CELL_H) / ICON_CELL_H), 0)
+    : Infinity;
+
+  const taken = new Set();
+  let changed = false;
+
+  icons.forEach((icon) => {
+    let left = parseInt(icon.style.left, 10) || 0;
+    let top = parseInt(icon.style.top, 10) || 0;
+    // Encaixa na grade fixa (alinhada à origem do padding), em vez de manter
+    // o pixel exato capturado do layout flex original — isso evita ícones
+    // "tortos" quando vizinhos são deslocados para resolver colisões.
+    let col = Math.round((left - ORIGIN) / ICON_CELL_W);
+    let row = Math.round((top - ORIGIN) / ICON_CELL_H);
+    if (col < 0) col = 0;
+    if (row < 0) row = 0;
+
+    while (taken.has(`${col},${row}`) || row > maxRow) {
+      row += 1;
+      if (row > maxRow) {
+        row = 0;
+        col += 1;
+      }
+    }
+    taken.add(`${col},${row}`);
+
+    const newLeft = ORIGIN + col * ICON_CELL_W;
+    const newTop = ORIGIN + row * ICON_CELL_H;
+    if (newLeft !== left || newTop !== top) {
+      icon.style.position = "absolute";
+      icon.style.left = `${newLeft}px`;
+      icon.style.top = `${newTop}px`;
+      changed = true;
+    }
+  });
+
+  if (changed) saveIconPositions();
 }
 
 function resetIconPositions() {
@@ -2519,6 +2599,8 @@ const RELEASE_NOTES = [
     items: [
       "🏆 Novo boost \"Luiz de Placa\": ative o checkbox antes de apostar e ganhe o dobro de LuizCoins pela aposta do dia. Disponível 1 vez por semana para cada jogador.",
       "📋 Apostas com o boost ativado aparecem com uma marquinha 🏆 nas tabelas de apostas e rankings.",
+      "🔢 Correção: janela do Sudoku abria mal posicionada (e cortada em monitores pequenos) e os botões numéricos ficavam cortados pela borda da janela.",
+      "🖥️ Correção: ícones da área de trabalho podiam ficar sobrepostos uns aos outros (ou sobre a barra de tarefas) após a adição de novos apps; agora se reorganizam automaticamente numa grade sem sobreposição.",
     ],
   },
   {

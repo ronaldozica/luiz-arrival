@@ -29,6 +29,11 @@ function openSudokuWindow() {
   openWindow("win-sudoku");
   initSudoku();
   checkSdSessionValidity();
+  const w = document.getElementById("win-sudoku");
+  if (w) {
+    centerWindow(w);
+    clampWindowToViewport(w);
+  }
 }
 
 /**
