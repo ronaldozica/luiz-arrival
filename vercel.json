@@ -17,7 +17,11 @@
     },
     {
       "src": "/photos/(.*)",
-      "dest": "/public/photos/$1"
+      "dest": "/public/assets/photos/$1"
+    },
+    {
+      "src": "/wallpapers/(.*)",
+      "dest": "/public/assets/wallpapers/$1"
     },
     {
       "src": "/(.*)",

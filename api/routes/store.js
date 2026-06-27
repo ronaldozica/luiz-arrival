@@ -1,0 +1,75 @@
+const express = require("express");
+const router = express.Router();
+
+const { getKV } = require("../lib/redis");
+const { requireAuth } = require("../lib/auth-middleware");
+const { invalidatesCache } = require("../lib/cache");
+const { getUsers } = require("../lib/users");
+const { userKey } = require("../lib/utils");
+const { STORE_ITEMS, calcBalance } = require("../lib/store-items");
+
+// GET /api/store — requer sessão válida
+router.get("/store", requireAuth, async (req, res) => {
+  try {
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const { earnedCoins, spentCoins, purchases, gameCoins } = await calcBalance(kv, user, users);
+
+    const responseItems = STORE_ITEMS.map((item) => {
+      const isUnlocked = purchases.includes(item.id);
+      const base = { id: item.id, title: item.title, price: item.price, type: item.type || "media" };
+      if (item.type === "namecolor") {
+        return { ...base, color: item.color, description: item.description };
+      }
+      return { ...base, src: isUnlocked ? item.src : null };
+    });
+
+    const activeColorId = (await kv.get(`color_active:${userKey(user.name)}`)) || null;
+
+    res.json({
+      balance: Math.max(0, earnedCoins - spentCoins),
+      coinsFromGames: gameCoins,
+      spentCoins,
+      purchases,
+      items: responseItems,
+      activeColorId,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/store/buy — requer sessão válida
+router.post("/store/buy", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
+  try {
+    const { itemId } = req.body;
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const item = STORE_ITEMS.find((i) => i.id === itemId);
+    if (!item) return res.status(404).json({ error: "Item não encontrado." });
+
+    const { earnedCoins, spentCoins, purchases } = await calcBalance(kv, user, users);
+
+    if (purchases.includes(itemId))
+      return res.status(400).json({ error: "Você já possui este item." });
+
+    const balance = earnedCoins - spentCoins;
+    if (balance < item.price)
+      return res.status(400).json({ error: "LuizCoins™ insuficientes." });
+
+    purchases.push(itemId);
+    await kv.set(`purchases:${userKey(user.name)}`, JSON.stringify(purchases));
+
+    res.json({ success: true, newBalance: balance - item.price });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+module.exports = router;
