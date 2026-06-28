@@ -1781,12 +1781,12 @@ function getPersonalBest(game, difficulty) {
 function getDifficultyLabel(diff) {
   return ({
     beginner: "Iniciante", intermediate: "Intermediário", expert: "Especialista",
-    easy: "Fácil", medium: "Médio", hard: "Difícil",
+    easy: "Fácil", medium: "Médio", hard: "Difícil", normal: "Normal",
   }[diff] || diff);
 }
 
 function getGameLabel(game) {
-  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku" }[game] || game);
+  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer" }[game] || game);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -2512,9 +2512,20 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "1.5.0",
+    date: "28/06/2026",
+    isNew: true,
+    title: "Novo minigame: Aim Trainer 🔫",
+    items: [
+      "🔫 Novo minigame Aim Trainer: clique nos alvos antes que encolham e desapareçam. Acertos rápidos e em sequência (combo) valem mais pontos.",
+      "🎯 3 dificuldades (Fácil/Normal/Difícil) com ranking, moedas e conquistas próprios, igual aos outros jogos.",
+      "⌨️ Dá pra iniciar a partida com a barra de espaço, além do botão.",
+    ],
+  },
+  {
     version: "1.4.0",
     date: "27/06/2026",
-    isNew: true,
+    isNew: false,
     title: "Luiz de Placa: dobre seus pontos uma vez por semana",
     items: [
       "🏆 Novo boost \"Luiz de Placa\": ative o checkbox antes de apostar e ganhe o dobro de LuizCoins pela aposta do dia. Disponível 1 vez por semana para cada jogador.",

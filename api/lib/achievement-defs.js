@@ -9,6 +9,8 @@ const ACHIEVEMENT_DEFS = [
   { id: "sudoku_easy", title: "Aprendiz dos números", description: "Complete um Sudoku no modo Fácil", icon: "🔢" },
   { id: "sudoku_medium", title: "Mestre dos números", description: "Complete um Sudoku no modo Médio", icon: "🧮" },
   { id: "sudoku_hard", title: "Gênio dos números", description: "Complete um Sudoku no modo Difícil", icon: "🧠" },
+  { id: "aimtrainer_sharp", title: "Mira afiada", description: "Faça 5000+ pontos no Aim Trainer", icon: "🎯" },
+  { id: "aimtrainer_legend", title: "Lenda da mira", description: "Faça 10000+ pontos no Aim Trainer modo Difícil", icon: "🏆" },
   { id: "bet_winner", title: "Profeta do Luiz", description: "Seja o vencedor (1º lugar) em uma aposta do dia", icon: "🔮" },
   { id: "novato_em_ascensao", title: "Novato em ascensão", description: "Termine entre os 3 primeiros de um dia tendo jogado menos de 5 dias até então", icon: "🌱" },
   { id: "weekly_champion", title: "Campeão da semana", description: "Termine em 1º lugar no ranking semanal", icon: "👑" },

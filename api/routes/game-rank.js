@@ -57,6 +57,7 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       snake: 99999,           // Snake: fisicamente impossível passar disso
       minesweeper: 9999,      // Minesweeper: score = 9999 - tempo(s), só enviado ao vencer
       sudoku: 9999,           // Sudoku: score = 9999 - tempo(s), só enviado ao vencer
+      aimtrainer: 25000,      // Aim Trainer: cap de sanidade pra 30s de partida no modo difícil
     };
 
     const maxScore = SCORE_LIMITS[game];
@@ -68,6 +69,7 @@ router.post("/game-rank", requireAuth, async (req, res) => {
     const DIFFICULTIES_BY_GAME = {
       minesweeper: ["beginner", "intermediate", "expert"],
       sudoku: ["easy", "medium", "hard"],
+      aimtrainer: ["easy", "normal", "hard"],
     };
     const validDifficulties = DIFFICULTIES_BY_GAME[game];
     if (validDifficulties && difficulty && !validDifficulties.includes(difficulty)) {
@@ -111,6 +113,11 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       if (difficulty === "hard") coinsEarned = 20;
       else if (difficulty === "medium") coinsEarned = 8;
       else if (difficulty === "easy") coinsEarned = 2;
+    } else if (game === "aimtrainer") {
+      // Proporcional ao score, com taxa maior em dificuldades mais difíceis
+      // (alvos menores/mais rápidos rendem menos pontos por partida).
+      const rate = { easy: 0.5, normal: 1, hard: 2 }[difficulty] || 1;
+      coinsEarned = Math.floor((scoreNum / 100) * rate);
     }
 
     if (coinsEarned > 0) {
@@ -163,6 +170,20 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       if (achId && !achUnlocked.includes(achId)) {
         achUnlocked.push(achId);
         newAchievements.push(achId);
+      }
+    }
+    if (game === "aimtrainer") {
+      if (scoreNum >= 5000 && !achUnlocked.includes("aimtrainer_sharp")) {
+        achUnlocked.push("aimtrainer_sharp");
+        newAchievements.push("aimtrainer_sharp");
+      }
+      if (
+        difficulty === "hard" &&
+        scoreNum >= 10000 &&
+        !achUnlocked.includes("aimtrainer_legend")
+      ) {
+        achUnlocked.push("aimtrainer_legend");
+        newAchievements.push("aimtrainer_legend");
       }
     }
     if (newAchievements.length > 0) {

@@ -65,6 +65,7 @@
       <hr />
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
+      <button onclick="openWindow('win-aimtrainer'); initAimTrainerGame(); closeStartMenu()">🔫 Aim Trainer</button>
       <button onclick="openMinesweeperWindow(); closeStartMenu()">💣 Campo Minado</button>
       <button onclick="openSudokuWindow(); closeStartMenu()">🔢 Sudoku</button>
       <button onclick="openWindow('win-gamerank'); loadGameRank('snake'); closeStartMenu()">🎮 Rank Jogos</button>
@@ -98,6 +99,10 @@
     <div class="desktop-icon" data-icon-id="icon-snake" data-action="openWindow('win-snake'); initSnakeGame()">
       <div class="icon-img">🐍</div>
       <div class="icon-label">Snake 95</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-aimtrainer" data-action="openWindow('win-aimtrainer'); initAimTrainerGame()">
+      <div class="icon-img">🔫</div>
+      <div class="icon-label">Aim<br>Trainer</div>
     </div>
     <div class="desktop-icon" data-icon-id="icon-minesweeper"
       data-action="openMinesweeperWindow()">
@@ -472,6 +477,41 @@
     </div>
   </div>
 
+  <!-- ══ WINDOW: AIM TRAINER ══ -->
+  <div class="win95-window" id="win-aimtrainer" style="left:80px;top:30px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-aimtrainer')">
+      <span class="win95-title">🔫 Aim Trainer</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-aimtrainer')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-aimtrainer'); stopAimTrainerGame()">✕</button>
+      </div>
+    </div>
+    <div class="win95-body">
+      <div class="ms-difficulty-bar">
+        <button class="at-diff-btn ms-diff-btn" data-diff="easy" onclick="setAtDifficulty('easy')">Fácil</button>
+        <button class="at-diff-btn ms-diff-btn active" data-diff="normal" onclick="setAtDifficulty('normal')">Normal</button>
+        <button class="at-diff-btn ms-diff-btn" data-diff="hard" onclick="setAtDifficulty('hard')">Difícil</button>
+        <button class="win95-action-btn" style="margin-left:auto;font-size:10px;padding:2px 6px"
+          onclick="openGameRank('aimtrainer', currentAtDifficulty)">🏆</button>
+      </div>
+      <div class="snake-header">
+        <span>Pontos: <span id="at-score" style="color:var(--win-blue-hi)">0</span></span>
+        <span>Combo: <span id="at-combo" style="color:var(--win-blue-hi)">0</span></span>
+        <span>Tempo: <span id="at-time">15</span>s</span>
+        <span>Recorde: <span id="at-best" style="color:#800000">0</span></span>
+      </div>
+      <div class="canvas-container" id="at-canvas-container">
+        <canvas id="at-canvas" width="420" height="420"></canvas>
+      </div>
+      <div class="btn-row" style="justify-content: center; margin-top: 8px; gap: 8px;">
+        <button class="win95-action-btn" id="at-start-btn" onclick="startAimTrainerGame()">▶ Iniciar</button>
+      </div>
+      <div class="info-box" style="font-size:11px;margin-top:4px">
+        Clique nos alvos antes que encolham e desapareçam. Acertos rápidos e em sequência (combo) valem mais pontos!
+      </div>
+    </div>
+  </div>
+
   <!-- ══ WINDOW: CAMPO MINADO ══ -->
   <div class="win95-window" id="win-minesweeper" style="left:180px;top:80px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-minesweeper')">
@@ -593,6 +633,12 @@
           onclick="loadGameRank('sudoku','medium'); setGameRankTabActive('sd-medium')">🔢 Médio</button>
         <button class="rank-tab" data-tab="sd-hard"
           onclick="loadGameRank('sudoku','hard'); setGameRankTabActive('sd-hard')">🔢 Difícil</button>
+        <button class="rank-tab" data-tab="at-easy"
+          onclick="loadGameRank('aimtrainer','easy'); setGameRankTabActive('at-easy')">🔫 Fácil</button>
+        <button class="rank-tab" data-tab="at-normal"
+          onclick="loadGameRank('aimtrainer','normal'); setGameRankTabActive('at-normal')">🔫 Normal</button>
+        <button class="rank-tab" data-tab="at-hard"
+          onclick="loadGameRank('aimtrainer','hard'); setGameRankTabActive('at-hard')">🔫 Difícil</button>
       </div>
       <div id="gamerank-content">
         <div class="loading">Carregando...</div>
@@ -786,6 +832,7 @@
 
   <script src="js/app.js"></script>
   <script src="js/snake.js"></script>
+  <script src="js/aimtrainer.js"></script>
   <script src="js/minesweeper.js"></script>
   <script src="js/sudoku.js"></script>
   <script>
