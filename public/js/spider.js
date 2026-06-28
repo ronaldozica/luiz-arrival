@@ -21,6 +21,14 @@ const SP_COL_GAP = 6;
 const SP_BASE_TOP = 6;
 const SP_FACEUP_OFFSET = 20;
 const SP_FACEDOWN_OFFSET = 7;
+// Altura mínima do tabuleiro só pra não ficar com cara de vazio quando há
+// poucas cartas — não tenta "adivinhar" um tamanho grande o bastante pro
+// jogo inteiro, porque isso pode ficar maior que a janela disponível e
+// empurrar o resto da UI pra fora da área visível. Em vez disso, o zoom é
+// recalculado em toda renderização (ver chamada de refreshGameZoom no fim
+// de renderSpBoard), então ele nunca fica desatualizado conforme o
+// tabuleiro cresce/encolhe de verdade durante a partida.
+const SP_TABLEAU_MIN_HEIGHT = 300;
 
 let currentSpDifficulty = "easy";
 let spTableau = []; // array[10] de arrays de {id, rank, suit, faceUp}
@@ -256,12 +264,16 @@ function renderSpBoard() {
   });
 
   tableau.style.width = `${10 * SP_CARD_W + 9 * SP_COL_GAP}px`;
-  tableau.style.height = `${maxBottom}px`;
+  tableau.style.height = `${Math.max(maxBottom, SP_TABLEAU_MIN_HEIGHT)}px`;
 
   const stockEl = document.getElementById("sp-stock");
   const batches = Math.ceil(spStock.length / 10);
   stockEl.dataset.count = spStock.length > 0 ? String(batches) : "";
   stockEl.classList.toggle("empty", spStock.length === 0);
+
+  // O tabuleiro muda de altura a cada jogada/distribuição (cartas saem/
+  // entram nas colunas) — recalcula o zoom aqui pra nunca ficar desatualizado.
+  refreshGameZoom("win-spider");
 }
 
 function updateSpCounters() {

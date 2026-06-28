@@ -251,6 +251,15 @@ body {
   overflow-y: auto;
 }
 
+/* Fixa o último .info-box (texto de ajuda) no rodapé da janela quando
+   maximizada, em vez de deixá-lo no fluxo normal logo após o conteúdo —
+   assim ele nunca fica por baixo/sobreposto se o conteúdo entre eles
+   variar de tamanho. .win95-body já é flex column, então margin-top:auto
+   empurra esse elemento pro fim do espaço disponível. */
+.win95-window.maximized .win95-body > .info-box:last-child {
+  margin-top: auto;
+}
+
 .game-zoom-target {
   /* .win95-body é flex column com align-items:stretch (padrão) — sem isso
      o item esticaria para 100% da largura do body, inflando o "tamanho
