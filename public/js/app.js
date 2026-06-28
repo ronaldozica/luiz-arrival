@@ -2944,8 +2944,7 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    {
-    version: "1.5.0",
+    version: "1.9.0",
     date: "28/06/2026",
     isNew: true,
     title: "Novo minigame: Aim Trainer 🔫",
@@ -2958,7 +2957,7 @@ const RELEASE_NOTES = [
   {
     version: "1.8.0",
     date: "28/06/2026",
-    isNew: true,
+    isNew: false,
     title: "Spider: dicas sem limite, desfazer e zoom mais preciso",
     items: [
       "💡 Removido o limite máximo de dicas no Spider em todos os modos — use quantas precisar (mas vencer sem usar nenhuma ainda desbloqueia uma conquista diferente).",
@@ -3000,8 +2999,6 @@ const RELEASE_NOTES = [
       "🏅 6 novas conquistas do Spider: uma por dificuldade completada, mais \"Pura estratégia\" (vencer sem usar dica) e \"Com uma ajudinha\" (vencer usando ao menos uma).",
       "😵 O Spider agora detecta quando não há mais jogadas possíveis e encerra a partida automaticamente, em vez de deixar o jogador travado sem aviso.",
       "🔢 Sudoku: ranking dos jogos agora tem abas próprias por dificuldade ao lado do Spider.",
-    ],
-  },
     ],
   },
   {

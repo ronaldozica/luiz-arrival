@@ -126,7 +126,6 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       else if (difficulty === "medium") coinsEarned = 15;
       else if (difficulty === "easy") coinsEarned = 5;
     }
-    }
 
     if (coinsEarned > 0) {
       const dailyKey = `gamecoins_daily:${userKey(playerName)}:${todayKey()}`;
@@ -220,8 +219,6 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       if (!hintsUsed && !undoUsed && !achUnlocked.includes("spider_flawless")) {
         achUnlocked.push("spider_flawless");
         newAchievements.push("spider_flawless");
-      }
-    }
       }
     }
     if (newAchievements.length > 0) {
