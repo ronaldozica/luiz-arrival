@@ -1,5 +1,5 @@
 # 🕐 Que horas o Luiz chega?
-> Sistema de apostas estilo Windows 95 para o jogo diário do escritório.
+> Sistema de apostas estilo Windows 95 para o jogo diário do escritório — com loja, conquistas, rankings e minigames.
 
 ---
 
@@ -8,17 +8,23 @@
 ```
 luiz-arrival/
 ├── api/
-│   └── index.js          ← Backend (Express, serverless na Vercel)
+│   ├── index.js              ← Backend (Express, serverless na Vercel)
+│   ├── routes/                ← auth, bets, admin, game-rank, leaderboards,
+│   │                            store, profile, achievements
+│   └── lib/                   ← redis, session, users, cache, jogos,
+│                                conquistas, itens da loja, etc.
 ├── public/
-│   ├── index.html         ← Frontend (Windows 95 UI)
-│   ├── style.css          ← Visual retrô
-│   ├── app.js             ← Lógica do frontend
-│   └── photos/            ← Fotos dos usuários (você coloca aqui)
-│       └── LEIA-ME.txt
-├── .env.example           ← Variáveis de ambiente de exemplo
+│   ├── index.html             ← Frontend (Windows 95 UI)
+│   ├── style.css              ← Visual retrô
+│   ├── js/
+│   │   ├── app.js             ← Lógica principal do frontend
+│   │   └── snake.js, aimtrainer.js, minesweeper.js, sudoku.js, spider.js,
+│   │       notepad.js, calculator.js, paint.js  ← minigames e apps
+│   └── assets/                ← fotos, wallpapers, ícones
+├── .env.local                 ← Variáveis de ambiente (não versionado)
 ├── .gitignore
 ├── package.json
-├── vercel.json            ← Configuração de roteamento
+├── vercel.json                ← Configuração de roteamento
 └── README.md
 ```
 
@@ -35,25 +41,23 @@ luiz-arrival/
 
 ## 🚀 Passo a passo: Deploy na Vercel
 
-### 1. Clone / copie o projeto
-
-```bash
-# Se quiser versionar no GitHub (recomendado):
-git init
-git add .
-git commit -m "primeiro commit"
-# Crie um repositório no GitHub e siga as instruções para push
-```
-
-### 2. Crie o banco de dados KV na Vercel
+### 1. Crie o banco de dados KV na Vercel
 
 1. Acesse [vercel.com](https://vercel.com) → faça login
 2. No Dashboard, clique em **Storage** (menu lateral)
 3. Clique em **Create Database** → escolha **KV (Redis)**
 4. Dê um nome (ex: `luiz-arrival-db`) → clique **Create**
-5. Na tela do banco, vá em **`.env.local`** e copie os valores de:
-   - `KV_REST_API_URL`
-   - `KV_REST_API_TOKEN`
+5. Copie os valores de `KV_REST_API_URL` e `KV_REST_API_TOKEN`
+
+### 2. Gere o hash da senha de admin
+
+A senha do painel admin nunca é armazenada em texto puro — só o hash bcrypt:
+
+```bash
+node -e "const b=require('bcryptjs'); console.log(b.hashSync('SUA_SENHA_FORTE', 12))"
+```
+
+Guarde o resultado para usar como `ADMIN_PASSWORD_HASH`.
 
 ### 3. Faça o deploy
 
@@ -61,9 +65,9 @@ git commit -m "primeiro commit"
 1. Acesse o Vercel Dashboard → **Add New Project**
 2. Importe o repositório do GitHub
 3. Em **Environment Variables**, adicione:
-   - `KV_REST_API_URL` → valor copiado no passo 2
-   - `KV_REST_API_TOKEN` → valor copiado no passo 2
-   - `ADMIN_PASSWORD` → senha que só você sabe (ex: `luiz2025`)
+   - `KV_REST_API_URL`
+   - `KV_REST_API_TOKEN`
+   - `ADMIN_PASSWORD_HASH` → hash gerado no passo anterior
 4. Clique **Deploy** ✅
 
 **Via CLI:**
@@ -72,136 +76,90 @@ cd luiz-arrival
 npm install
 vercel login
 vercel link          # conecta ao projeto na Vercel
-vercel env pull      # baixa as env vars do KV automaticamente (se linkou o banco)
-# Adicione manualmente ADMIN_PASSWORD no .env.local
-vercel --prod        # faz o deploy
+vercel env pull       # baixa as env vars do KV automaticamente (se linkou o banco)
+# Adicione manualmente ADMIN_PASSWORD_HASH no .env.local
+vercel --prod         # faz o deploy
 ```
 
-### 4. (Opcional) Desenvolvimento local
+### 4. Desenvolvimento local
 
 ```bash
-cp .env.example .env.local
-# Edite .env.local com os valores do KV e a ADMIN_PASSWORD
 npm install
-vercel dev           # roda localmente em http://localhost:3000
+vercel dev            # roda localmente em http://localhost:3000, lendo .env.local
 ```
-
----
-
-## 📸 Adicionar fotos dos usuários
-
-Coloque arquivos de imagem na pasta `public/photos/` com os seguintes nomes **exatos**:
-
-| Usuário    | Nome do arquivo  |
-|------------|-----------------|
-| Ronaldo    | `ronaldo.jpg`   |
-| Jorge      | `jorge.jpg`     |
-| Alexandre  | `alexandre.jpg` |
-| João Paulo | `joaopaulo.jpg` |
-| Julio      | `julio.jpg`     |
-| Pedro      | `pedro.jpg`     |
-
-- Formatos aceitos: `.jpg`, `.jpeg`, `.png`, `.webp`
-- Tamanho recomendado: mínimo 100×100 px (será exibido em 64×64 px)
-- Após adicionar, faça um novo commit/deploy
-
-> Para novos usuários cadastrados via formulário, não há foto (exibe só o nome).
 
 ---
 
 ## 🎮 Como usar
 
-### Fazer uma aposta
-1. Clique em **🎯 Fazer Aposta** (ou duplo clique no ícone do desktop)
-2. Selecione seu nome na lista
-3. Digite sua senha
-4. Escolha o horário que acha que o Luiz vai chegar
-5. Clique **Apostar!**
+### Apostas
+- **🎯 Fazer Aposta** — escolha o horário que acha que o Luiz vai chegar (dias úteis, antes das 10h ou antes da chegada real). Dá pra atualizar o chute antes do prazo.
+- **📋 Apostas abertas** / **📅 Histórico** / **🏆 Ranking** — acompanhe o dia atual, dias passados e o ranking semanal/geral.
+- **🔒 Admin** → registra o horário real de chegada e calcula o ranking do dia automaticamente.
 
-> Apostas só são aceitas em **dias úteis** e **antes das 10h** (ou antes de o Luiz chegar).
-> Se já apostou hoje, pode atualizar o chute antes do prazo.
+### Cadastro e login
+- Não há mais usuários fixos no código — qualquer um se cadastra pelo botão **👤 Novo Usuário**, com senha (hash bcrypt). Esqueceu a senha? Tem fluxo de redefinição via senha temporária liberada pelo admin.
 
-### Ver apostas de hoje
-- Clique em **📋 Apostas abertas** — mostra todos os chutes do dia e resultado se já chegou.
+### Minigames
+- 🐍 **Snake 95**, 💣 **Campo Minado**, 🔢 **Sudoku**, 🔫 **Aim Trainer** (teste de mira/reação) e 🕷️ **Paciência Spider** — cada um com ranking próprio por dificuldade, ganha LuizCoins™ ao jogar (com teto diário) e desbloqueia conquistas.
+- **🎮 Rank Jogos**, **🏅 Top 1 dos Jogos** e **🎖️ Rank de Conquistas** — rankings agregados entre todos os jogos.
+- Pontuações são protegidas contra trapaça: cada partida usa um token de rodada emitido pelo servidor, que valida se o tempo decorrido é compatível com o score enviado antes de aceitar o resultado.
 
-### Histórico
-- Clique em **📅 Histórico** — lista dias passados com resultados e rankings.
+### Loja e perfil
+- **🛒 Loja** — troque LuizCoins™ por cores de nome, emojis de ranking e GIFs especiais.
+- **🏅 Conquistas** — destrave badges e exiba sua favorita ao lado do nome.
+- **🧑‍🎨 Perfil** — personalize como seu nome aparece nos rankings.
 
-### Ranking Geral
-- Clique em **🏆 Ranking Geral** — ranking acumulado do último mês.
-
-### Registrar chegada do Luiz (Admin)
-1. Clique em **🔒 Admin** (via menu Iniciar ou na URL `/admin`)
-2. Digite a senha admin
-3. Informe o horário de chegada do Luiz
-4. Clique **Registrar Chegada** — o sistema calcula automaticamente o ranking do dia
+### Outros apps
+- 📝 Bloco de Notas, 🧮 Calculadora, 🎨 Paint 95 — utilitários decorativos do desktop.
 
 ---
 
-## 📊 Sistema de pontuação
+## 📊 Sistema de pontuação (apostas)
 
 | Critério | Detalhes |
 |---|---|
 | **Pontos diários** | O 1º colocado do dia recebe N pontos (onde N = total de apostadores), 2º recebe N-1, etc. |
-| **Ranking geral** | Soma de pontos de todos os dias do último mês |
-| **Desempate** | Quem tem menor diferença média (erro médio) fica à frente |
-| **Erro médio** | Média da diferença em minutos entre o chute e a chegada real |
+| **Ranking semanal/geral** | Soma/média de pontos por dia jogado |
+| **Desempate** | Quem tem menor diferença em relação ao horário real fica à frente |
+| **Anti-sniping** | Apostas feitas muito perto do horário real de chegada não contam para pódio/precisão |
+
+Detalhes completos (inclusive da economia da loja e cálculo de moedas) estão no app **📐 Regras de Pontuação**, dentro do próprio site.
 
 ---
 
-## 👥 Usuários pré-definidos
+## 👥 Usuários
 
-| Nome | Senha |
-|------|-------|
-| Ronaldo | rolando |
-| Jorge | jog |
-| Alexandre | rock |
-| João Paulo | joaoPedro |
-| Julio | julho |
-| Pedro | pedrao |
-
-Para adicionar novos usuários, use o botão **👤 Novo Usuário** no site.
+Não há mais lista fixa de usuários ou senhas no código/documentação — todo cadastro é feito pelo próprio site (botão **👤 Novo Usuário**), com senha protegida por hash bcrypt. O admin pode resetar senhas esquecidas via senha temporária.
 
 ---
 
 ## 🔒 Painel Admin
 
-- URL: qualquer janela → menu Iniciar → Admin
-- Senha: definida na variável de ambiente `ADMIN_PASSWORD`
-- Funções:
-  - Registrar horário de chegada do Luiz (hoje ou data passada)
-  - Ver resultado imediato com ranking do dia
+- Acesso: menu Iniciar → Admin
+- Senha: validada contra `ADMIN_PASSWORD_HASH` (variável de ambiente, nunca texto puro)
+- Funções: registrar chegada do Luiz, gerenciar usuários e senhas temporárias, ajustar LuizCoins, remover registros de ranking suspeitos de trapaça (por jogo/dificuldade), consultar saldo geral.
 
 ---
 
 ## 🗄️ Banco de dados (Vercel KV)
 
-- **Gratuito** no plano Hobby da Vercel (até 30.000 req/mês)
+- **Gratuito** no plano Hobby da Vercel/Upstash
 - **Zero configuração** — gerenciado pela Vercel
-- Armazena apenas os últimos **22 dias úteis** (≈1 mês)
-- Dados salvos:
-  - `users` — usuários extras cadastrados pelo site
-  - `day:YYYY-MM-DD` — apostas e resultado de cada dia
-  - `days_index` — índice de datas para consulta do histórico
+- Leituras pesadas (rankings agregados, histórico) são cacheadas sob chaves dedicadas (`api/lib/cache.js`) para minimizar o consumo de comandos do plano gratuito
 
 ---
 
 ## 🛠️ Personalização
 
-### Trocar usuários pré-definidos
-Edite o array `PRESET_USERS` no arquivo `api/index.js`:
-```js
-const PRESET_USERS = [
-  { name: "Novo Nome", password: "senha", photo: "arquivo.jpg" },
-  // ...
-];
-```
-
-### Trocar horário de corte (10h)
-Em `api/index.js`, busque por `"10:00"` e altere conforme necessário.
-
 ### Trocar tema de cores
 Em `public/style.css`, edite as variáveis CSS no `:root`.
+
+### Trocar horário de corte das apostas (10h)
+Em `api/routes/bets.js`, busque por `"10:00"`.
+
+### Itens da loja
+Edite `STORE_ITEMS` em `api/lib/store-items.js` (preços antigos ficam preservados em `LEGACY_STORE_PRICES` — não altere esses valores, eles só existem para não mudar retroativamente o que já foi pago).
 
 ---
 
@@ -209,7 +167,7 @@ Em `public/style.css`, edite as variáveis CSS no `:root`.
 
 | Problema | Solução |
 |---|---|
-| `KV_REST_API_URL is not defined` | Confirme que as env vars estão configuradas no projeto Vercel |
+| `KV_REST_API_URL is not defined` | Confirme que as env vars estão configuradas no projeto Vercel/`.env.local` |
+| Login de admin não funciona | Confirme que `ADMIN_PASSWORD_HASH` é um hash bcrypt válido, não a senha em texto puro |
 | Apostas não aparecem | Verifique se o banco KV está vinculado ao projeto |
-| Foto não aparece | Confirme o nome exato do arquivo em `public/photos/` |
 | `vercel dev` não funciona | Execute `vercel link` primeiro para conectar ao projeto |
