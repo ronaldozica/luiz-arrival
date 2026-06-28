@@ -69,6 +69,10 @@
       <button onclick="openSudokuWindow(); closeStartMenu()">🔢 Sudoku</button>
       <button onclick="openWindow('win-gamerank'); loadGameRank('snake'); closeStartMenu()">🎮 Rank Jogos</button>
       <hr />
+      <button onclick="openNotepadWindow(); closeStartMenu()">📝 Bloco de Notas</button>
+      <button onclick="openCalculatorWindow(); closeStartMenu()">🧮 Calculadora</button>
+      <button onclick="openPaintWindow(); closeStartMenu()">🎨 Paint 95</button>
+      <hr />
       <button onclick="openWindow('win-login'); closeStartMenu()">🔑 Login / Trocar Conta</button>
     </div>
   </div>
@@ -146,6 +150,18 @@
     <div class="desktop-icon" data-icon-id="icon-release-notes" data-action="openReleaseNotes()">
       <div class="icon-img">📰</div>
       <div class="icon-label">Novidades</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-notepad" data-action="openNotepadWindow()">
+      <div class="icon-img">📝</div>
+      <div class="icon-label">Bloco de<br>Notas</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-calculator" data-action="openCalculatorWindow()">
+      <div class="icon-img">🧮</div>
+      <div class="icon-label">Calculadora</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-paint" data-action="openPaintWindow()">
+      <div class="icon-img">🎨</div>
+      <div class="icon-label">Paint 95</div>
     </div>
   </div>
 
@@ -692,6 +708,117 @@
     </div>
   </div>
 
+  <!-- ══ WINDOW: BLOCO DE NOTAS ══ -->
+  <div class="win95-window notepad-window" id="win-notepad" style="left:220px;top:70px;width:480px;height:420px;display:none">
+    <!-- openWindow() força style.display="block" inline no elemento da janela
+         (sobrescrevendo qualquer display:flex via CSS, já que inline sempre
+         tem prioridade), então o flex-fill do bloco de notas é feito por um
+         wrapper interno position:absolute+inset:0 — ele ignora o display do
+         pai e enche a janela inteira sozinho. -->
+    <div class="notepad-flex-wrap">
+      <div class="win95-titlebar" onmousedown="startDrag(event,'win-notepad')">
+        <span class="win95-title">📝 Bloco de Notas</span>
+        <div class="win95-controls">
+          <button class="win95-btn-ctrl" onclick="minimizeWindow('win-notepad')">_</button>
+          <button class="win95-btn-ctrl" onclick="closeWindow('win-notepad')">✕</button>
+        </div>
+      </div>
+      <div class="win95-body" style="padding:6px;">
+        <div class="notepad-toolbar">
+          <button class="win95-action-btn" onclick="saveNotepadFile()">💾 Salvar como .txt</button>
+        </div>
+        <textarea id="notepad-text" spellcheck="false"
+          style="width:100%;box-sizing:border-box;resize:none;font-family:'Courier New',monospace;font-size:12px;border:1px solid var(--win-dark);padding:4px;"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: CALCULADORA ══ -->
+  <div class="win95-window" id="win-calculator" style="left:260px;top:90px;width:280px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-calculator')">
+      <span class="win95-title">🧮 Calculadora</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-calculator')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-calculator')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body" style="background: var(--win-gray); padding: 6px;">
+      <input id="calc-display" readonly value="0"
+        style="width:100%;box-sizing:border-box;font-size:18px;text-align:right;padding:6px;margin-bottom:6px;border:1px solid var(--win-dark);font-family:'Courier New',monospace;" />
+
+      <button class="win95-action-btn" style="width:100%;margin-bottom:4px;font-size:10px;" id="calc-sci-toggle"
+        onclick="toggleCalcScientific()">🔬 Modo Científico</button>
+
+      <div id="calc-sci-grid" class="calc-grid" style="display:none;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:4px;">
+        <button class="win95-action-btn" onclick="calcPush('(','(')">(</button>
+        <button class="win95-action-btn" onclick="calcPush(')',')')">)</button>
+        <button class="win95-action-btn" onclick="calcPush('**','^')">xʸ</button>
+        <button class="win95-action-btn" onclick="calcPush('Math.sqrt(','√(')">√</button>
+
+        <button class="win95-action-btn" onclick="calcPush('sinDeg(','sin(')">sin</button>
+        <button class="win95-action-btn" onclick="calcPush('cosDeg(','cos(')">cos</button>
+        <button class="win95-action-btn" onclick="calcPush('tanDeg(','tan(')">tan</button>
+        <button class="win95-action-btn" onclick="calcNegate()">±</button>
+
+        <button class="win95-action-btn" onclick="calcPush('Math.log10(','log(')">log</button>
+        <button class="win95-action-btn" onclick="calcPush('Math.log(','ln(')">ln</button>
+        <button class="win95-action-btn" onclick="calcPush('Math.PI','π')">π</button>
+        <button class="win95-action-btn" onclick="calcPush('Math.E','e')">e</button>
+      </div>
+
+      <div class="calc-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;">
+        <button class="win95-action-btn" onclick="calcClear()">C</button>
+        <button class="win95-action-btn" onclick="calcBackspace()">⌫</button>
+        <button class="win95-action-btn" onclick="calcPush('%')">%</button>
+        <button class="win95-action-btn" onclick="calcPush('/','÷')">÷</button>
+
+        <button class="win95-action-btn" onclick="calcPush('7')">7</button>
+        <button class="win95-action-btn" onclick="calcPush('8')">8</button>
+        <button class="win95-action-btn" onclick="calcPush('9')">9</button>
+        <button class="win95-action-btn" onclick="calcPush('*','×')">×</button>
+
+        <button class="win95-action-btn" onclick="calcPush('4')">4</button>
+        <button class="win95-action-btn" onclick="calcPush('5')">5</button>
+        <button class="win95-action-btn" onclick="calcPush('6')">6</button>
+        <button class="win95-action-btn" onclick="calcPush('-','−')">−</button>
+
+        <button class="win95-action-btn" onclick="calcPush('1')">1</button>
+        <button class="win95-action-btn" onclick="calcPush('2')">2</button>
+        <button class="win95-action-btn" onclick="calcPush('3')">3</button>
+        <button class="win95-action-btn" onclick="calcPush('+')">+</button>
+
+        <button class="win95-action-btn" onclick="calcPush('0')" style="grid-column: span 2;">0</button>
+        <button class="win95-action-btn" onclick="calcPush('.')">.</button>
+        <button class="win95-action-btn" onclick="calcEquals()">=</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: PAINT 95 ══ -->
+  <div class="win95-window" id="win-paint" style="left:170px;top:60px;width:460px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-paint')">
+      <span class="win95-title">🎨 Paint 95</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-paint')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-paint')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body" style="background: var(--win-gray); padding: 6px;">
+      <div class="ms-difficulty-bar" style="flex-wrap:wrap;">
+        <button class="paint-tool-btn ms-diff-btn active" data-tool="pen" onclick="setPaintTool('pen')">✏️ Caneta</button>
+        <button class="paint-tool-btn ms-diff-btn" data-tool="brush" onclick="setPaintTool('brush')">🖌️ Pincel</button>
+        <button class="paint-tool-btn ms-diff-btn" data-tool="eraser" onclick="setPaintTool('eraser')">🧹 Borracha</button>
+        <input type="color" id="paint-color-input" value="#000000" oninput="setPaintColor(this.value)"
+          style="width:28px;height:24px;padding:0;border:1px solid var(--win-dark);margin-left:auto;" />
+        <button class="win95-action-btn" style="font-size:10px;padding:2px 6px" onclick="clearPaintCanvas()">🗑️ Limpar</button>
+        <button class="win95-action-btn" style="font-size:10px;padding:2px 6px" onclick="savePaintImage()">💾 Salvar</button>
+      </div>
+      <div class="canvas-container" style="margin-top:6px;">
+        <canvas id="paint-canvas" width="420" height="320" style="background:#fff;cursor:crosshair;touch-action:none;"></canvas>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ WINDOW: RANKING JOGOS ══ -->
   <div class="win95-window" id="win-gamerank" style="left:220px;top:100px;width:420px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-gamerank')">
@@ -925,6 +1052,9 @@
   <script src="js/minesweeper.js"></script>
   <script src="js/sudoku.js"></script>
   <script src="js/spider.js"></script>
+  <script src="js/notepad.js"></script>
+  <script src="js/calculator.js"></script>
+  <script src="js/paint.js"></script>
   <script>
     function setGameRankTabActive(tab) {
       document.querySelectorAll('#win-gamerank .rank-tab').forEach(t => {

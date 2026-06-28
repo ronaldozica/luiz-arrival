@@ -323,6 +323,33 @@ body {
   overflow-y: auto;
 }
 
+/* Bloco de Notas: a janela tem altura fixa (definida no HTML), e openWindow()
+   força style.display="block" inline na janela ao abrir — isso venceria
+   qualquer display:flex aplicado direto em ".win95-window", então o flex
+   fica num wrapper interno (.notepad-flex-wrap) que ignora o display do pai
+   e ocupa a janela inteira via position:absolute + inset:0. */
+.notepad-window .notepad-flex-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.notepad-window .win95-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+.notepad-window .notepad-toolbar {
+  flex: 0 0 auto;
+}
+
+.notepad-window #notepad-text {
+  flex: 1;
+  min-height: 0;
+}
+
 /* ─── FORM ELEMENTS ───────────────────────── */
 .field-group {
   display: flex;
@@ -1138,6 +1165,15 @@ body {
 
 .sd-numpad .win95-action-btn {
   padding: 4px 0;
+  font-size: 13px;
+  min-width: 0;
+}
+
+/* Calculadora: .win95-action-btn tem min-width:90px por padrão (pensado pra
+   botões isolados), o que não cabe em 4 colunas numa janela pequena — sem
+   isso, a 4ª coluna (÷, ×, −, +, =) fica cortada pela borda da janela. */
+.calc-grid .win95-action-btn {
+  padding: 6px 0;
   font-size: 13px;
   min-width: 0;
 }
