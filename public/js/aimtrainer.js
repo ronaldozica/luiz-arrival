@@ -16,6 +16,7 @@ let atMisses = 0;
 let atRoundEndTime = 0;
 let activeTarget = null; // { x, y, radius, spawnTime, lifetime }
 let atLastScreen = "idle"; // "idle" | "result" — usado para redesenhar depois de um resize
+let atRoundTokenPromise = null;
 
 // Config
 const AT_ROUND_DURATION = 15000; // ms
@@ -107,6 +108,7 @@ function startAimTrainerGame() {
   atMisses = 0;
   isAtPlaying = true;
   atRoundEndTime = Date.now() + AT_ROUND_DURATION;
+  atRoundTokenPromise = startGameRound("aimtrainer", currentAtDifficulty);
 
   const startBtn = document.getElementById("at-start-btn");
   if (startBtn) startBtn.innerText = "⏹ Reiniciar";
@@ -285,14 +287,16 @@ function atEndRound() {
 
   atDrawResultScreen();
 
-  submitGameScore("aimtrainer", currentAtDifficulty, atScore, function (coinsEarned) {
-    if (coinsEarned > 0) {
-      showGameCoinsToast(coinsEarned);
-      setTimeout(() => {
-        atCtx.fillStyle = "gold";
-        atCtx.fillText(`🎉 +${coinsEarned} LuizCoins™`, atCanvas.width / 2, atCanvas.height / 2 + 60);
-      }, 100);
-    }
+  atRoundTokenPromise.then((roundToken) => {
+    submitGameScore("aimtrainer", currentAtDifficulty, atScore, function (coinsEarned) {
+      if (coinsEarned > 0) {
+        showGameCoinsToast(coinsEarned);
+        setTimeout(() => {
+          atCtx.fillStyle = "gold";
+          atCtx.fillText(`🎉 +${coinsEarned} LuizCoins™`, atCanvas.width / 2, atCanvas.height / 2 + 60);
+        }, 100);
+      }
+    }, undefined, { roundToken });
   });
 
   updateAtDisplays();

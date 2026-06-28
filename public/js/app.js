@@ -2158,6 +2158,28 @@ function renderGameRank() {
   container.innerHTML = html;
 }
 
+// Avisa o servidor que uma partida começou de verdade, pra ele guardar o
+// horário real de início (anti-trapaça: ver POST /api/game-rank/start no
+// backend). Retorna uma Promise com o roundToken — disparada no início da
+// partida mas só precisa ser aguardada na hora de enviar o score final, então
+// não adiciona latência perceptível ao clique que inicia o jogo.
+async function startGameRound(game, difficulty) {
+  try {
+    const body = difficulty ? { game, difficulty } : { game };
+    const res = await fetch(`${API}/game-rank/start`, {
+      method: "POST",
+      headers: authHeaders(sessionToken),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.roundToken || null;
+  } catch (e) {
+    console.error("startGameRound", e);
+    return null;
+  }
+}
+
 async function submitGameScore(game, difficulty, score, callback, token, extra) {
   const authToken = token || sessionToken;
   if (!currentUser || !authToken) return;

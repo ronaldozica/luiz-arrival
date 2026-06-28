@@ -43,6 +43,7 @@ let spCardEls = {}; // id da carta -> elemento DOM persistente (permite animaç�
 let spHintsUsed = 0; // sem limite máximo — só conta pra decidir a conquista no final
 let spUndoUsed = false; // true assim que o desfazer for usado pelo menos 1x na partida
 let spUndoSnapshot = null; // estado anterior à última ação (só 1 nível de desfazer)
+let spRoundTokenPromise = null;
 
 /**
  * Abre a janela do Spider, inicializa o tabuleiro e valida a sessão.
@@ -154,6 +155,7 @@ function initSpider() {
   updateSpUndoButton();
   renderSpBoard();
   startSpTimer();
+  spRoundTokenPromise = startGameRound("spider", currentSpDifficulty);
   refreshGameZoom("win-spider");
 }
 
@@ -577,16 +579,18 @@ function triggerSpGameOver(won) {
   if (won) {
     faceBtn.innerText = "😎";
     const winScore = Math.max(1, 9999 - spTimer);
-    submitGameScore(
-      "spider",
-      currentSpDifficulty,
-      winScore,
-      function (coinsEarned) {
-        if (coinsEarned > 0) showGameCoinsToast(coinsEarned);
-      },
-      undefined,
-      { hintsUsed: spHintsUsed > 0, undoUsed: spUndoUsed },
-    );
+    spRoundTokenPromise.then((roundToken) => {
+      submitGameScore(
+        "spider",
+        currentSpDifficulty,
+        winScore,
+        function (coinsEarned) {
+          if (coinsEarned > 0) showGameCoinsToast(coinsEarned);
+        },
+        undefined,
+        { roundToken, hintsUsed: spHintsUsed > 0, undoUsed: spUndoUsed },
+      );
+    });
   } else {
     faceBtn.innerText = "😵";
   }

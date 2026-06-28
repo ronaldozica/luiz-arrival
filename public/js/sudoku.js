@@ -21,6 +21,7 @@ let sdMistakes = 0;
 let sdTimer = 0;
 let sdInterval = null;
 let sdGameOver = false;
+let sdRoundTokenPromise = null;
 
 /**
  * Abre a janela do Sudoku, inicializa o tabuleiro e valida a sessão.
@@ -91,6 +92,7 @@ function initSudoku() {
   updateSdCounters();
   renderSdGrid();
   startSdTimer();
+  sdRoundTokenPromise = startGameRound("sudoku", currentSdDifficulty);
   refreshGameZoom("win-sudoku");
 }
 
@@ -250,8 +252,10 @@ function triggerSdGameOver(won) {
   if (won) {
     faceBtn.innerText = "😎";
     const winScore = Math.max(1, 9999 - sdTimer);
-    submitGameScore("sudoku", currentSdDifficulty, winScore, function (coinsEarned) {
-      if (coinsEarned > 0) showGameCoinsToast(coinsEarned);
+    sdRoundTokenPromise.then((roundToken) => {
+      submitGameScore("sudoku", currentSdDifficulty, winScore, function (coinsEarned) {
+        if (coinsEarned > 0) showGameCoinsToast(coinsEarned);
+      }, undefined, { roundToken });
     });
   } else {
     faceBtn.innerText = "😵";
