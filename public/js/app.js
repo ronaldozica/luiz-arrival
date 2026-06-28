@@ -469,7 +469,10 @@ let iconDrag = null;
 let selRect = null;
 let selectedIcons = new Set();
 
-const ICON_POSITIONS_KEY = "luizos_icon_positions";
+// v2: reagrupamos os ícones por categoria (apostas / loja-perfil / jogos) —
+// muda a versão pra forçar quem já tinha posições salvas a receber o novo
+// layout padrão em vez de manter o agrupamento antigo.
+const ICON_POSITIONS_KEY = "luizos_icon_positions_v2";
 let defaultIconPositions = {};
 
 function captureDefaultIconPositions() {
