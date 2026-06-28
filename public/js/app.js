@@ -469,10 +469,11 @@ let iconDrag = null;
 let selRect = null;
 let selectedIcons = new Set();
 
-// v2: reagrupamos os ícones por categoria (apostas / loja-perfil / jogos) —
-// muda a versão pra forçar quem já tinha posições salvas a receber o novo
-// layout padrão em vez de manter o agrupamento antigo.
-const ICON_POSITIONS_KEY = "luizos_icon_positions_v2";
+// v3: a v2 ainda calculava a posição padrão a partir do layout flex nativo
+// (dependia da altura da tela e podia embaralhar o agrupamento); agora é
+// determinístico. Bump de novo pra descartar posições "v2" já salvas com
+// o bug.
+const ICON_POSITIONS_KEY = "luizos_icon_positions_v3";
 let defaultIconPositions = {};
 
 // Mesma grade (tamanho de célula/origem) usada por resolveIconOverlaps —
