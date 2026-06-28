@@ -362,7 +362,10 @@ function applyGameZoom(win) {
 
   const GAME_ZOOM_MAX = 2.2;
   const scale = Math.max(1, Math.min(availWidth / naturalWidth, availHeight / naturalHeight, GAME_ZOOM_MAX));
-  const extraHeight = naturalHeight * (scale - 1);
+  // +6px de folga para absorver arredondamento de subpixel do transform,
+  // que senão deixava o conteúdo ampliado sobrepor levemente o que vem
+  // depois dele (ex: o texto de ajuda).
+  const extraHeight = Math.ceil(naturalHeight * (scale - 1)) + 6;
   setGameZoom(win, scale, extraHeight);
 }
 
@@ -2915,9 +2918,21 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "1.8.0",
+    date: "28/06/2026",
+    isNew: true,
+    title: "Spider: dicas sem limite, desfazer e zoom mais preciso",
+    items: [
+      "💡 Removido o limite máximo de dicas no Spider em todos os modos — use quantas precisar (mas vencer sem usar nenhuma ainda desbloqueia uma conquista diferente).",
+      "↩️ Novo botão \"Desfazer\" no Spider: volta a última jogada (só 1 nível, não dá pra voltar mais de uma).",
+      "💎 Nova conquista \"Vitória impecável\": vença uma partida sem usar dica nem desfazer.",
+      "🔍 Pequeno ajuste de folga no zoom das janelas maximizadas, evitando sobreposição residual do conteúdo ampliado.",
+    ],
+  },
+  {
     version: "1.7.0",
     date: "27/06/2026",
-    isNew: true,
+    isNew: false,
     title: "Recuperação de senha e cadastro mais claro",
     items: [
       "🔄 Novo \"Esqueci minha senha\" na tela de login: reseta a senha para uma temporária (gerenciada pelo admin) e exige a troca por uma nova no primeiro login.",

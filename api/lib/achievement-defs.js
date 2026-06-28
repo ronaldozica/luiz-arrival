@@ -14,6 +14,7 @@ const ACHIEVEMENT_DEFS = [
   { id: "spider_hard", title: "Lenda do Spider", description: "Complete uma Paciência Spider no modo Difícil (4 naipes)", icon: "🏆" },
   { id: "spider_no_hints", title: "Pura estratégia", description: "Vença uma Paciência Spider sem usar nenhuma dica", icon: "🧠" },
   { id: "spider_with_hints", title: "Com uma ajudinha", description: "Vença uma Paciência Spider usando ao menos uma dica", icon: "💡" },
+  { id: "spider_flawless", title: "Vitória impecável", description: "Vença uma Paciência Spider sem usar dicas nem desfazer jogadas", icon: "💎" },
   { id: "bet_winner", title: "Profeta do Luiz", description: "Seja o vencedor (1º lugar) em uma aposta do dia", icon: "🔮" },
   { id: "novato_em_ascensao", title: "Novato em ascensão", description: "Termine entre os 3 primeiros de um dia tendo jogado menos de 5 dias até então", icon: "🌱" },
   { id: "weekly_champion", title: "Campeão da semana", description: "Termine em 1º lugar no ranking semanal", icon: "👑" },

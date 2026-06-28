@@ -37,7 +37,7 @@ router.get("/game-rank", async (req, res) => {
 // O score é validado contra limites razoáveis por jogo.
 router.post("/game-rank", requireAuth, async (req, res) => {
   try {
-    const { game, difficulty, score, skipRank, hintsUsed } = req.body;
+    const { game, difficulty, score, skipRank, hintsUsed, undoUsed } = req.body;
     const playerName = req.sessionName; // Sempre do token de sessão, nunca do body
 
     if (!game || score === undefined) {
@@ -191,6 +191,12 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       if (!achUnlocked.includes(hintsAchId)) {
         achUnlocked.push(hintsAchId);
         newAchievements.push(hintsAchId);
+      }
+
+      // Vitória sem dicas e sem desfazer nenhuma jogada.
+      if (!hintsUsed && !undoUsed && !achUnlocked.includes("spider_flawless")) {
+        achUnlocked.push("spider_flawless");
+        newAchievements.push("spider_flawless");
       }
     }
     if (newAchievements.length > 0) {

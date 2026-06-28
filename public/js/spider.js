@@ -32,12 +32,9 @@ let spInterval = null;
 let spGameOver = false;
 let spCardEls = {}; // id da carta -> elemento DOM persistente (permite animações de transição)
 
-const SP_MAX_HINTS_BY_DIFFICULTY = { easy: 10, medium: 5, hard: 3 };
-let spHintsUsed = 0;
-
-function getSpMaxHints() {
-  return SP_MAX_HINTS_BY_DIFFICULTY[currentSpDifficulty] ?? 3;
-}
+let spHintsUsed = 0; // sem limite máximo — só conta pra decidir a conquista no final
+let spUndoUsed = false; // true assim que o desfazer for usado pelo menos 1x na partida
+let spUndoSnapshot = null; // estado anterior à última ação (só 1 nível de desfazer)
 
 /**
  * Abre a janela do Spider, inicializa o tabuleiro e valida a sessão.
@@ -137,6 +134,8 @@ function initSpider() {
   spGameOver = false;
   spTimer = 0;
   spHintsUsed = 0;
+  spUndoUsed = false;
+  spUndoSnapshot = null;
   spCardEls = {};
   const tableau = document.getElementById("sp-tableau");
   if (tableau) tableau.innerHTML = "";
@@ -144,6 +143,7 @@ function initSpider() {
   document.getElementById("sp-face").innerText = "🙂";
   updateSpCounters();
   updateSpHintButton();
+  updateSpUndoButton();
   renderSpBoard();
   startSpTimer();
   refreshGameZoom("win-spider");
@@ -344,10 +344,8 @@ function checkSpSequence(col) {
 function updateSpHintButton() {
   const btn = document.getElementById("sp-hint-btn");
   if (!btn) return;
-  const max = getSpMaxHints();
-  const remaining = max - spHintsUsed;
-  btn.disabled = spGameOver || remaining <= 0;
-  btn.innerText = `💡 Dica (${Math.max(0, remaining)}/${max})`;
+  btn.disabled = spGameOver;
+  btn.innerText = `💡 Dica (${spHintsUsed} usada${spHintsUsed === 1 ? "" : "s"})`;
 }
 
 /**
@@ -389,7 +387,7 @@ function flashSpHintElement(el) {
 }
 
 function useSpHint() {
-  if (spGameOver || spHintsUsed >= getSpMaxHints()) return;
+  if (spGameOver) return;
 
   const hint = findSpHint();
   if (!hint) return;
@@ -408,6 +406,42 @@ function useSpHint() {
   flashSpHintElement(placeholders[hint.destCol]);
 }
 
+// ─── DESFAZER (1 nível) ───────────────────────
+
+/**
+ * Clona o estado do tabuleiro para permitir desfazer a próxima ação. Cópia
+ * profunda das cartas (não só do array) porque elas são mutadas in-place
+ * (faceUp) — sem isso, o "snapshot" mudaria junto com o estado atual.
+ */
+function cloneSpState() {
+  return {
+    tableau: spTableau.map((column) => column.map((card) => ({ ...card }))),
+    stock: spStock.map((card) => ({ ...card })),
+    completedCount: spCompletedCount,
+  };
+}
+
+function updateSpUndoButton() {
+  const btn = document.getElementById("sp-undo-btn");
+  if (!btn) return;
+  btn.disabled = spGameOver || !spUndoSnapshot;
+}
+
+function undoSpMove() {
+  if (spGameOver || !spUndoSnapshot) return;
+
+  spTableau = spUndoSnapshot.tableau;
+  spStock = spUndoSnapshot.stock;
+  spCompletedCount = spUndoSnapshot.completedCount;
+  spUndoSnapshot = null; // só 1 nível — não dá pra desfazer o desfazer
+  spUndoUsed = true;
+  spSelected = null;
+
+  updateSpCounters();
+  updateSpUndoButton();
+  renderSpBoard();
+}
+
 // ─── INPUT HANDLING ──────────────────────────
 
 function handleSpCardClick(col, index) {
@@ -420,7 +454,10 @@ function handleSpCardClick(col, index) {
   }
 
   if (spSelected && spSelected.col !== col) {
+    const snapshot = cloneSpState();
     if (trySpMove(spSelected, col)) {
+      spUndoSnapshot = snapshot;
+      updateSpUndoButton();
       spSelected = null;
       checkSpSequence(col);
       updateSpCounters();
@@ -440,7 +477,10 @@ function handleSpCardClick(col, index) {
 
 function handleSpColumnClick(col) {
   if (spGameOver || !spSelected) return;
+  const snapshot = cloneSpState();
   if (trySpMove(spSelected, col)) {
+    spUndoSnapshot = snapshot;
+    updateSpUndoButton();
     spSelected = null;
     checkSpSequence(col);
     updateSpCounters();
@@ -454,6 +494,9 @@ function dealSpStock() {
   if (spGameOver) return;
   if (spStock.length === 0) return;
   if (spTableau.some((column) => column.length === 0)) return;
+
+  spUndoSnapshot = cloneSpState();
+  updateSpUndoButton();
 
   for (let col = 0; col < 10; col++) {
     const card = spStock.pop();
@@ -517,6 +560,7 @@ function triggerSpGameOver(won) {
   spGameOver = true;
   stopSpTimer();
   updateSpHintButton();
+  updateSpUndoButton();
   const faceBtn = document.getElementById("sp-face");
   if (won) {
     faceBtn.innerText = "😎";
@@ -529,7 +573,7 @@ function triggerSpGameOver(won) {
         if (coinsEarned > 0) showGameCoinsToast(coinsEarned);
       },
       undefined,
-      { hintsUsed: spHintsUsed > 0 },
+      { hintsUsed: spHintsUsed > 0, undoUsed: spUndoUsed },
     );
   } else {
     faceBtn.innerText = "😵";
