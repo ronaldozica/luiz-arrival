@@ -475,15 +475,39 @@ let selectedIcons = new Set();
 const ICON_POSITIONS_KEY = "luizos_icon_positions_v2";
 let defaultIconPositions = {};
 
+// Mesma grade (tamanho de célula/origem) usada por resolveIconOverlaps —
+// extraído pra constante compartilhada pra não duplicar os números.
+const ICON_CELL_W = 80;
+const ICON_CELL_H = 78;
+const ICON_GRID_ORIGIN = 12; // mesmo valor do padding de .desktop
+
+// Calcula a posição padrão de cada ícone em uma grade determinística
+// (coluna por coluna, de cima pra baixo, na ordem do HTML), em vez de ler
+// offsetLeft/offsetTop do layout flex nativo do navegador — que depende da
+// altura da janela (quantos ícones cabem antes de quebrar pra próxima
+// coluna) e podia embaralhar o agrupamento por categoria em telas menores.
 function captureDefaultIconPositions() {
   defaultIconPositions = {};
+
+  const desktop = document.querySelector(".desktop");
+  const maxRow = desktop
+    ? Math.max(Math.floor((desktop.clientHeight - ICON_GRID_ORIGIN - ICON_CELL_H) / ICON_CELL_H), 0)
+    : Infinity;
+
+  let col = 0;
+  let row = 0;
   document.querySelectorAll(".desktop-icon").forEach((icon) => {
     const id = icon.dataset.iconId;
     if (!id) return;
     defaultIconPositions[id] = {
-      left: `${icon.offsetLeft}px`,
-      top: `${icon.offsetTop}px`,
+      left: `${ICON_GRID_ORIGIN + col * ICON_CELL_W}px`,
+      top: `${ICON_GRID_ORIGIN + row * ICON_CELL_H}px`,
     };
+    row++;
+    if (row > maxRow) {
+      row = 0;
+      col++;
+    }
   });
 }
 
@@ -533,9 +557,7 @@ function loadIconPositions() {
 // posição atual colidir com algum ícone já posicionado, empurra para a
 // próxima célula livre de uma grade (varrendo colunas de cima para baixo).
 function resolveIconOverlaps() {
-  const ICON_CELL_W = 80;
-  const ICON_CELL_H = 78;
-  const ORIGIN = 12; // mesmo valor do padding de .desktop
+  const ORIGIN = ICON_GRID_ORIGIN;
   const icons = Array.from(document.querySelectorAll(".desktop-icon")).filter(
     (icon) => icon.dataset.iconId
   );
