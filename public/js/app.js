@@ -1942,6 +1942,16 @@ const ADMIN_RANK_DIFFICULTY_OPTIONS = {
     { value: "medium", label: "Médio" },
     { value: "hard", label: "Difícil" },
   ],
+  aimtrainer: [
+    { value: "easy", label: "Fácil" },
+    { value: "normal", label: "Normal" },
+    { value: "hard", label: "Difícil" },
+  ],
+  spider: [
+    { value: "easy", label: "Fácil" },
+    { value: "medium", label: "Médio" },
+    { value: "hard", label: "Difícil" },
+  ],
 };
 
 function onAdminRankGameChange() {
