@@ -69,6 +69,8 @@
       <button onclick="openMinesweeperWindow(); closeStartMenu()">💣 Campo Minado</button>
       <button onclick="openSudokuWindow(); closeStartMenu()">🔢 Sudoku</button>
       <button onclick="openWindow('win-gamerank'); loadGameRank('snake'); closeStartMenu()">🎮 Rank Jogos</button>
+      <button onclick="openTop1Rank(); closeStartMenu()">🏅 Top 1 dos Jogos</button>
+      <button onclick="openAchievementsRank(); closeStartMenu()">🎖️ Rank de Conquistas</button>
       <hr />
       <button onclick="openNotepadWindow(); closeStartMenu()">📝 Bloco de Notas</button>
       <button onclick="openCalculatorWindow(); closeStartMenu()">🧮 Calculadora</button>
@@ -149,6 +151,14 @@
       data-action="openWindow('win-gamerank'); loadGameRank('snake')">
       <div class="icon-img">🎮</div>
       <div class="icon-label">Rank<br>Jogos</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-top1-rank" data-action="openTop1Rank()">
+      <div class="icon-img">🏅</div>
+      <div class="icon-label">Top 1<br>Jogos</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-achievements-rank" data-action="openAchievementsRank()">
+      <div class="icon-img">🎖️</div>
+      <div class="icon-label">Rank<br>Conquistas</div>
     </div>
 
     <!-- Outros -->
@@ -928,6 +938,38 @@
     </div>
     <div class="win95-body win95-body-scroll">
       <div id="achievements-content">
+        <div class="loading">⏳ Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: TOP 1 DOS JOGOS ══ -->
+  <div class="win95-window" id="win-top1-rank" style="left:200px;top:80px;width:420px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-top1-rank')">
+      <span class="win95-title">🏅 Top 1 dos Jogos</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-top1-rank')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-top1-rank')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body win95-body-scroll">
+      <div id="top1-rank-content">
+        <div class="loading">⏳ Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: RANKING DE CONQUISTAS ══ -->
+  <div class="win95-window" id="win-achievements-rank" style="left:210px;top:90px;width:480px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-achievements-rank')">
+      <span class="win95-title">🎖️ Ranking de Conquistas</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-achievements-rank')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-achievements-rank')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body win95-body-scroll">
+      <div id="achievements-rank-content">
         <div class="loading">⏳ Carregando...</div>
       </div>
     </div>

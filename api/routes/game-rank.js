@@ -3,8 +3,16 @@ const router = express.Router();
 
 const { getKV } = require("../lib/redis");
 const { requireAuth } = require("../lib/auth-middleware");
+const { invalidatesCache } = require("../lib/cache");
 const { userKey, parseRedisArray, parseRedisNumber } = require("../lib/utils");
 const { todayKey } = require("../lib/datetime");
+const { GAMES } = require("../lib/games");
+
+const DIFFICULTIES_BY_GAME = Object.fromEntries(
+  Object.entries(GAMES)
+    .filter(([, cfg]) => cfg.difficulties)
+    .map(([game, cfg]) => [game, cfg.difficulties]),
+);
 
 // Minigames não têm cooldown entre partidas (dá pra jogar e ganhar quantas
 // vezes quiser), diferente da aposta (1x por dia útil). Sem um teto, alguém
@@ -35,7 +43,7 @@ router.get("/game-rank", async (req, res) => {
 // POST /api/game-rank — requer sessão válida; playerName vem do token, não do body
 // Proteção contra burla: o servidor ignora qualquer playerName enviado pelo cliente.
 // O score é validado contra limites razoáveis por jogo.
-router.post("/game-rank", requireAuth, async (req, res) => {
+router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"), async (req, res) => {
   try {
     const { game, difficulty, score, skipRank, hintsUsed, undoUsed } = req.body;
     const playerName = req.sessionName; // Sempre do token de sessão, nunca do body
@@ -67,12 +75,6 @@ router.post("/game-rank", requireAuth, async (req, res) => {
     }
 
     // Valida difficulty por jogo
-    const DIFFICULTIES_BY_GAME = {
-      minesweeper: ["beginner", "intermediate", "expert"],
-      sudoku: ["easy", "medium", "hard"],
-      aimtrainer: ["easy", "normal", "hard"],
-      spider: ["easy", "medium", "hard"],
-    };
     const validDifficulties = DIFFICULTIES_BY_GAME[game];
     if (validDifficulties && difficulty && !validDifficulties.includes(difficulty)) {
       return res.status(400).json({ error: "Dificuldade inválida." });

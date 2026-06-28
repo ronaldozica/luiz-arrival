@@ -422,6 +422,8 @@ function updateTaskbar() {
     "win-register": "👤 Cadastro",
     "win-admin": "🔒 Admin",
     "win-gamerank": "🎮 Rank Jogos",
+    "win-top1-rank": "🏅 Top 1 Jogos",
+    "win-achievements-rank": "🎖️ Rank Conquistas",
     "win-achievements": "🏅 Conquistas",
     "win-profile": "🧑‍🎨 Perfil",
     "win-release-notes": "📰 Novidades",
@@ -2496,6 +2498,84 @@ function openGallery(id, src, title) {
 }
 
 // ─── Conquistas (Achievements) ────────────────────────────────────────────────
+// ─── Top 1 de cada jogo ─────────────────────────────────────────────────────
+async function openTop1Rank() {
+  openWindow("win-top1-rank");
+  await loadTop1Rank();
+}
+
+async function loadTop1Rank() {
+  const container = document.getElementById("top1-rank-content");
+  if (!container) return;
+  container.innerHTML = '<div class="loading">⏳ Carregando...</div>';
+  try {
+    const data = await cachedFetchJSON("top1_all_games", `${API}/leaderboards/top1`, 60 * 1000);
+    let html = "";
+    for (const [game, byDiff] of Object.entries(data)) {
+      const rows = Object.entries(byDiff);
+      const hasDiffColumn = !(rows.length === 1 && rows[0][0] === "default");
+
+      html += `<div class="section-label">${getGameLabel(game)}</div>`;
+      html += `<table class="win95-table"><thead><tr>
+        ${hasDiffColumn ? "<th>Dificuldade</th>" : ""}
+        <th>Jogador</th><th>Pontuação</th><th>Data</th>
+      </tr></thead><tbody>`;
+      rows.forEach(([diff, entry]) => {
+        const diffCell = hasDiffColumn ? `<td>${getDifficultyLabel(diff)}</td>` : "";
+        if (!entry) {
+          html += `<tr>${diffCell}<td class="no-data" colspan="3">Nenhum recorde ainda</td></tr>`;
+        } else {
+          const date = new Date(entry.date).toLocaleDateString("pt-BR");
+          html += `<tr class="rank-gold">${diffCell}<td>${renderPlayerName(entry.name, true)}</td><td><strong>${formatGameScore(game, entry.score)}</strong></td><td>${date}</td></tr>`;
+        }
+      });
+      html += `</tbody></table>`;
+    }
+    container.innerHTML = html;
+  } catch {
+    container.innerHTML = '<div class="loading">Erro ao carregar ranking.</div>';
+  }
+}
+
+// ─── Ranking de conquistas (top 10) ─────────────────────────────────────────
+async function openAchievementsRank() {
+  openWindow("win-achievements-rank");
+  await loadAchievementsRank();
+}
+
+async function loadAchievementsRank() {
+  const container = document.getElementById("achievements-rank-content");
+  if (!container) return;
+  container.innerHTML = '<div class="loading">⏳ Carregando...</div>';
+  try {
+    const data = await cachedFetchJSON("achievements_leaderboard", `${API}/leaderboards/achievements`, 60 * 1000);
+    const { definitions, top } = data;
+    const defById = Object.fromEntries(definitions.map((d) => [d.id, d]));
+
+    let html = `<div class="section-label">🎖️ Top 10 — Mais Conquistas</div>`;
+    if (top.length === 0) {
+      html += '<div class="no-data">Nenhuma conquista desbloqueada ainda.</div>';
+    } else {
+      html += `<table class="win95-table"><thead><tr>
+        <th>#</th><th>Jogador</th><th>Qtd</th><th>Conquistas</th>
+      </tr></thead><tbody>`;
+      top.forEach((entry, i) => {
+        const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
+        const badges = entry.achievements
+          .map((id) => defById[id])
+          .filter(Boolean)
+          .map((def) => `<span title="${escHtml(def.title)}">${def.icon}</span>`)
+          .join(" ");
+        html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(entry.name, true)}</td><td><strong>${entry.count}</strong></td><td class="achv-rank-badges">${badges}</td></tr>`;
+      });
+      html += `</tbody></table>`;
+    }
+    container.innerHTML = html;
+  } catch {
+    container.innerHTML = '<div class="loading">Erro ao carregar ranking.</div>';
+  }
+}
+
 async function openAchievements() {
   if (!currentUser) {
     alert("Você precisa fazer login para ver suas conquistas.");

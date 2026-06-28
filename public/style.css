@@ -692,6 +692,11 @@ body {
   background: #f0f0f0;
 }
 
+.achv-rank-badges {
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+
 .rank-gold td:first-child::before {
   content: "🥇 ";
 }
