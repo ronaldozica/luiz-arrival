@@ -23,8 +23,8 @@ const AT_MIN_CANVAS_SIZE = 280;
 
 const AT_DIFFICULTY_CONFIG = {
   easy:   { radius: 30, lifetime: 1100 },
-  normal: { radius: 22, lifetime: 750 },
-  hard:   { radius: 15, lifetime: 500 },
+  normal: { radius: 24, lifetime: 800 },
+  hard:   { radius: 18, lifetime: 650 },
 };
 
 function initAimTrainerGame() {
