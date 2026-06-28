@@ -37,7 +37,7 @@ router.get("/game-rank", async (req, res) => {
 // O score é validado contra limites razoáveis por jogo.
 router.post("/game-rank", requireAuth, async (req, res) => {
   try {
-    const { game, difficulty, score, skipRank } = req.body;
+    const { game, difficulty, score, skipRank, hintsUsed, undoUsed } = req.body;
     const playerName = req.sessionName; // Sempre do token de sessão, nunca do body
 
     if (!game || score === undefined) {
@@ -58,6 +58,7 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       minesweeper: 9999,      // Minesweeper: score = 9999 - tempo(s), só enviado ao vencer
       sudoku: 9999,           // Sudoku: score = 9999 - tempo(s), só enviado ao vencer
       aimtrainer: 25000,      // Aim Trainer: cap de sanidade pra 30s de partida no modo difícil
+      spider: 9999,           // Spider: score = 9999 - tempo(s), só enviado ao vencer
     };
 
     const maxScore = SCORE_LIMITS[game];
@@ -70,6 +71,7 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       minesweeper: ["beginner", "intermediate", "expert"],
       sudoku: ["easy", "medium", "hard"],
       aimtrainer: ["easy", "normal", "hard"],
+      spider: ["easy", "medium", "hard"],
     };
     const validDifficulties = DIFFICULTIES_BY_GAME[game];
     if (validDifficulties && difficulty && !validDifficulties.includes(difficulty)) {
@@ -118,6 +120,12 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       // (alvos menores/mais rápidos rendem menos pontos por partida).
       const rate = { easy: 0.5, normal: 1, hard: 2 }[difficulty] || 1;
       coinsEarned = Math.floor((scoreNum / 100) * rate);
+    } else if (game === "spider") {
+      // O score só é enviado quando as 8 sequências são completadas
+      if (difficulty === "hard") coinsEarned = 25;
+      else if (difficulty === "medium") coinsEarned = 15;
+      else if (difficulty === "easy") coinsEarned = 5;
+    }
     }
 
     if (coinsEarned > 0) {
@@ -184,6 +192,36 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       ) {
         achUnlocked.push("aimtrainer_legend");
         newAchievements.push("aimtrainer_legend");
+      }
+    }
+
+    if (game === "spider") {
+      const achId =
+        difficulty === "easy"
+          ? "spider_easy"
+          : difficulty === "medium"
+            ? "spider_medium"
+            : difficulty === "hard"
+              ? "spider_hard"
+              : null;
+      if (achId && !achUnlocked.includes(achId)) {
+        achUnlocked.push(achId);
+        newAchievements.push(achId);
+      }
+
+      // Conquistas independentes da dificuldade, sobre o uso de dicas nesta vitória.
+      const hintsAchId = hintsUsed ? "spider_with_hints" : "spider_no_hints";
+      if (!achUnlocked.includes(hintsAchId)) {
+        achUnlocked.push(hintsAchId);
+        newAchievements.push(hintsAchId);
+      }
+
+      // Vitória sem dicas e sem desfazer nenhuma jogada.
+      if (!hintsUsed && !undoUsed && !achUnlocked.includes("spider_flawless")) {
+        achUnlocked.push("spider_flawless");
+        newAchievements.push("spider_flawless");
+      }
+    }
       }
     }
     if (newAchievements.length > 0) {

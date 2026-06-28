@@ -37,6 +37,7 @@ function initSnakeGame() {
   clearCanvas();
   drawTextCenter("Pronto para jogar?", "white");
   drawTextCenter("Pressione ESPAÇO para iniciar", "gray", 30);
+  refreshGameZoom("win-snake");
 }
 
 function snakeKeyHandler(event) {

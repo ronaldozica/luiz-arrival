@@ -260,4 +260,33 @@ router.post("/admin/game-rank/delete", requireAdminAuth, async (req, res) => {
   }
 });
 
+// GET /api/admin/password-resets — lista as senhas temporárias pendentes
+// (geradas via POST /forgot-password), para o admin copiar e repassar
+// particularmente para quem pediu o reset.
+router.get("/admin/password-resets", requireAdminAuth, async (req, res) => {
+  try {
+    const kv = getKV();
+    const resets = (await kv.get("password_resets")) || [];
+    res.json(resets);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/password-resets/dismiss — remove uma entrada da lista
+// (ex: depois de já ter repassado a senha) sem afetar a senha do usuário.
+router.post("/admin/password-resets/dismiss", requireAdminAuth, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: "Nome é obrigatório." });
+    const kv = getKV();
+    const resets = (await kv.get("password_resets")) || [];
+    const filtered = resets.filter((r) => userKey(r.name) !== userKey(name));
+    await kv.set("password_resets", filtered);
+    res.json({ success: true, resets: filtered });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

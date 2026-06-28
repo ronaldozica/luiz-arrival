@@ -29,6 +29,11 @@ function openSudokuWindow() {
   openWindow("win-sudoku");
   initSudoku();
   checkSdSessionValidity();
+  const w = document.getElementById("win-sudoku");
+  if (w) {
+    centerWindow(w);
+    clampWindowToViewport(w);
+  }
 }
 
 /**
@@ -86,6 +91,7 @@ function initSudoku() {
   updateSdCounters();
   renderSdGrid();
   startSdTimer();
+  refreshGameZoom("win-sudoku");
 }
 
 // ─── GENERATION ─────────────────────────────

@@ -110,6 +110,49 @@ function syncDecorationsCheckboxes() {
   });
 }
 
+// ─── Legacy score toggle (Sudoku/Campo Minado) ───────────────────────────────
+// Esses jogos salvam score = max(1, 9999 - tempoEmSegundos). Por padrão
+// exibimos o tempo em segundos (mais legível); o checkbox permite ver o
+// "placar legado" (9999 - tempo) de volta. Conversão é só de exibição,
+// feita no front — o valor salvo no banco não muda.
+const SHOW_LEGACY_SCORE_KEY = "luizos_show_legacy_score";
+let showLegacyScore = false;
+
+function loadShowLegacyScore() {
+  try {
+    const saved = localStorage.getItem(SHOW_LEGACY_SCORE_KEY);
+    if (saved !== null) showLegacyScore = saved === "true";
+  } catch {}
+}
+
+function saveShowLegacyScore() {
+  try {
+    localStorage.setItem(SHOW_LEGACY_SCORE_KEY, String(showLegacyScore));
+  } catch {}
+}
+
+function syncLegacyScoreCheckboxes() {
+  document.querySelectorAll("#rank-legacy-score-checkbox, .rank-legacy-score-checkbox").forEach((checkbox) => {
+    checkbox.checked = showLegacyScore;
+  });
+}
+
+function toggleLegacyScore(checked) {
+  showLegacyScore = typeof checked === "boolean" ? checked : !showLegacyScore;
+  saveShowLegacyScore();
+  syncLegacyScoreCheckboxes();
+  if (currentGameRankData.length > 0) renderGameRank();
+}
+
+// Jogos cujo score bruto é 9999 - tempoEmSegundos (menor tempo = maior score).
+const TIME_BASED_SCORE_GAMES = new Set(["sudoku", "minesweeper", "spider"]);
+
+function formatGameScore(game, score) {
+  if (!TIME_BASED_SCORE_GAMES.has(game) || showLegacyScore) return score;
+  const seconds = Math.max(0, 9999 - score);
+  return `${seconds}s`;
+}
+
 async function loadProfiles() {
   try {
     const data = await cachedFetchJSON("profiles", `${API}/profiles`, CACHE_TTL_MS);
@@ -175,12 +218,14 @@ function openWindow(id) {
     centerWindow(w);
     refreshTodayStatus();
   }
+  if (id === "win-sudoku") centerWindow(w);
   if (id === "win-store") { loadStore(); loadProfileEmoji(); }
   if (id === "win-achievements") loadAchievements();
   if (id === "win-scoring-rules") renderScoringRules();
   delete minimizedWindows[id];
   bringToFront(w);
   updateTaskbar();
+  clampWindowToViewport(w);
 }
 
 function centerWindow(w) {
@@ -189,6 +234,156 @@ function centerWindow(w) {
   w.style.left = `${Math.max(0, Math.round((window.innerWidth - w.offsetWidth) / 2))}px`;
   w.style.top = `${Math.max(0, Math.round((availableHeight - w.offsetHeight) / 2))}px`;
 }
+
+// Garante que a janela caiba na área visível (acima da taskbar), mesmo em
+// monitores pequenos onde o left/top fixo no HTML deixaria a janela cortada.
+function clampWindowToViewport(w) {
+  const taskbarHeight = 34;
+  const availableHeight = window.innerHeight - taskbarHeight;
+  const maxLeft = Math.max(0, window.innerWidth - w.offsetWidth);
+  const maxTop = Math.max(0, availableHeight - w.offsetHeight);
+  const left = parseInt(w.style.left, 10) || 0;
+  const top = parseInt(w.style.top, 10) || 0;
+  w.style.left = `${Math.min(Math.max(left, 0), maxLeft)}px`;
+  w.style.top = `${Math.min(Math.max(top, 0), maxTop)}px`;
+}
+
+// ─── Maximize / zoom de jogos ─────────────────────────────────────────────────
+// Botão de maximizar é injetado em toda .win95-window (genérico, sem precisar
+// editar cada bloco de janela no HTML). Para janelas de jogo (que têm um
+// elemento .game-zoom-target), maximizar também escala o conteúdo do jogo via
+// CSS transform, em vez de só dar mais espaço vazio em volta.
+const windowRestoreState = {};
+
+function injectMaximizeButtons() {
+  document.querySelectorAll(".win95-window").forEach((win) => {
+    const controls = win.querySelector(".win95-controls");
+    if (!controls || controls.querySelector(".win95-btn-maximize")) return;
+    const closeBtn = controls.querySelector(".win95-btn-ctrl:last-child");
+    const btn = document.createElement("button");
+    btn.className = "win95-btn-ctrl win95-btn-maximize";
+    btn.title = "Maximizar";
+    btn.textContent = "🗖";
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      toggleMaximizeWindow(win.id);
+    };
+    if (closeBtn) controls.insertBefore(btn, closeBtn);
+    else controls.appendChild(btn);
+  });
+}
+
+function toggleMaximizeWindow(id) {
+  const win = document.getElementById(id);
+  if (!win) return;
+  const body = win.querySelector(".win95-body");
+  const titlebar = win.querySelector(".win95-titlebar");
+  const taskbarHeight = 34;
+
+  if (win.dataset.maximized === "true") {
+    const restore = windowRestoreState[id];
+    if (restore) {
+      win.style.left = restore.left;
+      win.style.top = restore.top;
+      win.style.width = restore.width;
+    }
+    win.style.height = "";
+    if (body) {
+      body.style.height = "";
+      body.style.maxHeight = "";
+    }
+    win.classList.remove("maximized");
+    win.dataset.maximized = "false";
+    setGameZoom(win, 1);
+    return;
+  }
+
+  windowRestoreState[id] = {
+    left: win.style.left,
+    top: win.style.top,
+    width: win.style.width,
+  };
+
+  win.style.left = "0px";
+  win.style.top = "0px";
+  const fullWidth = window.innerWidth;
+  const fullHeight = window.innerHeight - taskbarHeight;
+  win.style.width = `${fullWidth}px`;
+  win.style.height = `${fullHeight}px`;
+  win.classList.add("maximized");
+  win.dataset.maximized = "true";
+
+  if (body && titlebar) {
+    const bodyHeight = fullHeight - titlebar.offsetHeight;
+    body.style.height = `${bodyHeight}px`;
+    body.style.maxHeight = `${bodyHeight}px`;
+  }
+
+  bringToFront(win);
+  applyGameZoom(win);
+}
+
+// Chamado pelos jogos depois de reconstruir o tabuleiro (ex: troca de
+// dificuldade), para reajustar o zoom se a janela estiver maximizada.
+function refreshGameZoom(id) {
+  const win = document.getElementById(id);
+  if (win && win.dataset.maximized === "true") applyGameZoom(win);
+}
+
+// `transform: scale()` amplia visualmente o elemento mas não altera o
+// espaço que ele ocupa no fluxo do layout — sem reservar esse espaço extra,
+// o conteúdo abaixo (info-box, dicas) fica sobreposto pelo jogo ampliado.
+// `extraHeight` é a diferença entre a altura visual ampliada e a altura
+// natural, aplicada como margin-bottom (o transform-origin é "top center",
+// então o crescimento visual é só para baixo, nunca para cima).
+function setGameZoom(win, scale, extraHeight) {
+  const target = win.querySelector(".game-zoom-target");
+  if (!target) return;
+  target.style.transform = scale === 1 ? "" : `scale(${scale})`;
+  target.style.marginBottom = scale === 1 ? "" : `${extraHeight || 0}px`;
+}
+
+// Escala o conteúdo do jogo (.game-zoom-target) para aproveitar o espaço
+// extra de uma janela maximizada, sem nunca encolher abaixo do tamanho base.
+function applyGameZoom(win) {
+  const target = win.querySelector(".game-zoom-target");
+  const body = win.querySelector(".win95-body");
+  if (!target || !body) return;
+
+  target.style.transform = "";
+  // .game-zoom-target tem align-self:center no CSS, então seu tamanho já
+  // reflete o conteúdo real (não esticado pelo flex column do .win95-body).
+  const naturalWidth = target.scrollWidth;
+  const naturalHeight = target.scrollHeight;
+
+  const availWidth = body.clientWidth - 16;
+  const availHeight = body.clientHeight - 16;
+  if (!naturalWidth || !naturalHeight || availWidth <= 0 || availHeight <= 0) return;
+
+  const GAME_ZOOM_MAX = 2.2;
+  const scale = Math.max(1, Math.min(availWidth / naturalWidth, availHeight / naturalHeight, GAME_ZOOM_MAX));
+  // +6px de folga para absorver arredondamento de subpixel do transform,
+  // que senão deixava o conteúdo ampliado sobrepor levemente o que vem
+  // depois dele (ex: o texto de ajuda).
+  const extraHeight = Math.ceil(naturalHeight * (scale - 1)) + 6;
+  setGameZoom(win, scale, extraHeight);
+}
+
+window.addEventListener("resize", () => {
+  document.querySelectorAll('.win95-window[data-maximized="true"]').forEach((win) => {
+    const taskbarHeight = 34;
+    const body = win.querySelector(".win95-body");
+    const titlebar = win.querySelector(".win95-titlebar");
+    win.style.width = `${window.innerWidth}px`;
+    win.style.height = `${window.innerHeight - taskbarHeight}px`;
+    if (body && titlebar) {
+      const bodyHeight = window.innerHeight - taskbarHeight - titlebar.offsetHeight;
+      body.style.height = `${bodyHeight}px`;
+      body.style.maxHeight = `${bodyHeight}px`;
+    }
+    applyGameZoom(win);
+  });
+});
 
 function closeWindow(id) {
   const w = document.getElementById(id);
@@ -274,18 +469,46 @@ let iconDrag = null;
 let selRect = null;
 let selectedIcons = new Set();
 
-const ICON_POSITIONS_KEY = "luizos_icon_positions";
+// v3: a v2 ainda calculava a posição padrão a partir do layout flex nativo
+// (dependia da altura da tela e podia embaralhar o agrupamento); agora é
+// determinístico. Bump de novo pra descartar posições "v2" já salvas com
+// o bug.
+const ICON_POSITIONS_KEY = "luizos_icon_positions_v3";
 let defaultIconPositions = {};
 
+// Mesma grade (tamanho de célula/origem) usada por resolveIconOverlaps —
+// extraído pra constante compartilhada pra não duplicar os números.
+const ICON_CELL_W = 80;
+const ICON_CELL_H = 78;
+const ICON_GRID_ORIGIN = 12; // mesmo valor do padding de .desktop
+
+// Calcula a posição padrão de cada ícone em uma grade determinística
+// (coluna por coluna, de cima pra baixo, na ordem do HTML), em vez de ler
+// offsetLeft/offsetTop do layout flex nativo do navegador — que depende da
+// altura da janela (quantos ícones cabem antes de quebrar pra próxima
+// coluna) e podia embaralhar o agrupamento por categoria em telas menores.
 function captureDefaultIconPositions() {
   defaultIconPositions = {};
+
+  const desktop = document.querySelector(".desktop");
+  const maxRow = desktop
+    ? Math.max(Math.floor((desktop.clientHeight - ICON_GRID_ORIGIN - ICON_CELL_H) / ICON_CELL_H), 0)
+    : Infinity;
+
+  let col = 0;
+  let row = 0;
   document.querySelectorAll(".desktop-icon").forEach((icon) => {
     const id = icon.dataset.iconId;
     if (!id) return;
     defaultIconPositions[id] = {
-      left: `${icon.offsetLeft}px`,
-      top: `${icon.offsetTop}px`,
+      left: `${ICON_GRID_ORIGIN + col * ICON_CELL_W}px`,
+      top: `${ICON_GRID_ORIGIN + row * ICON_CELL_H}px`,
     };
+    row++;
+    if (row > maxRow) {
+      row = 0;
+      col++;
+    }
   });
 }
 
@@ -300,8 +523,18 @@ function saveIconPositions() {
 
 function loadIconPositions() {
   try {
-    const saved = JSON.parse(localStorage.getItem(ICON_POSITIONS_KEY) || "{}");
-    let updated = false;
+    let saved = JSON.parse(localStorage.getItem(ICON_POSITIONS_KEY) || "{}");
+    // Se algum ícone atual nunca foi salvo (ex.: novo app adicionado depois),
+    // a posição salva dos ícones vizinhos fica desatualizada e pode colidir
+    // com o layout padrão do ícone novo. Nesse caso, descarta o cache salvo
+    // e recomeça do layout padrão para evitar sobreposição.
+    const currentIds = Array.from(document.querySelectorAll(".desktop-icon"))
+      .map((icon) => icon.dataset.iconId)
+      .filter(Boolean);
+    const hasUnseenIcon = currentIds.some((id) => !(id in saved));
+    if (hasUnseenIcon) saved = {};
+
+    let updated = hasUnseenIcon;
     document.querySelectorAll(".desktop-icon").forEach((icon) => {
       const id = icon.dataset.iconId;
       if (!id) return;
@@ -317,6 +550,59 @@ function loadIconPositions() {
     });
     if (updated) localStorage.setItem(ICON_POSITIONS_KEY, JSON.stringify(saved));
   } catch {}
+  resolveIconOverlaps();
+}
+
+// Garante que nenhum ícone fique posicionado sobre outro, independente do
+// que esteja salvo no localStorage. Para cada ícone, na ordem do DOM, se a
+// posição atual colidir com algum ícone já posicionado, empurra para a
+// próxima célula livre de uma grade (varrendo colunas de cima para baixo).
+function resolveIconOverlaps() {
+  const ORIGIN = ICON_GRID_ORIGIN;
+  const icons = Array.from(document.querySelectorAll(".desktop-icon")).filter(
+    (icon) => icon.dataset.iconId
+  );
+  if (!icons.length) return;
+
+  const desktop = document.querySelector(".desktop");
+  const maxRow = desktop
+    ? Math.max(Math.floor((desktop.clientHeight - ORIGIN - ICON_CELL_H) / ICON_CELL_H), 0)
+    : Infinity;
+
+  const taken = new Set();
+  let changed = false;
+
+  icons.forEach((icon) => {
+    let left = parseInt(icon.style.left, 10) || 0;
+    let top = parseInt(icon.style.top, 10) || 0;
+    // Encaixa na grade fixa (alinhada à origem do padding), em vez de manter
+    // o pixel exato capturado do layout flex original — isso evita ícones
+    // "tortos" quando vizinhos são deslocados para resolver colisões.
+    let col = Math.round((left - ORIGIN) / ICON_CELL_W);
+    let row = Math.round((top - ORIGIN) / ICON_CELL_H);
+    if (col < 0) col = 0;
+    if (row < 0) row = 0;
+
+    while (taken.has(`${col},${row}`) || row > maxRow) {
+      row += 1;
+      if (row > maxRow) {
+        row = 0;
+        col += 1;
+      }
+    }
+    taken.add(`${col},${row}`);
+
+    const newLeft = ORIGIN + col * ICON_CELL_W;
+    const newTop = ORIGIN + row * ICON_CELL_H;
+    if (newLeft !== left || newTop !== top) {
+      icon.style.position = "absolute";
+      icon.style.left = `${newLeft}px`;
+      icon.style.top = `${newTop}px`;
+      changed = true;
+    }
+  });
+
+  if (changed) saveIconPositions();
 }
 
 function resetIconPositions() {
@@ -606,9 +892,14 @@ async function doLogin() {
       currentUser = { name: data.name, isHCM: data.isHCM };
       saveSession(currentUser, sessionToken);
       updateUserDisplay();
-      closeWindow("win-login");
       showMsg(msg, "", "ok");
       document.getElementById("login-password").value = "";
+      if (data.mustChangePassword) {
+        closeWindow("win-login");
+        openWindow("win-change-password");
+      } else {
+        closeWindow("win-login");
+      }
     } else {
       showMsg(msg, `❌ ${data.error}`, "err");
     }
@@ -619,10 +910,78 @@ async function doLogin() {
   }
 }
 
-function continueAsGuest() {
-  currentUser = null;
-  updateUserDisplay();
-  closeWindow("win-login");
+// ─── Esqueci minha senha ──────────────────────────────────────────────────────
+async function forgotPassword() {
+  const name = document.getElementById("login-name-select").value;
+  const msg = document.getElementById("login-msg");
+
+  if (!name) {
+    showMsg(msg, "Selecione seu nome na lista primeiro.", "err");
+    return;
+  }
+  if (!confirm(`Resetar a senha de "${name}"? Você vai precisar entrar em contato com o admin para receber a senha temporária.`)) {
+    return;
+  }
+
+  showLoading("Solicitando reset...");
+  try {
+    const res = await fetch(`${API}/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showMsg(
+        msg,
+        "✅ Senha resetada. Entre em contato com o Ronaldo para receber sua senha temporária — no primeiro login com ela, você vai escolher uma nova senha.",
+        "ok",
+      );
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+// ─── Trocar senha (obrigatório após reset) ───────────────────────────────────
+async function submitChangePassword() {
+  const newPassword = document.getElementById("change-password-new").value;
+  const confirmPassword = document.getElementById("change-password-confirm").value;
+  const msg = document.getElementById("change-password-msg");
+
+  if (!newPassword || newPassword.length < 4) {
+    showMsg(msg, "A senha deve ter ao menos 4 caracteres.", "err");
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    showMsg(msg, "As senhas não coincidem.", "err");
+    return;
+  }
+
+  showLoading("Salvando nova senha...");
+  try {
+    const res = await fetch(`${API}/change-password`, {
+      method: "POST",
+      headers: authHeaders(sessionToken),
+      body: JSON.stringify({ newPassword }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById("change-password-new").value = "";
+      document.getElementById("change-password-confirm").value = "";
+      closeWindow("win-change-password");
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
 }
 
 // ─── Load Users ───────────────────────────────────────────────────────────────
@@ -1338,7 +1697,77 @@ function setAdminTab(tab) {
   document.getElementById("admin-tab-rankcheat").style.display = tab === "rankcheat" ? "block" : "none";
   document.getElementById("admin-tab-tags").style.display = tab === "tags" ? "block" : "none";
   document.getElementById("admin-tab-coins").style.display = tab === "coins" ? "block" : "none";
+  document.getElementById("admin-tab-passwords").style.display = tab === "passwords" ? "block" : "none";
   if (tab === "coins") loadAdminCoinsPlayers();
+  if (tab === "passwords") loadAdminPasswordResets();
+}
+
+async function loadAdminPasswordResets() {
+  const msg = document.getElementById("admin-passwords-msg");
+  const result = document.getElementById("admin-passwords-result");
+  showLoading("Carregando senhas temporárias...");
+  try {
+    const res = await fetch(`${API}/admin/password-resets`, {
+      headers: { "Authorization": `Bearer ${adminToken}` },
+    });
+    const resets = await res.json();
+    if (!res.ok) {
+      showMsg(msg, `❌ ${resets.error || "Erro ao carregar."}`, "err");
+      handleAdminAuthError(res.status);
+      return;
+    }
+    renderAdminPasswordResets(resets);
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+function renderAdminPasswordResets(resets) {
+  const result = document.getElementById("admin-passwords-result");
+  if (!resets || resets.length === 0) {
+    result.innerHTML = '<div class="no-data">Nenhuma senha temporária pendente.</div>';
+    return;
+  }
+  let html = `<table class="win95-table"><thead><tr>
+    <th>Jogador</th><th>Senha temporária</th><th>Gerada em</th><th></th>
+  </tr></thead><tbody>`;
+  resets.forEach((r) => {
+    const date = new Date(r.createdAt).toLocaleString("pt-BR");
+    const safeName = escHtml(r.name).replace(/'/g, "\\'");
+    html += `<tr>
+      <td>${escHtml(r.name)}</td>
+      <td><code>${escHtml(r.password)}</code></td>
+      <td>${date}</td>
+      <td><button class="win95-action-btn" style="font-size:10px;padding:2px 6px" onclick="dismissAdminPasswordReset('${safeName}')">✖ Remover</button></td>
+    </tr>`;
+  });
+  html += "</tbody></table>";
+  result.innerHTML = html;
+}
+
+async function dismissAdminPasswordReset(name) {
+  const msg = document.getElementById("admin-passwords-msg");
+  showLoading("Removendo...");
+  try {
+    const res = await fetch(`${API}/admin/password-resets/dismiss`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      renderAdminPasswordResets(data.resets);
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+      handleAdminAuthError(res.status);
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
 }
 
 async function loadAdminCoinsPlayers() {
@@ -1682,7 +2111,7 @@ async function loadGameRank(game, difficulty) {
       scores.forEach((s, i) => {
         const date = new Date(s.date).toLocaleDateString("pt-BR");
         const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-        html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
+        html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${formatGameScore(game, s.score)}</strong></td><td>${date}</td></tr>`;
       });
       html += `</tbody></table>`;
     }
@@ -1710,14 +2139,14 @@ function renderGameRank() {
     currentGameRankData.forEach((s, i) => {
       const date = new Date(s.date).toLocaleDateString("pt-BR");
       const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-      html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${s.score}</strong></td><td>${date}</td></tr>`;
+      html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${formatGameScore(game, s.score)}</strong></td><td>${date}</td></tr>`;
     });
     html += `</tbody></table>`;
   }
   container.innerHTML = html;
 }
 
-async function submitGameScore(game, difficulty, score, callback, token) {
+async function submitGameScore(game, difficulty, score, callback, token, extra) {
   const authToken = token || sessionToken;
   if (!currentUser || !authToken) return;
   try {
@@ -1727,7 +2156,7 @@ async function submitGameScore(game, difficulty, score, callback, token) {
     const isNewBest = scoreValue > personalBest;
 
     // Não envia playerName — o servidor usa o token de sessão
-    const body = { game, score: scoreValue };
+    const body = { game, score: scoreValue, ...extra };
     if (difficulty) body.difficulty = difficulty;
     if (!isNewBest) body.skipRank = true;
 
@@ -1786,7 +2215,7 @@ function getDifficultyLabel(diff) {
 }
 
 function getGameLabel(game) {
-  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer" }[game] || game);
+  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider" }[game] || game);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1888,9 +2317,12 @@ function renderRankingsTable(rankings, arrival) {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
+injectMaximizeButtons();
 captureDefaultIconPositions();
 loadShowDecorations();
 syncDecorationsCheckboxes();
+loadShowLegacyScore();
+syncLegacyScoreCheckboxes();
 loadProfiles();
 loadUsers().then(() => {
   // Restaura sessão: carrega token e dados do usuário (sem senha)
@@ -2512,6 +2944,7 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    {
     version: "1.5.0",
     date: "28/06/2026",
     isNew: true,
@@ -2523,6 +2956,55 @@ const RELEASE_NOTES = [
     ],
   },
   {
+    version: "1.8.0",
+    date: "28/06/2026",
+    isNew: true,
+    title: "Spider: dicas sem limite, desfazer e zoom mais preciso",
+    items: [
+      "💡 Removido o limite máximo de dicas no Spider em todos os modos — use quantas precisar (mas vencer sem usar nenhuma ainda desbloqueia uma conquista diferente).",
+      "↩️ Novo botão \"Desfazer\" no Spider: volta a última jogada (só 1 nível, não dá pra voltar mais de uma).",
+      "💎 Nova conquista \"Vitória impecável\": vença uma partida sem usar dica nem desfazer.",
+      "🔍 Pequeno ajuste de folga no zoom das janelas maximizadas, evitando sobreposição residual do conteúdo ampliado.",
+    ],
+  },
+  {
+    version: "1.7.0",
+    date: "27/06/2026",
+    isNew: false,
+    title: "Recuperação de senha e cadastro mais claro",
+    items: [
+      "🔄 Novo \"Esqueci minha senha\" na tela de login: reseta a senha para uma temporária (gerenciada pelo admin) e exige a troca por uma nova no primeiro login.",
+      "🔑 Painel admin ganhou a aba \"Senhas temporárias\", onde o admin vê e repassa particularmente as senhas geradas pelos resets.",
+      "👤 Tela de login agora tem um link direto para criar uma conta nova, no lugar da opção de visitante.",
+      "🔒 Tela de cadastro avisa que a senha é armazenada de forma criptografada, mas recomenda uma senha exclusiva para este site.",
+    ],
+  },
+  {
+    version: "1.6.0",
+    date: "27/06/2026",
+    isNew: false,
+    title: "Janelas maximizáveis e zoom nos jogos",
+    items: [
+      "🗖 Todas as janelas agora têm um botão de maximizar na barra de título, ocupando toda a área útil da tela.",
+      "🔍 Nos jogos (Snake, Campo Minado, Sudoku e Paciência Spider), maximizar também amplia o tabuleiro/cartas (zoom), em vez de só deixar espaço vazio em volta — ótimo para quem joga em telas grandes ou quer aliviar a vista.",
+    ],
+  },
+  {
+    version: "1.5.0",
+    date: "27/06/2026",
+    isNew: false,
+    title: "Novo minigame: Paciência Spider",
+    items: [
+      "🕷️ Novo minigame Paciência Spider, com 3 dificuldades (1, 2 ou 4 naipes), ranking próprio e LuizCoins por vitória.",
+      "💡 Sistema de dicas no Spider: até 10 dicas no fácil, 5 no médio e 3 no difícil — cada uma sugere a melhor jogada disponível no momento.",
+      "🏅 6 novas conquistas do Spider: uma por dificuldade completada, mais \"Pura estratégia\" (vencer sem usar dica) e \"Com uma ajudinha\" (vencer usando ao menos uma).",
+      "😵 O Spider agora detecta quando não há mais jogadas possíveis e encerra a partida automaticamente, em vez de deixar o jogador travado sem aviso.",
+      "🔢 Sudoku: ranking dos jogos agora tem abas próprias por dificuldade ao lado do Spider.",
+    ],
+  },
+    ],
+  },
+  {
     version: "1.4.0",
     date: "27/06/2026",
     isNew: false,
@@ -2530,6 +3012,8 @@ const RELEASE_NOTES = [
     items: [
       "🏆 Novo boost \"Luiz de Placa\": ative o checkbox antes de apostar e ganhe o dobro de LuizCoins pela aposta do dia. Disponível 1 vez por semana para cada jogador.",
       "📋 Apostas com o boost ativado aparecem com uma marquinha 🏆 nas tabelas de apostas e rankings.",
+      "🔢 Correção: janela do Sudoku abria mal posicionada (e cortada em monitores pequenos) e os botões numéricos ficavam cortados pela borda da janela.",
+      "🖥️ Correção: ícones da área de trabalho podiam ficar sobrepostos uns aos outros (ou sobre a barra de tarefas) após a adição de novos apps; agora se reorganizam automaticamente numa grade sem sobreposição.",
     ],
   },
   {

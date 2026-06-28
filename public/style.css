@@ -217,9 +217,14 @@ body {
 .icon-label {
   color: white;
   font-size: 11px;
+  line-height: 1.3;
   text-align: center;
   text-shadow: 1px 1px 1px black;
   word-break: break-word;
+  height: 28.6px; /* 2 linhas (1.3 * 11px * 2) — mantém todos os ícones do mesmo tamanho */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ─── WIN95 WINDOWS ───────────────────────── */
@@ -236,6 +241,33 @@ body {
 
 .win95-window.active {
   z-index: 500;
+}
+
+.win95-window.maximized {
+  border-width: 1px;
+}
+
+.win95-window.maximized .win95-body {
+  overflow-y: auto;
+}
+
+/* Fixa o último .info-box (texto de ajuda) no rodapé da janela quando
+   maximizada, em vez de deixá-lo no fluxo normal logo após o conteúdo —
+   assim ele nunca fica por baixo/sobreposto se o conteúdo entre eles
+   variar de tamanho. .win95-body já é flex column, então margin-top:auto
+   empurra esse elemento pro fim do espaço disponível. */
+.win95-window.maximized .win95-body > .info-box:last-child {
+  margin-top: auto;
+}
+
+.game-zoom-target {
+  /* .win95-body é flex column com align-items:stretch (padrão) — sem isso
+     o item esticaria para 100% da largura do body, inflando o "tamanho
+     natural" medido em JS e fazendo o zoom nunca passar de ~1x. */
+  align-self: center;
+  text-align: center;
+  transform-origin: top center;
+  transition: transform 0.15s ease;
 }
 
 .win95-titlebar {
@@ -289,6 +321,33 @@ body {
   gap: 8px;
   max-height: 70vh;
   overflow-y: auto;
+}
+
+/* Bloco de Notas: a janela tem altura fixa (definida no HTML), e openWindow()
+   força style.display="block" inline na janela ao abrir — isso venceria
+   qualquer display:flex aplicado direto em ".win95-window", então o flex
+   fica num wrapper interno (.notepad-flex-wrap) que ignora o display do pai
+   e ocupa a janela inteira via position:absolute + inset:0. */
+.notepad-window .notepad-flex-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.notepad-window .win95-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+.notepad-window .notepad-toolbar {
+  flex: 0 0 auto;
+}
+
+.notepad-window #notepad-text {
+  flex: 1;
+  min-height: 0;
 }
 
 /* ─── FORM ELEMENTS ───────────────────────── */
@@ -909,6 +968,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  margin: 0 auto;
   border: 2px solid var(--win-gray);
   box-shadow: var(--shadow-in);
   background: var(--win-black);
@@ -1137,9 +1197,157 @@ body {
 .sd-numpad .win95-action-btn {
   padding: 4px 0;
   font-size: 13px;
+  min-width: 0;
+}
+
+/* Calculadora: .win95-action-btn tem min-width:90px por padrão (pensado pra
+   botões isolados), o que não cabe em 4 colunas numa janela pequena — sem
+   isso, a 4ª coluna (÷, ×, −, +, =) fica cortada pela borda da janela. */
+.calc-grid .win95-action-btn {
+  padding: 6px 0;
+  font-size: 13px;
+  min-width: 0;
 }
 
 /* Mina que explodiu */
+
+/* ─── PACIÊNCIA SPIDER ───────────────────── */
+.sp-board-container {
+  background: #0b6e2f;
+  background-image: radial-gradient(ellipse at top, #0f8a3c, #0b6e2f 70%);
+  padding: 8px !important;
+}
+
+.sp-board-row {
+  display: flex;
+  align-items: flex-start;
+}
+
+.sp-stock {
+  width: 40px;
+  height: 56px;
+  background: linear-gradient(135deg, #0050b3, #003a8c);
+  border: 1px solid #00224d;
+  border-radius: 3px;
+  box-shadow: -2px -2px 0 -1px #00224d, -4px -4px 0 -1px #00224d, var(--shadow-out);
+  display: inline-block;
+  vertical-align: top;
+  margin: 0 14px 0 4px;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sp-stock::after {
+  content: attr(data-count);
+  position: absolute;
+  bottom: -16px;
+  left: -10px;
+  right: -10px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 1px black;
+}
+
+.sp-stock.empty {
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.12);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.sp-tableau {
+  position: relative;
+  flex: 1;
+}
+
+.sp-column {
+  position: absolute;
+  top: 0;
+  width: 40px;
+  height: 100%;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+.sp-card {
+  position: absolute;
+  width: 40px;
+  height: 56px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background: linear-gradient(180deg, #ffffff, #f4f4f4);
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  box-shadow: var(--shadow-out);
+  cursor: pointer;
+  user-select: none;
+  transition: left 0.22s ease, top 0.22s ease, opacity 0.18s ease, transform 0.18s ease;
+}
+
+.sp-card.red { color: #c00020; }
+.sp-card.black { color: #161616; }
+
+.sp-card-corner {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-size: 10px;
+  line-height: 1.05;
+  text-align: center;
+  pointer-events: none;
+}
+
+.sp-card-pip {
+  position: absolute;
+  bottom: 1px;
+  right: 3px;
+  font-size: 11px;
+  line-height: 1;
+  transform: rotate(180deg);
+  pointer-events: none;
+}
+
+.sp-card-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.sp-card.face-down {
+  background:
+    repeating-linear-gradient(45deg, #003a8c, #003a8c 4px, #0050b3 4px, #0050b3 8px);
+  border-color: #00224d;
+  cursor: default;
+}
+
+.sp-card.selected {
+  box-shadow: 0 0 0 2px #ffcc00, var(--shadow-out);
+  transform: translateY(-4px);
+}
+
+.sp-card.removing {
+  opacity: 0;
+  transform: scale(0.7) rotate(8deg);
+}
+
+@keyframes sp-hint-pulse {
+  0%, 100% { box-shadow: 0 0 4px 2px rgba(255, 221, 0, 0.9); }
+  50% { box-shadow: 0 0 14px 7px rgba(255, 221, 0, 0.9); }
+}
+
+.hint-target {
+  outline: 2px solid #ffdd00;
+  animation: sp-hint-pulse 0.7s ease-in-out infinite;
+}
 
 /* ─── TASKBAR USER AREA ───────────────────── */
 .taskbar-user-area {

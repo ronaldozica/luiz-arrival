@@ -70,12 +70,17 @@
       <button onclick="openSudokuWindow(); closeStartMenu()">🔢 Sudoku</button>
       <button onclick="openWindow('win-gamerank'); loadGameRank('snake'); closeStartMenu()">🎮 Rank Jogos</button>
       <hr />
+      <button onclick="openNotepadWindow(); closeStartMenu()">📝 Bloco de Notas</button>
+      <button onclick="openCalculatorWindow(); closeStartMenu()">🧮 Calculadora</button>
+      <button onclick="openPaintWindow(); closeStartMenu()">🎨 Paint 95</button>
+      <hr />
       <button onclick="openWindow('win-login'); closeStartMenu()">🔑 Login / Trocar Conta</button>
     </div>
   </div>
 
   <!-- DESKTOP ICONS -->
   <div class="desktop">
+    <!-- Grupo 1: Apostas e relacionados -->
     <div class="desktop-icon" data-icon-id="icon-guess" data-action="openWindow('win-guess')">
       <div class="icon-img">🎯</div>
       <div class="icon-label">Fazer Aposta</div>
@@ -96,6 +101,27 @@
       <div class="icon-img">👤</div>
       <div class="icon-label">Novo Usuário</div>
     </div>
+
+    <!-- Grupo 2: Loja, customização, conquistas, regras -->
+    <div class="desktop-icon" data-icon-id="icon-store" data-action="openStore()">
+      <div class="icon-img"><img src="/photos/luizCoinIcon.png"
+          style="width:32px; height:32px; image-rendering:pixelated; border-radius:50%"></div>
+      <div class="icon-label">Loja</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-profile" data-action="openProfileWindow()">
+      <div class="icon-img">🧑‍🎨</div>
+      <div class="icon-label">Perfil</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-achievements" data-action="openAchievements()">
+      <div class="icon-img">🏅</div>
+      <div class="icon-label">Conquistas</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-scoring-rules" data-action="openWindow('win-scoring-rules')">
+      <div class="icon-img">📐</div>
+      <div class="icon-label">Regras de<br>Pontuação</div>
+    </div>
+
+    <!-- Grupo 3: Jogos e ranking de jogos -->
     <div class="desktop-icon" data-icon-id="icon-snake" data-action="openWindow('win-snake'); initSnakeGame()">
       <div class="icon-img">🐍</div>
       <div class="icon-label">Snake 95</div>
@@ -114,31 +140,33 @@
       <div class="icon-img">🔢</div>
       <div class="icon-label">Sudoku</div>
     </div>
+    <div class="desktop-icon" data-icon-id="icon-spider"
+      data-action="openSpiderWindow()">
+      <div class="icon-img">🕷️</div>
+      <div class="icon-label">Paciência<br>Spider</div>
+    </div>
     <div class="desktop-icon" data-icon-id="icon-gamerank"
       data-action="openWindow('win-gamerank'); loadGameRank('snake')">
       <div class="icon-img">🎮</div>
       <div class="icon-label">Rank<br>Jogos</div>
     </div>
-    <div class="desktop-icon" data-icon-id="icon-store" data-action="openStore()">
-      <div class="icon-img"><img src="/photos/luizCoinIcon.png"
-          style="width:32px; height:32px; image-rendering:pixelated; border-radius:50%"></div>
-      <div class="icon-label">Loja</div>
-    </div>
-    <div class="desktop-icon" data-icon-id="icon-achievements" data-action="openAchievements()">
-      <div class="icon-img">🏅</div>
-      <div class="icon-label">Conquistas</div>
-    </div>
-    <div class="desktop-icon" data-icon-id="icon-profile" data-action="openProfileWindow()">
-      <div class="icon-img">🧑‍🎨</div>
-      <div class="icon-label">Perfil</div>
-    </div>
+
+    <!-- Outros -->
     <div class="desktop-icon" data-icon-id="icon-release-notes" data-action="openReleaseNotes()">
       <div class="icon-img">📰</div>
       <div class="icon-label">Novidades</div>
     </div>
-    <div class="desktop-icon" data-icon-id="icon-scoring-rules" data-action="openWindow('win-scoring-rules')">
-      <div class="icon-img">📐</div>
-      <div class="icon-label">Regras de<br>Pontuação</div>
+    <div class="desktop-icon" data-icon-id="icon-notepad" data-action="openNotepadWindow()">
+      <div class="icon-img">📝</div>
+      <div class="icon-label">Bloco de<br>Notas</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-calculator" data-action="openCalculatorWindow()">
+      <div class="icon-img">🧮</div>
+      <div class="icon-label">Calculadora</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-paint" data-action="openPaintWindow()">
+      <div class="icon-img">🎨</div>
+      <div class="icon-label">Paint 95</div>
     </div>
   </div>
 
@@ -171,12 +199,48 @@
       </div>
       <div class="btn-row" style="gap:8px">
         <button class="win95-action-btn" onclick="doLogin()">🔓 Entrar</button>
-        <button class="win95-action-btn" onclick="continueAsGuest()">👁️ Visitante</button>
       </div>
       <div class="win95-msg" id="login-msg"></div>
       <div class="info-box" style="margin-top:4px;font-size:11px">
-        Como visitante, você pode ver as apostas e rankings, mas não pode apostar.
+        Ainda não tem uma conta?
+        <a href="#" onclick="closeWindow('win-login'); openWindow('win-register'); return false">👤 Criar novo usuário</a>
+        <br />
+        Esqueceu a senha?
+        <a href="#" onclick="forgotPassword(); return false">🔄 Esqueci minha senha</a>
       </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: TROCAR SENHA (obrigatório após reset) ══ -->
+  <div class="win95-window" id="win-change-password" style="left:220px;top:140px;width:340px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-change-password')">
+      <span class="win95-title">🔑 Defina uma nova senha</span>
+    </div>
+    <div class="win95-body">
+      <div class="info-box" style="font-size:11px">
+        Sua senha foi resetada. Defina uma nova senha para continuar usando sua conta.
+      </div>
+      <div class="field-group">
+        <label>Nova senha:</label>
+        <div class="password-field">
+          <input type="password" id="change-password-new" placeholder="Nova senha" />
+          <button type="button" class="password-toggle" onclick="togglePassword('change-password-new', this)"
+            title="Mostrar senha">&#128065;</button>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Confirme a nova senha:</label>
+        <div class="password-field">
+          <input type="password" id="change-password-confirm" placeholder="Repita a nova senha"
+            onkeydown="if(event.key==='Enter') submitChangePassword()" />
+          <button type="button" class="password-toggle" onclick="togglePassword('change-password-confirm', this)"
+            title="Mostrar senha">&#128065;</button>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="win95-action-btn" onclick="submitChangePassword()">✅ Salvar nova senha</button>
+      </div>
+      <div class="win95-msg" id="change-password-msg"></div>
     </div>
   </div>
 
@@ -333,6 +397,9 @@
             title="Mostrar senha">&#128065;</button>
         </div>
       </div>
+      <div class="info-box" style="font-size:11px">
+        🔒 Sua senha é armazenada de forma criptografada. Ainda assim, recomendamos usar uma senha exclusiva para este site, e não uma que você já usa em outro lugar.
+      </div>
       <div class="btn-row">
         <button class="win95-action-btn" onclick="registerUser()">✅ Criar Conta</button>
       </div>
@@ -371,6 +438,7 @@
           <button class="rank-tab" data-admin-tab="rankcheat" onclick="setAdminTab('rankcheat')">🗑️ Ranking de Jogos</button>
           <button class="rank-tab" data-admin-tab="tags" onclick="setAdminTab('tags')">🏷️ Tags</button>
           <button class="rank-tab" data-admin-tab="coins" onclick="setAdminTab('coins')">💰 Moedas</button>
+          <button class="rank-tab" data-admin-tab="passwords" onclick="setAdminTab('passwords')">🔑 Senhas temporárias</button>
         </div>
 
         <div id="admin-tab-arrival">
@@ -445,6 +513,19 @@
           </div>
           <div id="admin-coins-all-result"></div>
         </div>
+
+        <div id="admin-tab-passwords" style="display:none">
+          <p><strong>Senhas temporárias pendentes</strong></p>
+          <div class="info-box" style="font-size:11px">
+            Gerado quando alguém clica em "Esqueci minha senha" no login. Copie e envie particularmente para a pessoa — ao fazer login com ela, é obrigatório definir uma nova senha.
+          </div>
+          <div class="btn-row">
+            <button class="win95-action-btn" onclick="loadAdminPasswordResets()">🔄 Atualizar Lista</button>
+          </div>
+          <div class="win95-msg" id="admin-passwords-msg"></div>
+          <hr />
+          <div id="admin-passwords-result"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -459,17 +540,19 @@
       </div>
     </div>
     <div class="win95-body">
-      <div class="snake-header">
-        <span>Pontos: <span id="snake-score" style="color:var(--win-blue-hi)">0</span></span>
-        <span>Nível: <span id="snake-level" style="color:var(--win-blue-hi)">1</span></span>
-        <span>Recorde: <span id="snake-best" style="color:#800000">0</span></span>
-      </div>
-      <div class="canvas-container">
-        <canvas id="snake-canvas" width="380" height="380"></canvas>
-      </div>
-      <div class="btn-row" style="justify-content: center; margin-top: 8px; gap: 8px;">
-        <button class="win95-action-btn" id="snake-start-btn" onclick="startSnakeGame()">▶ Iniciar Novo Jogo</button>
-        <button class="win95-action-btn" onclick="openGameRank('snake')">🏆 Ranking</button>
+      <div class="game-zoom-target">
+        <div class="snake-header">
+          <span>Pontos: <span id="snake-score" style="color:var(--win-blue-hi)">0</span></span>
+          <span>Nível: <span id="snake-level" style="color:var(--win-blue-hi)">1</span></span>
+          <span>Recorde: <span id="snake-best" style="color:#800000">0</span></span>
+        </div>
+        <div class="canvas-container">
+          <canvas id="snake-canvas" width="380" height="380"></canvas>
+        </div>
+        <div class="btn-row" style="justify-content: center; margin-top: 8px; gap: 8px;">
+          <button class="win95-action-btn" id="snake-start-btn" onclick="startSnakeGame()">▶ Iniciar Novo Jogo</button>
+          <button class="win95-action-btn" onclick="openGameRank('snake')">🏆 Ranking</button>
+        </div>
       </div>
       <div class="info-box" style="font-size:11px;margin-top:4px">
         Use as setas ou WASD. Espaço para iniciar. A velocidade aumenta com os pontos!
@@ -538,14 +621,16 @@
           onclick="openGameRank('minesweeper', currentMsDifficulty)">🏆</button>
       </div>
 
-      <div class="ms-header">
-        <div class="ms-counter" id="ms-mine-count">010</div>
-        <button class="win95-btn-ctrl ms-face" id="ms-face" onclick="initMinesweeper()">🙂</button>
-        <div class="ms-counter" id="ms-timer">000</div>
-      </div>
+      <div class="game-zoom-target">
+        <div class="ms-header">
+          <div class="ms-counter" id="ms-mine-count">010</div>
+          <button class="win95-btn-ctrl ms-face" id="ms-face" onclick="initMinesweeper()">🙂</button>
+          <div class="ms-counter" id="ms-timer">000</div>
+        </div>
 
-      <div class="ms-board-container">
-        <div class="ms-grid" id="ms-grid" oncontextmenu="return false;"></div>
+        <div class="ms-board-container">
+          <div class="ms-grid" id="ms-grid" oncontextmenu="return false;"></div>
+        </div>
       </div>
 
     </div>
@@ -576,33 +661,201 @@
           onclick="openGameRank('sudoku', currentSdDifficulty)">🏆</button>
       </div>
 
-      <div class="ms-header">
-        <div class="ms-counter" id="sd-mistakes">0/3</div>
-        <button class="win95-btn-ctrl ms-face" id="sd-face" onclick="initSudoku()">🙂</button>
-        <div class="ms-counter" id="sd-timer">000</div>
-      </div>
+      <div class="game-zoom-target">
+        <div class="ms-header">
+          <div class="ms-counter" id="sd-mistakes">0/3</div>
+          <button class="win95-btn-ctrl ms-face" id="sd-face" onclick="initSudoku()">🙂</button>
+          <div class="ms-counter" id="sd-timer">000</div>
+        </div>
 
-      <div class="ms-board-container">
-        <div class="sd-grid" id="sd-grid"></div>
-      </div>
+        <div class="ms-board-container">
+          <div class="sd-grid" id="sd-grid"></div>
+        </div>
 
-      <div class="sd-numpad">
-        <button class="win95-action-btn" onclick="inputSdNumber(1)">1</button>
-        <button class="win95-action-btn" onclick="inputSdNumber(2)">2</button>
-        <button class="win95-action-btn" onclick="inputSdNumber(3)">3</button>
-        <button class="win95-action-btn" onclick="inputSdNumber(4)">4</button>
-        <button class="win95-action-btn" onclick="inputSdNumber(5)">5</button>
-        <button class="win95-action-btn" onclick="inputSdNumber(6)">6</button>
-        <button class="win95-action-btn" onclick="inputSdNumber(7)">7</button>
-        <button class="win95-action-btn" onclick="inputSdNumber(8)">8</button>
-        <button class="win95-action-btn" onclick="inputSdNumber(9)">9</button>
-        <button class="win95-action-btn" onclick="eraseSdCell()">⌫</button>
+        <div class="sd-numpad">
+          <button class="win95-action-btn" onclick="inputSdNumber(1)">1</button>
+          <button class="win95-action-btn" onclick="inputSdNumber(2)">2</button>
+          <button class="win95-action-btn" onclick="inputSdNumber(3)">3</button>
+          <button class="win95-action-btn" onclick="inputSdNumber(4)">4</button>
+          <button class="win95-action-btn" onclick="inputSdNumber(5)">5</button>
+          <button class="win95-action-btn" onclick="inputSdNumber(6)">6</button>
+          <button class="win95-action-btn" onclick="inputSdNumber(7)">7</button>
+          <button class="win95-action-btn" onclick="inputSdNumber(8)">8</button>
+          <button class="win95-action-btn" onclick="inputSdNumber(9)">9</button>
+          <button class="win95-action-btn" onclick="eraseSdCell()">⌫</button>
+        </div>
       </div>
 
       <div class="info-box" style="font-size:10px;margin-top:4px">
         Clique numa célula e digite 1-9 (teclado ou botões). 3 erros encerram a partida.
       </div>
 
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: SPIDER ══ -->
+  <div class="win95-window" id="win-spider" style="left:160px;top:50px;width:560px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-spider')">
+      <span class="win95-title">🕷️ Paciência Spider</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-spider')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-spider'); stopSpider()">✕</button>
+      </div>
+    </div>
+    <div class="win95-body" style="background: var(--win-gray); padding: 6px;">
+
+      <div class="ms-session-warning" id="sp-session-warning" style="display:none">
+        ⚠️ <strong>Sessão inválida.</strong> Você não conseguirá salvar seu recorde ao terminar a partida.
+        Saia e faça login novamente para corrigir.
+      </div>
+
+      <!-- Difficulty selector -->
+      <div class="ms-difficulty-bar">
+        <button class="sp-diff-btn ms-diff-btn active" data-diff="easy" onclick="setSpDifficulty('easy')">Fácil (1 naipe)</button>
+        <button class="sp-diff-btn ms-diff-btn" data-diff="medium" onclick="setSpDifficulty('medium')">Médio (2 naipes)</button>
+        <button class="sp-diff-btn ms-diff-btn" data-diff="hard" onclick="setSpDifficulty('hard')">Difícil (4 naipes)</button>
+        <button class="win95-action-btn" id="sp-undo-btn" style="margin-left:auto;font-size:10px;padding:2px 6px"
+          onclick="undoSpMove()" disabled>↩️ Desfazer</button>
+        <button class="win95-action-btn" id="sp-hint-btn" style="font-size:10px;padding:2px 6px"
+          onclick="useSpHint()">💡 Dica (0 usadas)</button>
+        <button class="win95-action-btn" style="font-size:10px;padding:2px 6px"
+          onclick="openGameRank('spider', currentSpDifficulty)">🏆</button>
+      </div>
+
+      <div class="game-zoom-target">
+        <div class="ms-header">
+          <div class="ms-counter" id="sp-sequences">0/8</div>
+          <button class="win95-btn-ctrl ms-face" id="sp-face" onclick="initSpider()">🙂</button>
+          <div class="ms-counter" id="sp-timer">000</div>
+        </div>
+
+        <div class="ms-board-container sp-board-container">
+          <div class="sp-board-row">
+            <div class="sp-stock" id="sp-stock" onclick="dealSpStock()" title="Distribuir cartas"></div>
+            <div class="sp-tableau" id="sp-tableau"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box" style="font-size:10px;margin-top:4px">
+        Clique numa carta virada para selecionar a sequência móvel, depois clique na coluna de destino.
+        Clique na pilha à esquerda para distribuir 10 cartas (só com nenhuma coluna vazia).
+        Sem jogadas possíveis encerra a partida (rosto 😵) — clique nele para recomeçar.
+        Use quantas dicas (💡) quiser — vencer sem usar nenhuma desbloqueia uma conquista diferente de vencer usando.
+        Desfazer (↩️) volta só a última jogada, uma vez por jogada — vencer sem usar dica nem desfazer desbloqueia uma conquista extra.
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: BLOCO DE NOTAS ══ -->
+  <div class="win95-window notepad-window" id="win-notepad" style="left:220px;top:70px;width:480px;height:420px;display:none">
+    <!-- openWindow() força style.display="block" inline no elemento da janela
+         (sobrescrevendo qualquer display:flex via CSS, já que inline sempre
+         tem prioridade), então o flex-fill do bloco de notas é feito por um
+         wrapper interno position:absolute+inset:0 — ele ignora o display do
+         pai e enche a janela inteira sozinho. -->
+    <div class="notepad-flex-wrap">
+      <div class="win95-titlebar" onmousedown="startDrag(event,'win-notepad')">
+        <span class="win95-title">📝 Bloco de Notas</span>
+        <div class="win95-controls">
+          <button class="win95-btn-ctrl" onclick="minimizeWindow('win-notepad')">_</button>
+          <button class="win95-btn-ctrl" onclick="closeWindow('win-notepad')">✕</button>
+        </div>
+      </div>
+      <div class="win95-body" style="padding:6px;">
+        <div class="notepad-toolbar">
+          <button class="win95-action-btn" onclick="saveNotepadFile()">💾 Salvar como .txt</button>
+        </div>
+        <textarea id="notepad-text" spellcheck="false"
+          style="width:100%;box-sizing:border-box;resize:none;font-family:'Courier New',monospace;font-size:12px;border:1px solid var(--win-dark);padding:4px;"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: CALCULADORA ══ -->
+  <div class="win95-window" id="win-calculator" style="left:260px;top:90px;width:280px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-calculator')">
+      <span class="win95-title">🧮 Calculadora</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-calculator')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-calculator')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body" style="background: var(--win-gray); padding: 6px;">
+      <input id="calc-display" readonly value="0"
+        style="width:100%;box-sizing:border-box;font-size:18px;text-align:right;padding:6px;margin-bottom:6px;border:1px solid var(--win-dark);font-family:'Courier New',monospace;" />
+
+      <button class="win95-action-btn" style="width:100%;margin-bottom:4px;font-size:10px;" id="calc-sci-toggle"
+        onclick="toggleCalcScientific()">🔬 Modo Científico</button>
+
+      <div id="calc-sci-grid" class="calc-grid" style="display:none;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:4px;">
+        <button class="win95-action-btn" onclick="calcPush('(','(')">(</button>
+        <button class="win95-action-btn" onclick="calcPush(')',')')">)</button>
+        <button class="win95-action-btn" onclick="calcPush('**','^')">xʸ</button>
+        <button class="win95-action-btn" onclick="calcPush('Math.sqrt(','√(')">√</button>
+
+        <button class="win95-action-btn" onclick="calcPush('sinDeg(','sin(')">sin</button>
+        <button class="win95-action-btn" onclick="calcPush('cosDeg(','cos(')">cos</button>
+        <button class="win95-action-btn" onclick="calcPush('tanDeg(','tan(')">tan</button>
+        <button class="win95-action-btn" onclick="calcNegate()">±</button>
+
+        <button class="win95-action-btn" onclick="calcPush('Math.log10(','log(')">log</button>
+        <button class="win95-action-btn" onclick="calcPush('Math.log(','ln(')">ln</button>
+        <button class="win95-action-btn" onclick="calcPush('Math.PI','π')">π</button>
+        <button class="win95-action-btn" onclick="calcPush('Math.E','e')">e</button>
+      </div>
+
+      <div class="calc-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;">
+        <button class="win95-action-btn" onclick="calcClear()">C</button>
+        <button class="win95-action-btn" onclick="calcBackspace()">⌫</button>
+        <button class="win95-action-btn" onclick="calcPush('%')">%</button>
+        <button class="win95-action-btn" onclick="calcPush('/','÷')">÷</button>
+
+        <button class="win95-action-btn" onclick="calcPush('7')">7</button>
+        <button class="win95-action-btn" onclick="calcPush('8')">8</button>
+        <button class="win95-action-btn" onclick="calcPush('9')">9</button>
+        <button class="win95-action-btn" onclick="calcPush('*','×')">×</button>
+
+        <button class="win95-action-btn" onclick="calcPush('4')">4</button>
+        <button class="win95-action-btn" onclick="calcPush('5')">5</button>
+        <button class="win95-action-btn" onclick="calcPush('6')">6</button>
+        <button class="win95-action-btn" onclick="calcPush('-','−')">−</button>
+
+        <button class="win95-action-btn" onclick="calcPush('1')">1</button>
+        <button class="win95-action-btn" onclick="calcPush('2')">2</button>
+        <button class="win95-action-btn" onclick="calcPush('3')">3</button>
+        <button class="win95-action-btn" onclick="calcPush('+')">+</button>
+
+        <button class="win95-action-btn" onclick="calcPush('0')" style="grid-column: span 2;">0</button>
+        <button class="win95-action-btn" onclick="calcPush('.')">.</button>
+        <button class="win95-action-btn" onclick="calcEquals()">=</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: PAINT 95 ══ -->
+  <div class="win95-window" id="win-paint" style="left:170px;top:60px;width:460px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-paint')">
+      <span class="win95-title">🎨 Paint 95</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-paint')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-paint')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body" style="background: var(--win-gray); padding: 6px;">
+      <div class="ms-difficulty-bar" style="flex-wrap:wrap;">
+        <button class="paint-tool-btn ms-diff-btn active" data-tool="pen" onclick="setPaintTool('pen')">✏️ Caneta</button>
+        <button class="paint-tool-btn ms-diff-btn" data-tool="brush" onclick="setPaintTool('brush')">🖌️ Pincel</button>
+        <button class="paint-tool-btn ms-diff-btn" data-tool="eraser" onclick="setPaintTool('eraser')">🧹 Borracha</button>
+        <input type="color" id="paint-color-input" value="#000000" oninput="setPaintColor(this.value)"
+          style="width:28px;height:24px;padding:0;border:1px solid var(--win-dark);margin-left:auto;" />
+        <button class="win95-action-btn" style="font-size:10px;padding:2px 6px" onclick="clearPaintCanvas()">🗑️ Limpar</button>
+        <button class="win95-action-btn" style="font-size:10px;padding:2px 6px" onclick="savePaintImage()">💾 Salvar</button>
+      </div>
+      <div class="canvas-container" style="margin-top:6px;">
+        <canvas id="paint-canvas" width="420" height="320" style="background:#fff;cursor:crosshair;touch-action:none;"></canvas>
+      </div>
     </div>
   </div>
 
@@ -639,6 +892,12 @@
           onclick="loadGameRank('aimtrainer','normal'); setGameRankTabActive('at-normal')">🔫 Normal</button>
         <button class="rank-tab" data-tab="at-hard"
           onclick="loadGameRank('aimtrainer','hard'); setGameRankTabActive('at-hard')">🔫 Difícil</button>
+        <button class="rank-tab" data-tab="sp-easy"
+          onclick="loadGameRank('spider','easy'); setGameRankTabActive('sp-easy')">🕷️ Fácil</button>
+        <button class="rank-tab" data-tab="sp-medium"
+          onclick="loadGameRank('spider','medium'); setGameRankTabActive('sp-medium')">🕷️ Médio</button>
+        <button class="rank-tab" data-tab="sp-hard"
+          onclick="loadGameRank('spider','hard'); setGameRankTabActive('sp-hard')">🕷️ Difícil</button>
       </div>
       <div id="gamerank-content">
         <div class="loading">Carregando...</div>
@@ -647,6 +906,10 @@
         <label class="win95-checkbox">
           <input type="checkbox" class="rank-decorations-checkbox" onclick="toggleDecorations(this.checked)" checked/>
           Mostrar cores de nome e ícones no ranking
+        </label>
+        <label class="win95-checkbox">
+          <input type="checkbox" class="rank-legacy-score-checkbox" onclick="toggleLegacyScore(this.checked)"/>
+          Exibir placar legado
         </label>
       </div>
     </div>
@@ -835,6 +1098,10 @@
   <script src="js/aimtrainer.js"></script>
   <script src="js/minesweeper.js"></script>
   <script src="js/sudoku.js"></script>
+  <script src="js/spider.js"></script>
+  <script src="js/notepad.js"></script>
+  <script src="js/calculator.js"></script>
+  <script src="js/paint.js"></script>
   <script>
     function setGameRankTabActive(tab) {
       document.querySelectorAll('#win-gamerank .rank-tab').forEach(t => {

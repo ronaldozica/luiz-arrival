@@ -90,9 +90,10 @@ function initMinesweeper() {
   grid.style.gridTemplateColumns = `repeat(${MS_COLS}, ${config.cellSize}px)`;
   grid.style.gridTemplateRows    = `repeat(${MS_ROWS}, ${config.cellSize}px)`;
 
-  // Adjust window width to fit the board
+  // Adjust window width to fit the board (pulado se a janela estiver maximizada,
+  // já que nesse caso o tamanho é controlado por toggleMaximizeWindow)
   const win = document.getElementById("win-minesweeper");
-  if (win) {
+  if (win && win.dataset.maximized !== "true") {
     const padding = 24;
     const boardWidth  = MS_COLS * config.cellSize + padding;
     win.style.width = `${Math.max(230, boardWidth + 20)}px`;
@@ -129,6 +130,8 @@ function initMinesweeper() {
       grid.appendChild(cellEl);
     }
   }
+
+  refreshGameZoom("win-minesweeper");
 }
 
 /**
