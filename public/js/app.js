@@ -422,6 +422,8 @@ function updateTaskbar() {
     "win-register": "👤 Cadastro",
     "win-admin": "🔒 Admin",
     "win-gamerank": "🎮 Rank Jogos",
+    "win-top1-rank": "🏅 Top 1 Jogos",
+    "win-achievements-rank": "🎖️ Rank Conquistas",
     "win-achievements": "🏅 Conquistas",
     "win-profile": "🧑‍🎨 Perfil",
     "win-release-notes": "📰 Novidades",
@@ -1942,6 +1944,16 @@ const ADMIN_RANK_DIFFICULTY_OPTIONS = {
     { value: "medium", label: "Médio" },
     { value: "hard", label: "Difícil" },
   ],
+  aimtrainer: [
+    { value: "easy", label: "Fácil" },
+    { value: "normal", label: "Normal" },
+    { value: "hard", label: "Difícil" },
+  ],
+  spider: [
+    { value: "easy", label: "Fácil" },
+    { value: "medium", label: "Médio" },
+    { value: "hard", label: "Difícil" },
+  ],
 };
 
 function onAdminRankGameChange() {
@@ -2146,6 +2158,28 @@ function renderGameRank() {
   container.innerHTML = html;
 }
 
+// Avisa o servidor que uma partida começou de verdade, pra ele guardar o
+// horário real de início (anti-trapaça: ver POST /api/game-rank/start no
+// backend). Retorna uma Promise com o roundToken — disparada no início da
+// partida mas só precisa ser aguardada na hora de enviar o score final, então
+// não adiciona latência perceptível ao clique que inicia o jogo.
+async function startGameRound(game, difficulty) {
+  try {
+    const body = difficulty ? { game, difficulty } : { game };
+    const res = await fetch(`${API}/game-rank/start`, {
+      method: "POST",
+      headers: authHeaders(sessionToken),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.roundToken || null;
+  } catch (e) {
+    console.error("startGameRound", e);
+    return null;
+  }
+}
+
 async function submitGameScore(game, difficulty, score, callback, token, extra) {
   const authToken = token || sessionToken;
   if (!currentUser || !authToken) return;
@@ -2210,12 +2244,12 @@ function getPersonalBest(game, difficulty) {
 function getDifficultyLabel(diff) {
   return ({
     beginner: "Iniciante", intermediate: "Intermediário", expert: "Especialista",
-    easy: "Fácil", medium: "Médio", hard: "Difícil",
+    easy: "Fácil", medium: "Médio", hard: "Difícil", normal: "Normal",
   }[diff] || diff);
 }
 
 function getGameLabel(game) {
-  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", spider: "🕷️ Paciência Spider" }[game] || game);
+  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider" }[game] || game);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -2486,6 +2520,84 @@ function openGallery(id, src, title) {
 }
 
 // ─── Conquistas (Achievements) ────────────────────────────────────────────────
+// ─── Top 1 de cada jogo ─────────────────────────────────────────────────────
+async function openTop1Rank() {
+  openWindow("win-top1-rank");
+  await loadTop1Rank();
+}
+
+async function loadTop1Rank() {
+  const container = document.getElementById("top1-rank-content");
+  if (!container) return;
+  container.innerHTML = '<div class="loading">⏳ Carregando...</div>';
+  try {
+    const data = await cachedFetchJSON("top1_all_games", `${API}/leaderboards/top1`, 60 * 1000);
+    let html = "";
+    for (const [game, byDiff] of Object.entries(data)) {
+      const rows = Object.entries(byDiff);
+      const hasDiffColumn = !(rows.length === 1 && rows[0][0] === "default");
+
+      html += `<div class="section-label">${getGameLabel(game)}</div>`;
+      html += `<table class="win95-table"><thead><tr>
+        ${hasDiffColumn ? "<th>Dificuldade</th>" : ""}
+        <th>Jogador</th><th>Pontuação</th><th>Data</th>
+      </tr></thead><tbody>`;
+      rows.forEach(([diff, entry]) => {
+        const diffCell = hasDiffColumn ? `<td>${getDifficultyLabel(diff)}</td>` : "";
+        if (!entry) {
+          html += `<tr>${diffCell}<td class="no-data" colspan="3">Nenhum recorde ainda</td></tr>`;
+        } else {
+          const date = new Date(entry.date).toLocaleDateString("pt-BR");
+          html += `<tr class="rank-gold">${diffCell}<td>${renderPlayerName(entry.name, true)}</td><td><strong>${formatGameScore(game, entry.score)}</strong></td><td>${date}</td></tr>`;
+        }
+      });
+      html += `</tbody></table>`;
+    }
+    container.innerHTML = html;
+  } catch {
+    container.innerHTML = '<div class="loading">Erro ao carregar ranking.</div>';
+  }
+}
+
+// ─── Ranking de conquistas (top 10) ─────────────────────────────────────────
+async function openAchievementsRank() {
+  openWindow("win-achievements-rank");
+  await loadAchievementsRank();
+}
+
+async function loadAchievementsRank() {
+  const container = document.getElementById("achievements-rank-content");
+  if (!container) return;
+  container.innerHTML = '<div class="loading">⏳ Carregando...</div>';
+  try {
+    const data = await cachedFetchJSON("achievements_leaderboard", `${API}/leaderboards/achievements`, 60 * 1000);
+    const { definitions, top } = data;
+    const defById = Object.fromEntries(definitions.map((d) => [d.id, d]));
+
+    let html = `<div class="section-label">🎖️ Top 10 — Mais Conquistas</div>`;
+    if (top.length === 0) {
+      html += '<div class="no-data">Nenhuma conquista desbloqueada ainda.</div>';
+    } else {
+      html += `<table class="win95-table"><thead><tr>
+        <th>#</th><th>Jogador</th><th>Qtd</th><th>Conquistas</th>
+      </tr></thead><tbody>`;
+      top.forEach((entry, i) => {
+        const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
+        const badges = entry.achievements
+          .map((id) => defById[id])
+          .filter(Boolean)
+          .map((def) => `<span title="${escHtml(def.title)}">${def.icon}</span>`)
+          .join(" ");
+        html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(entry.name, true)}</td><td><strong>${entry.count}</strong></td><td class="achv-rank-badges">${badges}</td></tr>`;
+      });
+      html += `</tbody></table>`;
+    }
+    container.innerHTML = html;
+  } catch {
+    container.innerHTML = '<div class="loading">Erro ao carregar ranking.</div>';
+  }
+}
+
 async function openAchievements() {
   if (!currentUser) {
     alert("Você precisa fazer login para ver suas conquistas.");
@@ -2944,9 +3056,20 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "1.8.0",
+    version: "1.9.0",
     date: "28/06/2026",
     isNew: true,
+    title: "Novo minigame: Aim Trainer 🔫",
+    items: [
+      "🔫 Novo minigame Aim Trainer: clique nos alvos antes que encolham e desapareçam. Acertos rápidos e em sequência (combo) valem mais pontos.",
+      "🎯 3 dificuldades (Fácil/Normal/Difícil) com ranking, moedas e conquistas próprios, igual aos outros jogos.",
+      "⌨️ Dá pra iniciar a partida com a barra de espaço, além do botão.",
+    ],
+  },
+  {
+    version: "1.8.0",
+    date: "28/06/2026",
+    isNew: false,
     title: "Spider: dicas sem limite, desfazer e zoom mais preciso",
     items: [
       "💡 Removido o limite máximo de dicas no Spider em todos os modos — use quantas precisar (mas vencer sem usar nenhuma ainda desbloqueia uma conquista diferente).",

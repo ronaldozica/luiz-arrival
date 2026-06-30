@@ -19,6 +19,7 @@ let msInterval = null;
 let msGameOver = false;
 let msFirstClick = true;
 let msRevealedCount = 0;
+let msRoundTokenPromise = null;
 
 /**
  * Abre a janela do Campo Minado, inicializa o tabuleiro e valida a sessão.
@@ -145,6 +146,7 @@ function handleMsClick(r, c) {
     placeMsMines(r, c);
     calculateMsNeighbors();
     startMsTimer();
+    msRoundTokenPromise = startGameRound("minesweeper", currentMsDifficulty);
   }
 
   const cell = msBoard[r][c];
@@ -260,8 +262,10 @@ function triggerMsGameOver(won, killerRow = -1, killerCol = -1) {
     }
     // Score for minesweeper = inverse of time (faster = more points, max 9999)
     const winScore = Math.max(1, 9999 - msTimer);
-    submitGameScore("minesweeper", currentMsDifficulty, winScore, function(coinsEarned) {
-      if (coinsEarned > 0) showGameCoinsToast(coinsEarned);
+    msRoundTokenPromise.then((roundToken) => {
+      submitGameScore("minesweeper", currentMsDifficulty, winScore, function(coinsEarned) {
+        if (coinsEarned > 0) showGameCoinsToast(coinsEarned);
+      }, undefined, { roundToken });
     });
   } else {
     faceBtn.innerText = "😵";

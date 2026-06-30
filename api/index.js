@@ -16,6 +16,7 @@ app.use("/api", require("./routes/game-rank"));
 app.use("/api", require("./routes/store"));
 app.use("/api", require("./routes/profile"));
 app.use("/api", require("./routes/achievements"));
+app.use("/api", require("./routes/leaderboards"));
 
 // ─── Export para Vercel ───────────────────────────────────────────────────────
 module.exports = app;

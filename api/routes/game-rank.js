@@ -1,10 +1,24 @@
 const express = require("express");
 const router = express.Router();
+const crypto = require("crypto");
 
 const { getKV } = require("../lib/redis");
 const { requireAuth } = require("../lib/auth-middleware");
+const { invalidatesCache } = require("../lib/cache");
 const { userKey, parseRedisArray, parseRedisNumber } = require("../lib/utils");
 const { todayKey } = require("../lib/datetime");
+const { GAMES, minPlausibleSeconds } = require("../lib/games");
+
+// TTL generoso pra dar tempo de partidas longas (Sudoku/Spider difícil).
+const ROUND_TOKEN_TTL_SECONDS = 2 * 60 * 60;
+// Margem pra latência de rede/clock drift entre cliente e servidor.
+const ROUND_TOKEN_TOLERANCE_SECONDS = 2;
+
+const DIFFICULTIES_BY_GAME = Object.fromEntries(
+  Object.entries(GAMES)
+    .filter(([, cfg]) => cfg.difficulties)
+    .map(([game, cfg]) => [game, cfg.difficulties]),
+);
 
 // Minigames não têm cooldown entre partidas (dá pra jogar e ganhar quantas
 // vezes quiser), diferente da aposta (1x por dia útil). Sem um teto, alguém
@@ -32,12 +46,46 @@ router.get("/game-rank", async (req, res) => {
   }
 });
 
+// POST /api/game-rank/start — requer sessão válida; emite um token de rodada
+// que precisa ser enviado de volta em POST /api/game-rank junto com o score
+// final. Guarda o horário real de início no servidor, pra depois calcular se
+// o score enviado é fisicamente plausível pro tempo decorrido (anti-trapaça:
+// impede tanto forjar a requisição sem jogar quanto editar a variável de
+// score no console e enviar na hora).
+router.post("/game-rank/start", requireAuth, async (req, res) => {
+  try {
+    const { game, difficulty } = req.body;
+    const playerName = req.sessionName;
+
+    if (!game || !GAMES[game]) {
+      return res.status(400).json({ error: "game inválido." });
+    }
+    const validDifficulties = DIFFICULTIES_BY_GAME[game];
+    if (validDifficulties && difficulty && !validDifficulties.includes(difficulty)) {
+      return res.status(400).json({ error: "Dificuldade inválida." });
+    }
+
+    const kv = getKV();
+    const roundToken = crypto.randomBytes(24).toString("hex");
+    await kv.set(
+      `roundtoken:${roundToken}`,
+      JSON.stringify({ name: playerName, game, difficulty: difficulty || null, startedAt: Date.now() }),
+      { ex: ROUND_TOKEN_TTL_SECONDS },
+    );
+
+    res.json({ roundToken });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/game-rank — requer sessão válida; playerName vem do token, não do body
 // Proteção contra burla: o servidor ignora qualquer playerName enviado pelo cliente.
-// O score é validado contra limites razoáveis por jogo.
-router.post("/game-rank", requireAuth, async (req, res) => {
+// O score é validado contra limites razoáveis por jogo, e contra o tempo real
+// decorrido desde POST /api/game-rank/start (ver roundToken abaixo).
+router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"), async (req, res) => {
   try {
-    const { game, difficulty, score, skipRank, hintsUsed, undoUsed } = req.body;
+    const { game, difficulty, score, skipRank, hintsUsed, undoUsed, roundToken } = req.body;
     const playerName = req.sessionName; // Sempre do token de sessão, nunca do body
 
     if (!game || score === undefined) {
@@ -57,6 +105,7 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       snake: 99999,           // Snake: fisicamente impossível passar disso
       minesweeper: 9999,      // Minesweeper: score = 9999 - tempo(s), só enviado ao vencer
       sudoku: 9999,           // Sudoku: score = 9999 - tempo(s), só enviado ao vencer
+      aimtrainer: 25000,      // Aim Trainer: cap de sanidade pra 30s de partida no modo difícil
       spider: 9999,           // Spider: score = 9999 - tempo(s), só enviado ao vencer
     };
 
@@ -66,20 +115,41 @@ router.post("/game-rank", requireAuth, async (req, res) => {
     }
 
     // Valida difficulty por jogo
-    const DIFFICULTIES_BY_GAME = {
-      minesweeper: ["beginner", "intermediate", "expert"],
-      sudoku: ["easy", "medium", "hard"],
-      spider: ["easy", "medium", "hard"],
-    };
     const validDifficulties = DIFFICULTIES_BY_GAME[game];
     if (validDifficulties && difficulty && !validDifficulties.includes(difficulty)) {
       return res.status(400).json({ error: "Dificuldade inválida." });
     }
 
+    // ─── Token de rodada (anti-trapaça) ────────────────────────────────────────
+    // Obrigatório: sem token válido não há como saber se a partida de fato
+    // ocorreu, então a submissão é rejeitada.
+    const kv = getKV();
+    if (!roundToken) {
+      return res.status(400).json({ error: "Token de rodada ausente. Inicie a partida novamente." });
+    }
+    const tokenKey = `roundtoken:${roundToken}`;
+    const tokenRaw = await kv.get(tokenKey);
+    await kv.del(tokenKey); // uso único, consumido na primeira tentativa (válida ou não)
+    if (!tokenRaw) {
+      return res.status(400).json({ error: "Token de rodada inválido ou expirado. Inicie a partida novamente." });
+    }
+    const tokenData = typeof tokenRaw === "string" ? JSON.parse(tokenRaw) : tokenRaw;
+    if (
+      userKey(tokenData.name) !== userKey(playerName) ||
+      tokenData.game !== game ||
+      (tokenData.difficulty || null) !== (difficulty || null)
+    ) {
+      return res.status(400).json({ error: "Token de rodada não corresponde à partida enviada." });
+    }
+    const elapsedSeconds = (Date.now() - tokenData.startedAt) / 1000;
+    const minPlausible = minPlausibleSeconds(game, difficulty, scoreNum);
+    if (elapsedSeconds < minPlausible - ROUND_TOKEN_TOLERANCE_SECONDS) {
+      return res.status(400).json({ error: "Tempo de partida incompatível com a pontuação enviada." });
+    }
+
     const rankKey = difficulty
       ? `gamerank:${game}:${difficulty}`
       : `gamerank:${game}`;
-    const kv = getKV();
     let scores = (await kv.get(rankKey)) || [];
 
     if (!skipRank) {
@@ -113,6 +183,11 @@ router.post("/game-rank", requireAuth, async (req, res) => {
       if (difficulty === "hard") coinsEarned = 20;
       else if (difficulty === "medium") coinsEarned = 8;
       else if (difficulty === "easy") coinsEarned = 2;
+    } else if (game === "aimtrainer") {
+      // Proporcional ao score, com taxa maior em dificuldades mais difíceis
+      // (alvos menores/mais rápidos rendem menos pontos por partida).
+      const rate = { easy: 0.5, normal: 1, hard: 2 }[difficulty] || 1;
+      coinsEarned = Math.floor((scoreNum / 100) * rate);
     } else if (game === "spider") {
       // O score só é enviado quando as 8 sequências são completadas
       if (difficulty === "hard") coinsEarned = 25;
@@ -172,6 +247,21 @@ router.post("/game-rank", requireAuth, async (req, res) => {
         newAchievements.push(achId);
       }
     }
+    if (game === "aimtrainer") {
+      if (scoreNum >= 5000 && !achUnlocked.includes("aimtrainer_sharp")) {
+        achUnlocked.push("aimtrainer_sharp");
+        newAchievements.push("aimtrainer_sharp");
+      }
+      if (
+        difficulty === "hard" &&
+        scoreNum >= 10000 &&
+        !achUnlocked.includes("aimtrainer_legend")
+      ) {
+        achUnlocked.push("aimtrainer_legend");
+        newAchievements.push("aimtrainer_legend");
+      }
+    }
+
     if (game === "spider") {
       const achId =
         difficulty === "easy"

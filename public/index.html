@@ -65,9 +65,12 @@
       <hr />
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
+      <button onclick="openWindow('win-aimtrainer'); initAimTrainerGame(); closeStartMenu()">🔫 Aim Trainer</button>
       <button onclick="openMinesweeperWindow(); closeStartMenu()">💣 Campo Minado</button>
       <button onclick="openSudokuWindow(); closeStartMenu()">🔢 Sudoku</button>
       <button onclick="openWindow('win-gamerank'); loadGameRank('snake'); closeStartMenu()">🎮 Rank Jogos</button>
+      <button onclick="openTop1Rank(); closeStartMenu()">🏅 Top 1 dos Jogos</button>
+      <button onclick="openAchievementsRank(); closeStartMenu()">🎖️ Rank de Conquistas</button>
       <hr />
       <button onclick="openNotepadWindow(); closeStartMenu()">📝 Bloco de Notas</button>
       <button onclick="openCalculatorWindow(); closeStartMenu()">🧮 Calculadora</button>
@@ -125,6 +128,10 @@
       <div class="icon-img">🐍</div>
       <div class="icon-label">Snake 95</div>
     </div>
+    <div class="desktop-icon" data-icon-id="icon-aimtrainer" data-action="openWindow('win-aimtrainer'); initAimTrainerGame()">
+      <div class="icon-img">🔫</div>
+      <div class="icon-label">Aim<br>Trainer</div>
+    </div>
     <div class="desktop-icon" data-icon-id="icon-minesweeper"
       data-action="openMinesweeperWindow()">
       <div class="icon-img">💣</div>
@@ -144,6 +151,14 @@
       data-action="openWindow('win-gamerank'); loadGameRank('snake')">
       <div class="icon-img">🎮</div>
       <div class="icon-label">Rank<br>Jogos</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-top1-rank" data-action="openTop1Rank()">
+      <div class="icon-img">🏅</div>
+      <div class="icon-label">Top 1<br>Jogos</div>
+    </div>
+    <div class="desktop-icon" data-icon-id="icon-achievements-rank" data-action="openAchievementsRank()">
+      <div class="icon-img">🎖️</div>
+      <div class="icon-label">Rank<br>Conquistas</div>
     </div>
 
     <!-- Outros -->
@@ -462,6 +477,8 @@
               <option value="snake">🐍 Snake</option>
               <option value="minesweeper">💣 Campo Minado</option>
               <option value="sudoku">🔢 Sudoku</option>
+              <option value="aimtrainer">🔫 Aim Trainer</option>
+              <option value="spider">🕷️ Paciência Spider</option>
             </select>
           </div>
           <div class="field-group" id="admin-rank-difficulty-group" style="display:none">
@@ -551,6 +568,41 @@
       </div>
       <div class="info-box" style="font-size:11px;margin-top:4px">
         Use as setas ou WASD. Espaço para iniciar. A velocidade aumenta com os pontos!
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: AIM TRAINER ══ -->
+  <div class="win95-window" id="win-aimtrainer" style="left:80px;top:30px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-aimtrainer')">
+      <span class="win95-title">🔫 Aim Trainer</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-aimtrainer')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-aimtrainer'); stopAimTrainerGame()">✕</button>
+      </div>
+    </div>
+    <div class="win95-body">
+      <div class="ms-difficulty-bar">
+        <button class="at-diff-btn ms-diff-btn" data-diff="easy" onclick="setAtDifficulty('easy')">Fácil</button>
+        <button class="at-diff-btn ms-diff-btn active" data-diff="normal" onclick="setAtDifficulty('normal')">Normal</button>
+        <button class="at-diff-btn ms-diff-btn" data-diff="hard" onclick="setAtDifficulty('hard')">Difícil</button>
+        <button class="win95-action-btn" style="margin-left:auto;font-size:10px;padding:2px 6px"
+          onclick="openGameRank('aimtrainer', currentAtDifficulty)">🏆</button>
+      </div>
+      <div class="snake-header">
+        <span>Pontos: <span id="at-score" style="color:var(--win-blue-hi)">0</span></span>
+        <span>Combo: <span id="at-combo" style="color:var(--win-blue-hi)">0</span></span>
+        <span>Tempo: <span id="at-time">15</span>s</span>
+        <span>Recorde: <span id="at-best" style="color:#800000">0</span></span>
+      </div>
+      <div class="canvas-container" id="at-canvas-container">
+        <canvas id="at-canvas" width="420" height="420"></canvas>
+      </div>
+      <div class="btn-row" style="justify-content: center; margin-top: 8px; gap: 8px;">
+        <button class="win95-action-btn" id="at-start-btn" onclick="startAimTrainerGame()">▶ Iniciar</button>
+      </div>
+      <div class="info-box" style="font-size:11px;margin-top:4px">
+        Clique nos alvos antes que encolham e desapareçam. Acertos rápidos e em sequência (combo) valem mais pontos!
       </div>
     </div>
   </div>
@@ -846,6 +898,12 @@
           onclick="loadGameRank('sudoku','medium'); setGameRankTabActive('sd-medium')">🔢 Médio</button>
         <button class="rank-tab" data-tab="sd-hard"
           onclick="loadGameRank('sudoku','hard'); setGameRankTabActive('sd-hard')">🔢 Difícil</button>
+        <button class="rank-tab" data-tab="at-easy"
+          onclick="loadGameRank('aimtrainer','easy'); setGameRankTabActive('at-easy')">🔫 Fácil</button>
+        <button class="rank-tab" data-tab="at-normal"
+          onclick="loadGameRank('aimtrainer','normal'); setGameRankTabActive('at-normal')">🔫 Normal</button>
+        <button class="rank-tab" data-tab="at-hard"
+          onclick="loadGameRank('aimtrainer','hard'); setGameRankTabActive('at-hard')">🔫 Difícil</button>
         <button class="rank-tab" data-tab="sp-easy"
           onclick="loadGameRank('spider','easy'); setGameRankTabActive('sp-easy')">🕷️ Fácil</button>
         <button class="rank-tab" data-tab="sp-medium"
@@ -880,6 +938,38 @@
     </div>
     <div class="win95-body win95-body-scroll">
       <div id="achievements-content">
+        <div class="loading">⏳ Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: TOP 1 DOS JOGOS ══ -->
+  <div class="win95-window" id="win-top1-rank" style="left:200px;top:80px;width:420px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-top1-rank')">
+      <span class="win95-title">🏅 Top 1 dos Jogos</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-top1-rank')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-top1-rank')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body win95-body-scroll">
+      <div id="top1-rank-content">
+        <div class="loading">⏳ Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WINDOW: RANKING DE CONQUISTAS ══ -->
+  <div class="win95-window" id="win-achievements-rank" style="left:210px;top:90px;width:480px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-achievements-rank')">
+      <span class="win95-title">🎖️ Ranking de Conquistas</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-achievements-rank')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-achievements-rank')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body win95-body-scroll">
+      <div id="achievements-rank-content">
         <div class="loading">⏳ Carregando...</div>
       </div>
     </div>
@@ -1049,6 +1139,7 @@
 
   <script src="js/app.js"></script>
   <script src="js/snake.js"></script>
+  <script src="js/aimtrainer.js"></script>
   <script src="js/minesweeper.js"></script>
   <script src="js/sudoku.js"></script>
   <script src="js/spider.js"></script>
