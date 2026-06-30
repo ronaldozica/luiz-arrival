@@ -164,8 +164,13 @@ function atClickHandler(event) {
   if (!isAtPlaying || !activeTarget) return;
 
   const rect = atCanvas.getBoundingClientRect();
-  const clickX = event.clientX - rect.left;
-  const clickY = event.clientY - rect.top;
+  // Compensa quando o CSS exibe o canvas menor que sua resolução interna
+  // (ex: max-width/max-height restringindo o tamanho visual). Sem esse fator
+  // o clique no pixel CSS correto cai na coordenada errada do canvas.
+  const scaleX = atCanvas.width / rect.width;
+  const scaleY = atCanvas.height / rect.height;
+  const clickX = (event.clientX - rect.left) * scaleX;
+  const clickY = (event.clientY - rect.top) * scaleY;
 
   const dx = clickX - activeTarget.x;
   const dy = clickY - activeTarget.y;
