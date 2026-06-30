@@ -112,11 +112,17 @@ const EMOJI_REGEX = new RegExp(
 // prêmio de quem só acertou por falta de concorrência. Apostas marcadas como
 // `invalidated` (feitas a menos de 30min da chegada real — ver admin.js) só
 // recebem a moeda de participação, igual a um palpite muito impreciso.
+//
+// A curva segue um decaimento suave (estilo sino) — quem errou em até 60min
+// ainda recebe alguma recompensa; a penalidade brusca era antes de 10min.
 const PRECISION_BANDS = [
-  { maxDiff: 0, coins: 30 },
-  { maxDiff: 2, coins: 20 },
-  { maxDiff: 5, coins: 10 },
-  { maxDiff: 10, coins: 5 },
+  { maxDiff: 0,  coins: 30 },
+  { maxDiff: 5,  coins: 25 },
+  { maxDiff: 10, coins: 20 },
+  { maxDiff: 20, coins: 15 },
+  { maxDiff: 30, coins: 10 },
+  { maxDiff: 45, coins: 6 },
+  { maxDiff: 60, coins: 3 },
 ];
 const PARTICIPATION_COINS = 1;
 
