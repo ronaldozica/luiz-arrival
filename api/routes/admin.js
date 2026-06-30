@@ -19,7 +19,7 @@ const { calcBalance } = require("../lib/store-items");
 // "sniping" (jogador viu o Luiz chegar e apostou antes do admin registrar).
 // Penalização é suave: a aposta continua valendo para fins de participação
 // (1 LuizCoin), mas não concorre a precisão nem ao pódio do dia.
-const SNIPING_WINDOW_MS = 30 * 60 * 1000;
+const SNIPING_WINDOW_MS = 15 * 60 * 1000;
 
 // POST /api/admin/login — autentica com bcrypt e retorna token de admin
 router.post("/admin/login", async (req, res) => {
