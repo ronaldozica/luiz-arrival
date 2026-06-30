@@ -1606,8 +1606,11 @@ function renderPreviousWeeks() {
 function getColorEffect(colorId) {
   switch (colorId) {
     case "color_esmeralda": return "text-shadow: 0 0 6px #00e676, 0 0 12px #00c853; font-weight:bold;";
-    case "color_rubi": return "text-shadow: 0 0 6px #ff5252, 0 0 12px #e53935; font-weight:bold;";
-    // dourado, diamante e coração usam classes CSS em vez de inline style
+    case "color_safira":   return "text-shadow: 0 0 6px #64b5f6, 0 0 12px #1e88e5; font-weight:bold;";
+    case "color_rubi":     return "text-shadow: 0 0 6px #ff5252, 0 0 12px #e53935; font-weight:bold;";
+    case "color_ametista": return "text-shadow: 0 0 6px #ce93d8, 0 0 12px #ab47bc; font-weight:bold;";
+    case "color_topazio":  return "text-shadow: 0 0 6px #ffab91, 0 0 12px #ff7043; font-weight:bold;";
+    // dourado, diamante, platina e coração usam classes CSS em vez de inline style
     default: return "";
   }
 }
@@ -1617,9 +1620,10 @@ function getColorEffect(colorId) {
 // diamante, corações flutuantes no coração).
 function getColorClass(colorId) {
   switch (colorId) {
-    case "color_dourado": return "name-gold-blink";
+    case "color_dourado":  return "name-gold-blink";
     case "color_diamante": return "name-diamond-shine";
-    case "color_coracao": return "name-heart-particles";
+    case "color_platina":  return "name-platinum-sweep";
+    case "color_coracao":  return "name-heart-particles";
     default: return "";
   }
 }
@@ -2467,9 +2471,13 @@ async function loadStore() {
 function getStoreColorEffect(colorId, color) {
   switch (colorId) {
     case "color_esmeralda": return `background: linear-gradient(135deg, #1a2e1a, #0d1f0d); border: 1px solid ${color}; box-shadow: 0 0 12px #00c85344; border-radius:4px; padding:12px; text-align:center;`;
-    case "color_rubi": return `background: linear-gradient(135deg, #2e0d0d, #1a0505); border: 1px solid ${color}; box-shadow: 0 0 12px #e5393544; border-radius:4px; padding:12px; text-align:center;`;
-    case "color_dourado": return `background: linear-gradient(135deg, #2a2000, #1a1400); border: 1px solid ${color}; box-shadow: 0 0 12px #ffd60044; border-radius:4px; padding:12px; text-align:center;`;
-    case "color_diamante": return `background: linear-gradient(135deg, #0d1a2e, #050d1a); border: 1px solid ${color}; box-shadow: 0 0 16px #81d4fa66; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_safira":    return `background: linear-gradient(135deg, #0d1a2e, #05101f); border: 1px solid ${color}; box-shadow: 0 0 12px #1e88e544; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_rubi":      return `background: linear-gradient(135deg, #2e0d0d, #1a0505); border: 1px solid ${color}; box-shadow: 0 0 12px #e5393544; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_ametista":  return `background: linear-gradient(135deg, #1a0d2e, #0d051f); border: 1px solid ${color}; box-shadow: 0 0 12px #ab47bc44; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_dourado":   return `background: linear-gradient(135deg, #2a2000, #1a1400); border: 1px solid ${color}; box-shadow: 0 0 12px #ffd60044; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_topazio":   return `background: linear-gradient(135deg, #2e1505, #1a0c02); border: 1px solid ${color}; box-shadow: 0 0 12px #ff704344; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_diamante":  return `background: linear-gradient(135deg, #0d1a2e, #050d1a); border: 1px solid ${color}; box-shadow: 0 0 16px #81d4fa66; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_platina":   return `background: linear-gradient(135deg, #1a1a1a, #2a2a2a); border: 1px solid ${color}; box-shadow: 0 0 16px #e0e0e055; border-radius:4px; padding:12px; text-align:center;`;
     default: return `padding:12px; text-align:center;`;
   }
 }
@@ -2761,10 +2769,14 @@ function renderProfileColor() {
 function getColorEffectPreview(colorId) {
   switch (colorId) {
     case "color_esmeralda": return "text-shadow:0 0 4px #00e676; font-weight:bold;";
-    case "color_rubi": return "text-shadow:0 0 4px #ff5252; font-weight:bold;";
-    case "color_dourado": return "font-weight:bold;";
-    case "color_diamante": return "font-weight:bold;";
-    case "color_coracao": return "text-shadow:0 0 4px #ff1744; font-weight:bold;";
+    case "color_safira":    return "text-shadow:0 0 4px #64b5f6; font-weight:bold;";
+    case "color_rubi":      return "text-shadow:0 0 4px #ff5252; font-weight:bold;";
+    case "color_ametista":  return "text-shadow:0 0 4px #ce93d8; font-weight:bold;";
+    case "color_dourado":   return "font-weight:bold;";
+    case "color_topazio":   return "text-shadow:0 0 4px #ffab91; font-weight:bold;";
+    case "color_diamante":  return "font-weight:bold;";
+    case "color_platina":   return "font-weight:bold;";
+    case "color_coracao":   return "text-shadow:0 0 4px #ff1744; font-weight:bold;";
     default: return "";
   }
 }

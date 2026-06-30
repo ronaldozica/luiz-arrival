@@ -13,9 +13,13 @@ const STORE_ITEMS = [
   { id: "baixista", price: 15, src: "/photos/baixista.gif", title: "Luiz Fernando baixista" },
   { id: "confusp", price: 20, src: "/photos/confuso.gif", title: "Luiz confuso" },
   { id: "color_esmeralda", price: 20, type: "namecolor", color: "#00c853", title: "Esmeralda" },
+  { id: "color_safira", price: 35, type: "namecolor", color: "#1e88e5", title: "Safira" },
   { id: "color_rubi", price: 50, type: "namecolor", color: "#e53935", title: "Rubi" },
+  { id: "color_ametista", price: 75, type: "namecolor", color: "#ab47bc", title: "Ametista" },
   { id: "color_dourado", price: 90, type: "namecolor", color: "#ffd600", title: "Dourada" },
+  { id: "color_topazio", price: 150, type: "namecolor", color: "#ff7043", title: "Topázio" },
   { id: "color_diamante", price: 225, type: "namecolor", color: "#b3e5fc", title: "Diamante" },
+  { id: "color_platina", price: 500, type: "namecolor", color: "#e0e0e0", title: "Platina" },
 ];
 
 // ─── Cores exclusivas (fora da loja) ────────────────────────────────────────
