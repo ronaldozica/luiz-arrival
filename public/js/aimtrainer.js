@@ -18,9 +18,14 @@ let activeTarget = null; // { x, y, radius, spawnTime, lifetime }
 let atLastScreen = "idle"; // "idle" | "result" — usado para redesenhar depois de um resize
 let atRoundTokenPromise = null;
 
+let atSensitivity = 1;
+let atCrosshair = { x: 0, y: 0 };
+
 // Config
 const AT_ROUND_DURATION = 15000; // ms
 const AT_MIN_CANVAS_SIZE = 280;
+const AT_SENSITIVITY_STORAGE_KEY = "at-sensitivity";
+const AT_HIT_TOLERANCE_PX = 6; // margem extra em volta do alvo pra absorver imprecisão de clique/render
 
 const AT_DIFFICULTY_CONFIG = {
   easy:   { radius: 30, lifetime: 1100 },
@@ -40,12 +45,35 @@ function initAimTrainerGame() {
   document.removeEventListener("keydown", atKeyHandler);
   document.addEventListener("keydown", atKeyHandler);
 
+  document.removeEventListener("mousemove", atMouseMoveHandler);
+  document.addEventListener("mousemove", atMouseMoveHandler);
+
+  document.removeEventListener("pointerlockchange", atPointerLockChangeHandler);
+  document.addEventListener("pointerlockchange", atPointerLockChangeHandler);
+
   window.removeEventListener("resize", atHandleResize);
   window.addEventListener("resize", atHandleResize);
 
+  atLoadSensitivity();
   atResizeCanvas();
   updateAtDisplays();
   atDrawIdleScreen();
+}
+
+function atLoadSensitivity() {
+  const stored = parseFloat(localStorage.getItem(AT_SENSITIVITY_STORAGE_KEY));
+  atSensitivity = Number.isFinite(stored) && stored > 0 ? stored : 1;
+  const slider = document.getElementById("at-sensitivity-slider");
+  const valueLabel = document.getElementById("at-sensitivity-value");
+  if (slider) slider.value = atSensitivity;
+  if (valueLabel) valueLabel.innerText = atSensitivity.toFixed(1);
+}
+
+function setAtSensitivity(value) {
+  atSensitivity = Math.max(0.1, parseFloat(value) || 1);
+  localStorage.setItem(AT_SENSITIVITY_STORAGE_KEY, atSensitivity);
+  const valueLabel = document.getElementById("at-sensitivity-value");
+  if (valueLabel) valueLabel.innerText = atSensitivity.toFixed(1);
 }
 
 // Mede o espaço real disponível dentro da janela (sem sobrepor os elementos
@@ -107,11 +135,15 @@ function startAimTrainerGame() {
   atHits = 0;
   atMisses = 0;
   isAtPlaying = true;
+  atCrosshair.x = atCanvas.width / 2;
+  atCrosshair.y = atCanvas.height / 2;
   atRoundEndTime = Date.now() + AT_ROUND_DURATION;
   atRoundTokenPromise = startGameRound("aimtrainer", currentAtDifficulty);
 
   const startBtn = document.getElementById("at-start-btn");
   if (startBtn) startBtn.innerText = "⏹ Reiniciar";
+
+  if (atCanvas.requestPointerLock) atCanvas.requestPointerLock();
 
   updateAtDisplays();
   atSpawnTarget();
@@ -124,6 +156,7 @@ function stopAimTrainerGame() {
   atRafId = null;
   const startBtn = document.getElementById("at-start-btn");
   if (startBtn) startBtn.innerText = "▶ Iniciar";
+  if (document.pointerLockElement === atCanvas) document.exitPointerLock();
 }
 
 function atSpawnTarget() {
@@ -160,23 +193,42 @@ function atGameLoop() {
   atRafId = requestAnimationFrame(atGameLoop);
 }
 
+function atMouseMoveHandler(event) {
+  if (!isAtPlaying || document.pointerLockElement !== atCanvas) return;
+  atCrosshair.x = Math.min(atCanvas.width, Math.max(0, atCrosshair.x + event.movementX * atSensitivity));
+  atCrosshair.y = Math.min(atCanvas.height, Math.max(0, atCrosshair.y + event.movementY * atSensitivity));
+}
+
+function atPointerLockChangeHandler() {
+  // Esc solta o mouse do navegador — trata como fim de rodada em vez de travar o jogo.
+  if (isAtPlaying && document.pointerLockElement !== atCanvas) {
+    atEndRound();
+  }
+}
+
 function atClickHandler(event) {
   if (!isAtPlaying || !activeTarget) return;
 
-  const rect = atCanvas.getBoundingClientRect();
-  // Compensa quando o CSS exibe o canvas menor que sua resolução interna
-  // (ex: max-width/max-height restringindo o tamanho visual). Sem esse fator
-  // o clique no pixel CSS correto cai na coordenada errada do canvas.
-  const scaleX = atCanvas.width / rect.width;
-  const scaleY = atCanvas.height / rect.height;
-  const clickX = (event.clientX - rect.left) * scaleX;
-  const clickY = (event.clientY - rect.top) * scaleY;
+  let clickX, clickY;
+  if (document.pointerLockElement === atCanvas) {
+    clickX = atCrosshair.x;
+    clickY = atCrosshair.y;
+  } else {
+    const rect = atCanvas.getBoundingClientRect();
+    // Compensa quando o CSS exibe o canvas menor que sua resolução interna
+    // (ex: max-width/max-height restringindo o tamanho visual). Sem esse fator
+    // o clique no pixel CSS correto cai na coordenada errada do canvas.
+    const scaleX = atCanvas.width / rect.width;
+    const scaleY = atCanvas.height / rect.height;
+    clickX = (event.clientX - rect.left) * scaleX;
+    clickY = (event.clientY - rect.top) * scaleY;
+  }
 
   const dx = clickX - activeTarget.x;
   const dy = clickY - activeTarget.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
 
-  if (dist <= activeTarget.radius) {
+  if (dist <= activeTarget.radius + AT_HIT_TOLERANCE_PX) {
     // Hit
     const elapsed = Date.now() - activeTarget.spawnTime;
     const remainingFraction = Math.max(0, 1 - elapsed / activeTarget.lifetime);
@@ -208,6 +260,20 @@ function atClearCanvas() {
 function atDrawFrame() {
   atClearCanvas();
   if (activeTarget) atDrawTarget(activeTarget);
+  if (document.pointerLockElement === atCanvas) atDrawCrosshair();
+}
+
+function atDrawCrosshair() {
+  const { x, y } = atCrosshair;
+  const size = 8;
+  atCtx.strokeStyle = "#00FFAA";
+  atCtx.lineWidth = 2;
+  atCtx.beginPath();
+  atCtx.moveTo(x - size, y);
+  atCtx.lineTo(x + size, y);
+  atCtx.moveTo(x, y - size);
+  atCtx.lineTo(x, y + size);
+  atCtx.stroke();
 }
 
 function atDrawTarget(target) {
@@ -286,6 +352,7 @@ function atEndRound() {
   if (atRafId) cancelAnimationFrame(atRafId);
   atRafId = null;
   activeTarget = null;
+  if (document.pointerLockElement === atCanvas) document.exitPointerLock();
 
   const startBtn = document.getElementById("at-start-btn");
   if (startBtn) startBtn.innerText = "▶ Tentar Novamente";

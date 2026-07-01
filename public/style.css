@@ -1553,6 +1553,25 @@ body {
   background: #d4d0c8;
 }
 
+/* ─── AIM TRAINER SENSITIVITY BAR ─────────── */
+.at-sensitivity-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.at-sensitivity-bar input[type="range"] {
+  flex: 1;
+}
+
+.at-sensitivity-bar span {
+  font-family: 'Courier New', monospace;
+  min-width: 26px;
+  text-align: right;
+}
+
 /* ─── SNAKE HEADER (3 items) ──────────────── */
 .snake-header {
   display: flex;

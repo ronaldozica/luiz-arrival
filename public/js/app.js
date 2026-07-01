@@ -3068,9 +3068,19 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "1.9.1",
+    date: "01/07/2026",
+    isNew: true,
+    title: "Aim Trainer: sensibilidade de mira e cliques mais justos",
+    items: [
+      "🎯 Novo ajuste de sensibilidade no Aim Trainer: ao iniciar, o mouse trava (igual num FPS) e um slider na janela controla o quanto o cursor movimenta a mira. Esc solta o mouse e encerra a rodada.",
+      "🤏 Cliques bem na borda do alvo agora têm uma pequena margem de tolerância, evitando aquela sensação de injustiça quando o clique 'quase' acertava.",
+    ],
+  },
+  {
     version: "1.9.0",
     date: "28/06/2026",
-    isNew: true,
+    isNew: false,
     title: "Novo minigame: Aim Trainer 🔫",
     items: [
       "🔫 Novo minigame Aim Trainer: clique nos alvos antes que encolham e desapareçam. Acertos rápidos e em sequência (combo) valem mais pontos.",
