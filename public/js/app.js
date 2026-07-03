@@ -428,6 +428,11 @@ function updateTaskbar() {
     "win-profile": "🧑‍🎨 Perfil",
     "win-release-notes": "📰 Novidades",
     "win-scoring-rules": "📐 Regras",
+    "win-folder-apostas": "📁 Apostas",
+    "win-folder-jogos": "📁 Jogos",
+    "win-folder-rankings": "📁 Rankings",
+    "win-folder-perfil": "📁 Perfil & Loja",
+    "win-folder-acessorios": "📁 Acessórios",
   };
   for (const [id, label] of Object.entries(windows)) {
     const w = document.getElementById(id);
