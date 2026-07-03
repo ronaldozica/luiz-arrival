@@ -3083,9 +3083,19 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "1.9.2",
+    version: "1.9.3",
     date: "03/07/2026",
     isNew: true,
+    title: "Novos wallpapers e ranking renovado",
+    items: [
+      "🖼️ Wallpapers do Windows e Michaelsoft atualizados com imagens novas — veja no Perfil > Plano de fundo ou clique com o botão direito na área de trabalho.",
+      "🎮 Ranking dos Jogos reformulado: agora tem 5 tabs (um por jogo) e mostra todas as dificuldades na mesma tela, sem precisar trocar de aba.",
+    ],
+  },
+  {
+    version: "1.9.2",
+    date: "03/07/2026",
+    isNew: false,
     title: "Aim Trainer: hitmarkers, dificuldade ajustada e correções",
     items: [
       "💥 Hitmarker animado ao clicar: X branco para acertos e X vermelho para erros, igual a jogos FPS — agora dá pra ver exatamente o que aconteceu em cada clique.",
