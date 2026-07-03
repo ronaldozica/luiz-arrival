@@ -507,7 +507,6 @@ function handleSpColumnClick(col) {
 function dealSpStock() {
   if (spGameOver) return;
   if (spStock.length === 0) return;
-  if (spTableau.some((column) => column.length === 0)) return;
 
   spUndoSnapshot = cloneSpState();
   updateSpUndoButton();
