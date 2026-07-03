@@ -3076,9 +3076,22 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "1.9.2",
+    date: "03/07/2026",
+    isNew: true,
+    title: "Aim Trainer: hitmarkers, dificuldade ajustada e correções",
+    items: [
+      "💥 Hitmarker animado ao clicar: X branco para acertos e X vermelho para erros, igual a jogos FPS — agora dá pra ver exatamente o que aconteceu em cada clique.",
+      "🎯 Dificuldade Difícil levemente suavizada (alvo maior e um pouco mais de tempo) — ainda desafiadora, mas jogável.",
+      "🐛 Corrida (race condition): cliques que chegavam no exato momento em que o alvo expirava eram contados como erro indevidamente. Corrigido.",
+      "🖱️ Duplo clique não penaliza mais a pontuação — o segundo evento disparado pelo sistema era tratado como clique extra, gerando erro fantasma.",
+      "🕷️ Paciência Spider: a última distribuição do monte às vezes não distribuía as cartas quando havia colunas vazias. Corrigido.",
+    ],
+  },
+  {
     version: "1.9.1",
     date: "01/07/2026",
-    isNew: true,
+    isNew: false,
     title: "Aim Trainer: sensibilidade de mira e cliques mais justos",
     items: [
       "🎯 Novo ajuste de sensibilidade no Aim Trainer: ao iniciar, o mouse trava (igual num FPS) e um slider na janela controla o quanto o cursor movimenta a mira. Esc solta o mouse e encerra a rodada.",

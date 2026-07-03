@@ -20,6 +20,9 @@ let atRoundTokenPromise = null;
 
 let atSensitivity = 1;
 let atCrosshair = { x: 0, y: 0 };
+let atPrevTarget = null; // alvo anterior mantido brevemente para absorver cliques tardios
+let atHitmarkers = []; // { x, y, type: 'hit'|'miss', createdAt }
+let atLastClickTime = 0; // debounce para ignorar o segundo click de um duplo clique
 
 // Config
 const AT_ROUND_DURATION = 15000; // ms
@@ -30,7 +33,7 @@ const AT_HIT_TOLERANCE_PX = 6; // margem extra em volta do alvo pra absorver imp
 const AT_DIFFICULTY_CONFIG = {
   easy:   { radius: 30, lifetime: 1100 },
   normal: { radius: 24, lifetime: 800 },
-  hard:   { radius: 18, lifetime: 650 },
+  hard:   { radius: 20, lifetime: 750 },
 };
 
 function initAimTrainerGame() {
@@ -134,6 +137,9 @@ function startAimTrainerGame() {
   atMaxCombo = 0;
   atHits = 0;
   atMisses = 0;
+  atPrevTarget = null;
+  atHitmarkers = [];
+  atLastClickTime = 0;
   isAtPlaying = true;
   atCrosshair.x = atCanvas.width / 2;
   atCrosshair.y = atCanvas.height / 2;
@@ -181,7 +187,10 @@ function atGameLoop() {
   }
 
   if (activeTarget && Date.now() - activeTarget.spawnTime >= activeTarget.lifetime) {
-    // Miss por timeout
+    // Miss por timeout — guarda referência por 150ms pra absorver cliques que chegam
+    // no mesmo frame em que o alvo expirou (race condition entre loop e click event)
+    atPrevTarget = { ...activeTarget, expiredAt: Date.now() };
+    atHitmarkers.push({ x: activeTarget.x, y: activeTarget.y, type: "miss", createdAt: Date.now() });
     atCombo = 0;
     atMisses++;
     atSpawnTarget();
@@ -208,6 +217,9 @@ function atPointerLockChangeHandler() {
 
 function atClickHandler(event) {
   if (!isAtPlaying || !activeTarget) return;
+  const now = Date.now();
+  if (now - atLastClickTime < 150) return;
+  atLastClickTime = now;
 
   let clickX, clickY;
   if (document.pointerLockElement === atCanvas) {
@@ -229,7 +241,7 @@ function atClickHandler(event) {
   const dist = Math.sqrt(dx * dx + dy * dy);
 
   if (dist <= activeTarget.radius + AT_HIT_TOLERANCE_PX) {
-    // Hit
+    // Hit no alvo atual
     const elapsed = Date.now() - activeTarget.spawnTime;
     const remainingFraction = Math.max(0, 1 - elapsed / activeTarget.lifetime);
     const speedBonus = Math.round(100 * remainingFraction);
@@ -240,9 +252,25 @@ function atClickHandler(event) {
     atHits++;
     if (atCombo > atMaxCombo) atMaxCombo = atCombo;
 
+    atHitmarkers.push({ x: clickX, y: clickY, type: "hit", createdAt: Date.now() });
+    atPrevTarget = null;
     atSpawnTarget();
+  } else if (
+    atPrevTarget &&
+    Date.now() - atPrevTarget.expiredAt < 150 &&
+    Math.hypot(clickX - atPrevTarget.x, clickY - atPrevTarget.y) <= atPrevTarget.radius + AT_HIT_TOLERANCE_PX
+  ) {
+    // Grace hit: clique chegou logo após o alvo expirar — desfaz o timeout-miss
+    atMisses = Math.max(0, atMisses - 1);
+    atCombo++;
+    atHits++;
+    if (atCombo > atMaxCombo) atMaxCombo = atCombo;
+    atScore += 100; // sem speed bonus (já expirou), sem combo bonus
+    atHitmarkers.push({ x: clickX, y: clickY, type: "hit", createdAt: Date.now() });
+    atPrevTarget = null;
   } else {
     // Clique errado (fora do alvo)
+    atHitmarkers.push({ x: clickX, y: clickY, type: "miss", createdAt: Date.now() });
     atCombo = 0;
     atMisses++;
   }
@@ -257,9 +285,43 @@ function atClearCanvas() {
   atCtx.fillRect(0, 0, atCanvas.width, atCanvas.height);
 }
 
+function atDrawHitmarkers() {
+  const now = Date.now();
+  const DURATION = 350;
+  atHitmarkers = atHitmarkers.filter((hm) => now - hm.createdAt < DURATION);
+
+  for (const hm of atHitmarkers) {
+    const t = (now - hm.createdAt) / DURATION; // 0→1
+    const alpha = 1 - t;
+    // Expande levemente ao longo do tempo (spread effect)
+    const spread = 4 + t * 6;
+    const gap = 3;
+    const len = 7;
+
+    atCtx.save();
+    atCtx.globalAlpha = alpha;
+    atCtx.strokeStyle = hm.type === "hit" ? "#ffffff" : "#ff4444";
+    atCtx.lineWidth = hm.type === "hit" ? 2 : 2.5;
+    atCtx.lineCap = "round";
+
+    // 4 traços em X (diagonal): ↖ ↗ ↙ ↘
+    const arms = [
+      [-1, -1], [1, -1], [-1, 1], [1, 1],
+    ];
+    atCtx.beginPath();
+    for (const [sx, sy] of arms) {
+      atCtx.moveTo(hm.x + sx * (gap + spread), hm.y + sy * (gap + spread));
+      atCtx.lineTo(hm.x + sx * (gap + spread + len), hm.y + sy * (gap + spread + len));
+    }
+    atCtx.stroke();
+    atCtx.restore();
+  }
+}
+
 function atDrawFrame() {
   atClearCanvas();
   if (activeTarget) atDrawTarget(activeTarget);
+  atDrawHitmarkers();
   if (document.pointerLockElement === atCanvas) atDrawCrosshair();
 }
 
