@@ -2201,7 +2201,6 @@ async function submitGameScore(game, difficulty, score, callback, token, extra) 
     // Não envia playerName — o servidor usa o token de sessão
     const body = { game, score: scoreValue, ...extra };
     if (difficulty) body.difficulty = difficulty;
-    if (!isNewBest) body.skipRank = true;
 
     const res = await fetch(`${API}/game-rank`, {
       method: "POST",
@@ -2210,9 +2209,10 @@ async function submitGameScore(game, difficulty, score, callback, token, extra) 
     });
     const data = await res.json();
 
-    if (res.ok && isNewBest) {
-      localStorage.setItem(personalKey, String(scoreValue));
-      // Invalida cache local do ranking pra mostrar o novo score imediatamente
+    if (res.ok) {
+      // Atualiza PB local se for novo recorde
+      if (isNewBest) localStorage.setItem(personalKey, String(scoreValue));
+      // Invalida cache local do ranking pra mostrar o score atualizado imediatamente
       const rankCacheKey = `${CACHE_PREFIX}game_rank_${game}_${difficulty || "default"}`;
       try { localStorage.removeItem(rankCacheKey); } catch {}
     }

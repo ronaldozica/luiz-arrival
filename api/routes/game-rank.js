@@ -85,7 +85,7 @@ router.post("/game-rank/start", requireAuth, async (req, res) => {
 // decorrido desde POST /api/game-rank/start (ver roundToken abaixo).
 router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"), async (req, res) => {
   try {
-    const { game, difficulty, score, skipRank, hintsUsed, undoUsed, roundToken } = req.body;
+    const { game, difficulty, score, hintsUsed, undoUsed, roundToken } = req.body;
     const playerName = req.sessionName; // Sempre do token de sessão, nunca do body
 
     if (!game || score === undefined) {
@@ -152,10 +152,14 @@ router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"),
       : `gamerank:${game}`;
     let scores = (await kv.get(rankKey)) || [];
 
-    if (!skipRank) {
+    const existingEntry = scores.find(
+      (s) => String(s.name).toLowerCase() === String(playerName).toLowerCase(),
+    );
+    const isNewBest = !existingEntry || scoreNum > existingEntry.score;
+
+    if (isNewBest) {
       scores = scores.filter(
-        (s) =>
-          String(s.name).toLowerCase() !== String(playerName).toLowerCase(),
+        (s) => String(s.name).toLowerCase() !== String(playerName).toLowerCase(),
       );
       scores.push({ name: playerName, score: scoreNum, date: new Date().toISOString() });
       scores.sort((a, b) => b.score - a.score);
