@@ -88,8 +88,7 @@ function invalidateProfileCache() {
 const SHOW_DECORATIONS_KEY = "luizos_show_decorations";
 let showDecorations = true;
 let userProfiles = {};
-let currentGameRankData = [];
-let currentGameRankMeta = { game: "snake", difficulty: null };
+let currentGameRankCache = { game: null, data: {} }; // { game, data: { [diff|'default']: scores[] } }
 
 function loadShowDecorations() {
   try {
@@ -141,7 +140,7 @@ function toggleLegacyScore(checked) {
   showLegacyScore = typeof checked === "boolean" ? checked : !showLegacyScore;
   saveShowLegacyScore();
   syncLegacyScoreCheckboxes();
-  if (currentGameRankData.length > 0) renderGameRank();
+  if (currentGameRankCache.game) renderGameRank();
 }
 
 // Jogos cujo score bruto é 9999 - tempoEmSegundos (menor tempo = maior score).
@@ -1486,7 +1485,7 @@ function toggleDecorations(checked) {
   syncDecorationsCheckboxes();
   if (activeRankMainTab === "previous") renderPreviousWeeks();
   else renderRankTab(activeRankTab);
-  if (currentGameRankData.length > 0) renderGameRank();
+  if (currentGameRankCache.game) renderGameRank();
 }
 
 function switchRankTab(tab) {
@@ -2099,72 +2098,80 @@ async function setArrival() {
 }
 
 // ─── Game Ranking ─────────────────────────────────────────────────────────────
-let activeGameRankTab = "snake";
 
-async function openGameRank(game, difficulty) {
-  activeGameRankTab = game;
-  currentGameRankMeta = { game, difficulty };
-  openWindow("win-gamerank");
-  await loadGameRank(game, difficulty);
-}
+const GAME_RANK_DIFFICULTIES = {
+  minesweeper: ["beginner", "intermediate", "expert"],
+  sudoku:      ["easy", "medium", "hard"],
+  aimtrainer:  ["easy", "normal", "hard"],
+  spider:      ["easy", "medium", "hard"],
+};
 
-async function loadGameRank(game, difficulty) {
-  const container = document.getElementById("gamerank-content");
-  if (!container) return;
-  container.innerHTML = '<div class="loading">⏳ Carregando ranking...</div>';
-  try {
-    const params = difficulty ? `?game=${game}&difficulty=${difficulty}` : `?game=${game}`;
-    const cacheKey = `game_rank_${game}_${difficulty || "default"}`;
-    const scores = await cachedFetchJSON(cacheKey, `${API}/game-rank${params}`, 20 * 1000);
-    currentGameRankData = scores;
-    currentGameRankMeta = { game, difficulty };
-
-    const gameLabel = getGameLabel(game);
-    const diffLabel = difficulty ? ` — ${getDifficultyLabel(difficulty)}` : "";
-    let html = `<div class="section-label">${gameLabel}${diffLabel} — Top 50</div>`;
-
-    if (scores.length === 0) {
-      html += '<div class="no-data">Nenhum recorde ainda. Seja o primeiro!</div>';
-    } else {
-      html += `<table class="win95-table"><thead><tr>
-        <th>#</th><th>Jogador</th><th>Pontuação</th><th>Data</th>
-      </tr></thead><tbody>`;
-      scores.forEach((s, i) => {
-        const date = new Date(s.date).toLocaleDateString("pt-BR");
-        const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-        html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${formatGameScore(game, s.score)}</strong></td><td>${date}</td></tr>`;
-      });
-      html += `</tbody></table>`;
-    }
-    container.innerHTML = html;
-  } catch {
-    container.innerHTML = '<div class="loading">Erro ao carregar ranking.</div>';
+function buildGameRankTable(game, scores) {
+  if (scores.length === 0) {
+    return '<div class="no-data">Nenhum recorde ainda. Seja o primeiro!</div>';
   }
+  let html = `<table class="win95-table"><thead><tr>
+    <th>#</th><th>Jogador</th><th>Pontuação</th><th>Data</th>
+  </tr></thead><tbody>`;
+  scores.forEach((s, i) => {
+    const date = new Date(s.date).toLocaleDateString("pt-BR");
+    const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
+    html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${formatGameScore(game, s.score)}</strong></td><td>${date}</td></tr>`;
+  });
+  return html + `</tbody></table>`;
 }
 
 function renderGameRank() {
   const container = document.getElementById("gamerank-content");
-  if (!container) return;
-
-  const { game, difficulty } = currentGameRankMeta;
+  if (!container || !currentGameRankCache.game) return;
+  const { game, data } = currentGameRankCache;
   const gameLabel = getGameLabel(game);
-  const diffLabel = difficulty ? ` — ${getDifficultyLabel(difficulty)}` : "";
-  let html = `<div class="section-label">${gameLabel}${diffLabel} — Top 50</div>`;
-
-  if (currentGameRankData.length === 0) {
-    html += '<div class="no-data">Nenhum recorde ainda. Seja o primeiro!</div>';
+  const diffs = GAME_RANK_DIFFICULTIES[game];
+  let html = "";
+  if (!diffs) {
+    html += `<div class="section-label">${gameLabel} — Top 50</div>`;
+    html += buildGameRankTable(game, data["default"] || []);
   } else {
-    html += `<table class="win95-table"><thead><tr>
-      <th>#</th><th>Jogador</th><th>Pontuação</th><th>Data</th>
-    </tr></thead><tbody>`;
-    currentGameRankData.forEach((s, i) => {
-      const date = new Date(s.date).toLocaleDateString("pt-BR");
-      const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-      html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${formatGameScore(game, s.score)}</strong></td><td>${date}</td></tr>`;
+    diffs.forEach((diff) => {
+      html += `<div class="section-label" style="margin-top:8px">${gameLabel} — ${getDifficultyLabel(diff)} — Top 50</div>`;
+      html += buildGameRankTable(game, data[diff] || []);
     });
-    html += `</tbody></table>`;
   }
   container.innerHTML = html;
+}
+
+async function openGameRank(game) {
+  setGameRankTabActive(game);
+  openWindow("win-gamerank");
+  await loadGameRank(game);
+}
+
+async function loadGameRank(game) {
+  const container = document.getElementById("gamerank-content");
+  if (!container) return;
+  container.innerHTML = '<div class="loading">⏳ Carregando ranking...</div>';
+  setGameRankTabActive(game);
+  try {
+    const diffs = GAME_RANK_DIFFICULTIES[game];
+    if (!diffs) {
+      const cacheKey = `game_rank_${game}_default`;
+      const scores = await cachedFetchJSON(cacheKey, `${API}/game-rank?game=${game}`, 20 * 1000);
+      currentGameRankCache = { game, data: { default: scores } };
+    } else {
+      const results = await Promise.all(
+        diffs.map((diff) => {
+          const cacheKey = `game_rank_${game}_${diff}`;
+          return cachedFetchJSON(cacheKey, `${API}/game-rank?game=${game}&difficulty=${diff}`, 20 * 1000);
+        }),
+      );
+      const data = {};
+      diffs.forEach((diff, i) => { data[diff] = results[i]; });
+      currentGameRankCache = { game, data };
+    }
+    renderGameRank();
+  } catch {
+    container.innerHTML = '<div class="loading">Erro ao carregar ranking.</div>';
+  }
 }
 
 // Avisa o servidor que uma partida começou de verdade, pra ele guardar o

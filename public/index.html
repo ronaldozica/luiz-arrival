@@ -815,31 +815,14 @@
       <div class="win95-tabs" style="margin-bottom:4px">
         <button class="rank-tab active" data-tab="snake"
           onclick="loadGameRank('snake'); setGameRankTabActive('snake')">🐍 Snake</button>
-        <button class="rank-tab" data-tab="ms-beginner"
-          onclick="loadGameRank('minesweeper','beginner'); setGameRankTabActive('ms-beginner')">💣 Iniciante</button>
-        <button class="rank-tab" data-tab="ms-intermediate"
-          onclick="loadGameRank('minesweeper','intermediate'); setGameRankTabActive('ms-intermediate')">💣
-          Médio</button>
-        <button class="rank-tab" data-tab="ms-expert"
-          onclick="loadGameRank('minesweeper','expert'); setGameRankTabActive('ms-expert')">💣 Especialista</button>
-        <button class="rank-tab" data-tab="sd-easy"
-          onclick="loadGameRank('sudoku','easy'); setGameRankTabActive('sd-easy')">🔢 Fácil</button>
-        <button class="rank-tab" data-tab="sd-medium"
-          onclick="loadGameRank('sudoku','medium'); setGameRankTabActive('sd-medium')">🔢 Médio</button>
-        <button class="rank-tab" data-tab="sd-hard"
-          onclick="loadGameRank('sudoku','hard'); setGameRankTabActive('sd-hard')">🔢 Difícil</button>
-        <button class="rank-tab" data-tab="at-easy"
-          onclick="loadGameRank('aimtrainer','easy'); setGameRankTabActive('at-easy')">🔫 Fácil</button>
-        <button class="rank-tab" data-tab="at-normal"
-          onclick="loadGameRank('aimtrainer','normal'); setGameRankTabActive('at-normal')">🔫 Normal</button>
-        <button class="rank-tab" data-tab="at-hard"
-          onclick="loadGameRank('aimtrainer','hard'); setGameRankTabActive('at-hard')">🔫 Difícil</button>
-        <button class="rank-tab" data-tab="sp-easy"
-          onclick="loadGameRank('spider','easy'); setGameRankTabActive('sp-easy')">🕷️ Fácil</button>
-        <button class="rank-tab" data-tab="sp-medium"
-          onclick="loadGameRank('spider','medium'); setGameRankTabActive('sp-medium')">🕷️ Médio</button>
-        <button class="rank-tab" data-tab="sp-hard"
-          onclick="loadGameRank('spider','hard'); setGameRankTabActive('sp-hard')">🕷️ Difícil</button>
+        <button class="rank-tab" data-tab="minesweeper"
+          onclick="loadGameRank('minesweeper'); setGameRankTabActive('minesweeper')">💣 Campo Minado</button>
+        <button class="rank-tab" data-tab="sudoku"
+          onclick="loadGameRank('sudoku'); setGameRankTabActive('sudoku')">🔢 Sudoku</button>
+        <button class="rank-tab" data-tab="aimtrainer"
+          onclick="loadGameRank('aimtrainer'); setGameRankTabActive('aimtrainer')">🔫 Aim Trainer</button>
+        <button class="rank-tab" data-tab="spider"
+          onclick="loadGameRank('spider'); setGameRankTabActive('spider')">🕷️ Spider</button>
       </div>
       <div id="gamerank-content">
         <div class="loading">Carregando...</div>
@@ -1236,9 +1219,9 @@
   <script src="js/calculator.js"></script>
   <script src="js/paint.js"></script>
   <script>
-    function setGameRankTabActive(tab) {
+    function setGameRankTabActive(game) {
       document.querySelectorAll('#win-gamerank .rank-tab').forEach(t => {
-        t.classList.toggle('active', t.dataset.tab === tab);
+        t.classList.toggle('active', t.dataset.tab === game);
       });
     }
   </script>
