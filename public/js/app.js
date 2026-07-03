@@ -2212,6 +2212,9 @@ async function submitGameScore(game, difficulty, score, callback, token, extra) 
 
     if (res.ok && isNewBest) {
       localStorage.setItem(personalKey, String(scoreValue));
+      // Invalida cache local do ranking pra mostrar o novo score imediatamente
+      const rankCacheKey = `${CACHE_PREFIX}game_rank_${game}_${difficulty || "default"}`;
+      try { localStorage.removeItem(rankCacheKey); } catch {}
     }
     if (callback) callback(data.coinsEarned || 0);
 
