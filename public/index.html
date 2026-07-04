@@ -11,6 +11,25 @@
 
 <body>
 
+  <!-- W95 DIALOG -->
+  <div id="w95-dialog-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.25);z-index:99999;align-items:center;justify-content:center">
+    <div class="win95-window" style="min-width:280px;max-width:380px;width:auto">
+      <div class="win95-titlebar">
+        <span class="win95-title">LuizOS 95</span>
+      </div>
+      <div class="win95-body" style="padding:14px 16px">
+        <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px">
+          <div id="w95-dialog-icon" style="font-size:28px;flex-shrink:0;margin-top:2px"></div>
+          <div id="w95-dialog-msg" style="font-size:12px;line-height:1.5;color:#000;word-break:break-word"></div>
+        </div>
+        <div style="display:flex;justify-content:center;gap:8px">
+          <button id="w95-dialog-ok" class="win95-action-btn" style="min-width:75px">OK</button>
+          <button id="w95-dialog-cancel" class="win95-action-btn" style="min-width:75px;display:none">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- LOADING OVERLAY -->
   <div id="global-loading" style="display:none">
     <div class="loading-hourglass">⏳</div>
@@ -64,6 +83,7 @@
       <button onclick="openWindow('win-scoring-rules'); closeStartMenu()">📐 Regras de Pontuação</button>
       <hr />
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
+      <button onclick="openFarmWindow(); closeStartMenu()">🌾 LuizFarm 95</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
       <button onclick="openWindow('win-aimtrainer'); initAimTrainerGame(); closeStartMenu()">🔫 Aim Trainer</button>
       <button onclick="openMinesweeperWindow(); closeStartMenu()">💣 Campo Minado</button>
@@ -1096,6 +1116,10 @@
     </div>
     <div class="win95-body">
       <div class="folder-items">
+        <div class="folder-icon" ondblclick="openFarmWindow()">
+          <div class="icon-img">🌾</div>
+          <div class="icon-label">LuizFarm 95</div>
+        </div>
         <div class="folder-icon" ondblclick="openWindow('win-snake'); initSnakeGame()">
           <div class="icon-img">🐍</div>
           <div class="icon-label">Snake 95</div>
@@ -1209,12 +1233,30 @@
     </div>
   </div>
 
+  <!-- ══ WINDOW: FARM ══ -->
+  <div class="win95-window" id="win-farm" style="left:100px;top:60px;width:560px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-farm')">
+      <span class="win95-title">🌾 LuizFarm 95</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-farm')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-farm'); stopFarm()">✕</button>
+      </div>
+    </div>
+    <div class="win95-body">
+      <div class="game-zoom-target">
+        <div id="farm-root"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/dialog.js"></script>
   <script src="js/app.js"></script>
   <script src="js/snake.js"></script>
   <script src="js/aimtrainer.js"></script>
   <script src="js/minesweeper.js"></script>
   <script src="js/sudoku.js"></script>
   <script src="js/spider.js"></script>
+  <script src="js/farm.js"></script>
   <script src="js/notepad.js"></script>
   <script src="js/calculator.js"></script>
   <script src="js/paint.js"></script>

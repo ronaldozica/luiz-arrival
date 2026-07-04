@@ -925,7 +925,7 @@ async function forgotPassword() {
     showMsg(msg, "Selecione seu nome na lista primeiro.", "err");
     return;
   }
-  if (!confirm(`Resetar a senha de "${name}"? Você vai precisar entrar em contato com o admin para receber a senha temporária.`)) {
+  if (!await w95confirm(`Resetar a senha de "${name}"? Você vai precisar entrar em contato com o admin para receber a senha temporária.`)) {
     return;
   }
 
@@ -2031,7 +2031,7 @@ function renderAdminRankCheat(scores, game, difficulty) {
 
 async function deleteAdminRankEntry(game, difficulty, name) {
   const msg = document.getElementById("admin-rankcheat-msg");
-  if (!confirm(`Remover o recorde de "${name}"?`)) return;
+  if (!await w95confirm(`Remover o recorde de "${name}"?`)) return;
   showLoading("Removendo registro...");
   try {
     const res = await fetch(`${API}/admin/game-rank/delete`, {
@@ -2398,7 +2398,7 @@ loadWallpaper();
 // ─── Loja do Luiz ─────────────────────────────────────────────────────────────
 async function openStore() {
   if (!currentUser) {
-    alert("Você precisa fazer login para acessar a loja e ver suas moedas.");
+    await w95alert("Você precisa fazer login para acessar a loja e ver suas moedas.");
     openWindow("win-login");
     return;
   }
@@ -2499,10 +2499,10 @@ function getStoreColorEffect(colorId, color) {
 
 async function buyStoreItem(itemId, price, currentBalance) {
   if (currentBalance < price) {
-    alert("Você não tem LuizCoins™ suficientes para comprar este item!");
+    await w95alert("Você não tem LuizCoins™ suficientes para comprar este item!");
     return;
   }
-  if (!confirm(`Tem certeza que deseja gastar ${price} LuizCoins™ para comprar esse item?`)) return;
+  if (!await w95confirm(`Tem certeza que deseja gastar ${price} LuizCoins™ para comprar esse item?`)) return;
 
   showLoading("Processando compra...");
   try {
@@ -2516,10 +2516,10 @@ async function buyStoreItem(itemId, price, currentBalance) {
     if (res.ok) {
       await loadStore();
     } else {
-      alert(`❌ Erro: ${data.error}`);
+      await w95alert(`❌ Erro: ${data.error}`);
     }
   } catch (e) {
-    alert("Erro de conexão.");
+    await w95alert("Erro de conexão.");
   } finally {
     hideLoading();
   }
@@ -2623,7 +2623,7 @@ async function loadAchievementsRank() {
 
 async function openAchievements() {
   if (!currentUser) {
-    alert("Você precisa fazer login para ver suas conquistas.");
+    await w95alert("Você precisa fazer login para ver suas conquistas.");
     openWindow("win-login");
     return;
   }
@@ -2701,10 +2701,10 @@ async function toggleActiveAchievement(achievementId) {
       renderAchievements(achievementsData);
       invalidateProfileCache();
     } else {
-      alert(`❌ ${data.error}`);
+      await w95alert(`❌ ${data.error}`);
     }
   } catch {
-    alert("Erro de conexão.");
+    await w95alert("Erro de conexão.");
   }
 }
 
@@ -2716,7 +2716,7 @@ let profileEmojiData = null;
 
 async function openProfileWindow() {
   if (!currentUser) {
-    alert("Você precisa fazer login para personalizar seu perfil.");
+    await w95alert("Você precisa fazer login para personalizar seu perfil.");
     openWindow("win-login");
     return;
   }
@@ -3083,9 +3083,21 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.0.0",
+    date: "04/07/2026",
+    isNew: true,
+    title: "LuizFarm 95 e diálogos Win95",
+    items: [
+      "🌾 Novo jogo: LuizFarm 95! Compre sementes com LuizCoins™, plante na sua fazenda e volte mais tarde para colher — Milho (2h), Tomate (6h), Abóbora (24h) ou Uva (48h). Cada parcela desbloqueia com o tempo; comece com 3 grátis.",
+      "⚠️ Plante com estratégia: planta que não for colhida em 2× o tempo de crescimento murcha e você perde a colheita.",
+      "🔒 Parcelas extras (6 no total) podem ser desbloqueadas por LuizCoins™.",
+      "🖼️ Diálogos de confirmação e erro agora são estilizados no visual Windows 95 — chega de pop-up feio do navegador.",
+    ],
+  },
+  {
     version: "1.9.3",
     date: "03/07/2026",
-    isNew: true,
+    isNew: false,
     title: "Novos wallpapers e ranking renovado",
     items: [
       "🖼️ Wallpapers do Windows e Michaelsoft atualizados com imagens novas — veja no Perfil > Plano de fundo ou clique com o botão direito na área de trabalho.",
