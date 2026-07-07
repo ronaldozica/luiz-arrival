@@ -15,10 +15,11 @@ const { unlockAchievement } = require("../lib/achievement-defs");
 const { countPlayedDaysBefore, computeWeekRanking, MIN_DAYS_FOR_OVERALL_RANK } = require("../lib/rankings");
 const { calcBalance } = require("../lib/store-items");
 
-// Apostas feitas a menos de 30min do horário real de chegada são suspeitas de
-// "sniping" (jogador viu o Luiz chegar e apostou antes do admin registrar).
-// Penalização é suave: a aposta continua valendo para fins de participação
-// (1 LuizCoin), mas não concorre a precisão nem ao pódio do dia.
+// Apostas feitas a menos de 15 min do horário real de chegada são suspeitas de
+// "sniping". Isso cobre dois casos: quem apostou logo antes de Luiz chegar
+// (viu pelo corredor) e quem apostou logo depois (viu chegar mas o admin ainda
+// não tinha registrado). Penalização suave: conta 1 LuizCoin de participação,
+// mas não concorre a precisão nem ao pódio do dia.
 const SNIPING_WINDOW_MS = 15 * 60 * 1000;
 
 // POST /api/admin/login — autentica com bcrypt e retorna token de admin
@@ -75,7 +76,7 @@ router.post("/admin/arrival", requireAdminAuth, async (req, res) => {
         return {
           ...g,
           diff: absDiff(timeStrToMinutes(g.time), arrivalMins),
-          invalidated: sinceArrivalMs >= 0 && sinceArrivalMs <= SNIPING_WINDOW_MS,
+          invalidated: Math.abs(sinceArrivalMs) <= SNIPING_WINDOW_MS,
         };
       });
 
@@ -268,6 +269,51 @@ router.get("/admin/password-resets", requireAdminAuth, async (req, res) => {
     const kv = getKV();
     const resets = (await kv.get("password_resets")) || [];
     res.json(resets);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/invalidate-bets — recalcula invalidações de um dia já resolvido,
+// aplicando a janela de sniping atual. Útil quando apostas foram feitas após a
+// chegada real mas antes do admin registrá-la (reaplicar a regra sem mudar o horário).
+router.post("/admin/invalidate-bets", requireAdminAuth, async (req, res) => {
+  try {
+    const { date } = req.body;
+    const kv = getKV();
+    const key = date || todayKey();
+    const day = await getDayData(kv, key);
+
+    if (!day.arrival) {
+      return res.status(400).json({ error: "Nenhuma chegada registrada para este dia." });
+    }
+
+    const time = day.arrival;
+    const arrivalMins = timeStrToMinutes(time);
+    const arrivalInstant = brasiliaWallTimeToInstant(key, time);
+
+    const withDiff = day.guesses.map((g) => {
+      const createdAtMs = Date.parse(g.createdAt) || 0;
+      const sinceArrivalMs = arrivalInstant - createdAtMs;
+      return {
+        ...g,
+        diff: absDiff(timeStrToMinutes(g.time), arrivalMins),
+        invalidated: Math.abs(sinceArrivalMs) <= SNIPING_WINDOW_MS,
+      };
+    });
+
+    const valid = withDiff
+      .filter((g) => !g.invalidated)
+      .sort((a, b) => a.diff - b.diff || Date.parse(a.createdAt) - Date.parse(b.createdAt));
+    valid.forEach((g, i) => { g.position = i + 1; });
+
+    const invalidated = withDiff.filter((g) => g.invalidated);
+    invalidated.forEach((g) => { g.position = null; });
+
+    day.rankings = [...valid, ...invalidated];
+    await setDayData(kv, key, day);
+
+    res.json({ success: true, arrival: time, rankings: day.rankings });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -1704,12 +1704,52 @@ function setAdminTab(tab) {
     b.classList.toggle("active", b.dataset.adminTab === tab);
   });
   document.getElementById("admin-tab-arrival").style.display = tab === "arrival" ? "block" : "none";
+  document.getElementById("admin-tab-invalidar").style.display = tab === "invalidar" ? "block" : "none";
   document.getElementById("admin-tab-rankcheat").style.display = tab === "rankcheat" ? "block" : "none";
   document.getElementById("admin-tab-tags").style.display = tab === "tags" ? "block" : "none";
   document.getElementById("admin-tab-coins").style.display = tab === "coins" ? "block" : "none";
   document.getElementById("admin-tab-passwords").style.display = tab === "passwords" ? "block" : "none";
   if (tab === "coins") loadAdminCoinsPlayers();
   if (tab === "passwords") loadAdminPasswordResets();
+}
+
+async function invalidateBets() {
+  const date = document.getElementById("admin-invalidar-date").value || undefined;
+  const msg = document.getElementById("admin-invalidar-msg");
+  showLoading("Recalculando invalidações...");
+  try {
+    const body = {};
+    if (date) body.date = date;
+    const res = await fetch(`${API}/admin/invalidate-bets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showMsg(msg, `✅ Invalidações recalculadas para ${date || "hoje"} (chegada: ${data.arrival})`, "ok");
+      const result = document.getElementById("admin-invalidar-result");
+      if (data.rankings && data.rankings.length > 0) {
+        result.innerHTML = `<div class="section-label">🏆 Resultado</div>` + renderRankingsTable(data.rankings, data.arrival);
+      } else {
+        result.innerHTML = '<div class="no-data">Nenhuma aposta registrada neste dia.</div>';
+      }
+      todayStatusCache = null;
+      try {
+        localStorage.removeItem(CACHE_PREFIX + "history");
+        localStorage.removeItem(CACHE_PREFIX + "overall_rank");
+        localStorage.removeItem(CACHE_PREFIX + "weekly_rank");
+        localStorage.removeItem(CACHE_PREFIX + "weekly_history");
+      } catch {}
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+      handleAdminAuthError(res.status);
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
 }
 
 async function loadAdminPasswordResets() {

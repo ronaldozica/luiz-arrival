@@ -389,6 +389,7 @@
       <div id="admin-panel" style="display:none">
         <div class="win95-tabs">
           <button class="rank-tab active" data-admin-tab="arrival" onclick="setAdminTab('arrival')">📍 Chegada do Luiz</button>
+          <button class="rank-tab" data-admin-tab="invalidar" onclick="setAdminTab('invalidar')">⛔ Invalidar Apostas</button>
           <button class="rank-tab" data-admin-tab="rankcheat" onclick="setAdminTab('rankcheat')">🗑️ Ranking de Jogos</button>
           <button class="rank-tab" data-admin-tab="tags" onclick="setAdminTab('tags')">🏷️ Tags</button>
           <button class="rank-tab" data-admin-tab="coins" onclick="setAdminTab('coins')">💰 Moedas</button>
@@ -411,6 +412,23 @@
           <div class="win95-msg" id="admin-msg"></div>
           <hr />
           <div id="admin-result"></div>
+        </div>
+
+        <div id="admin-tab-invalidar" style="display:none">
+          <p><strong>Invalidar apostas por sniping</strong></p>
+          <div class="info-box" style="font-size:11px">
+            Recalcula quais apostas do dia devem ser invalidadas pela janela de 15 min. Use quando apostas foram feitas depois que o Luiz chegou, antes de você registrar a chegada.
+          </div>
+          <div class="field-group">
+            <label>Data (deixe vazio para hoje):</label>
+            <input type="date" id="admin-invalidar-date" />
+          </div>
+          <div class="btn-row">
+            <button class="win95-action-btn" onclick="invalidateBets()">⛔ Recalcular Invalidações</button>
+          </div>
+          <div class="win95-msg" id="admin-invalidar-msg"></div>
+          <hr />
+          <div id="admin-invalidar-result"></div>
         </div>
 
         <div id="admin-tab-rankcheat" style="display:none">
