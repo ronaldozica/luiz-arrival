@@ -260,8 +260,18 @@ async function resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, 
 
   if (coinsWon > 0) {
     const wonKey = `bjwon:${uKey}`;
-    await kv.set(wonKey, parseRedisNumber(await kv.get(wonKey)) + coinsWon);
+    const newTotal = parseRedisNumber(await kv.get(wonKey)) + coinsWon;
+    await kv.set(wonKey, newTotal);
     await kv.set(dKey, dailyEarned + coinsWon, { ex: 2 * 24 * 60 * 60 });
+
+    // Mantém gamerank:luizjack para o Top 1 de jogos (evita ler todos os bjwon:* no leaderboard)
+    const bjRank = (await kv.get("gamerank:luizjack")) || [];
+    const existingIdx = bjRank.findIndex((s) => userKey(s.name) === uKey);
+    if (existingIdx >= 0) bjRank.splice(existingIdx, 1);
+    bjRank.push({ name: user.name, score: newTotal, date: new Date().toISOString() });
+    bjRank.sort((a, b) => b.score - a.score);
+    if (bjRank.length > 50) bjRank.length = 50;
+    await kv.set("gamerank:luizjack", bjRank);
   }
   if (coinsLost > 0) {
     const lostKey = `bjlost:${uKey}`;

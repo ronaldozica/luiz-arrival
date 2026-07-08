@@ -505,22 +505,22 @@ function renderBlackjack() {
         <button class="bj-btn bj-btn-deal"
           onclick="dealBlackjack()"
           ${(isPlaying || bjBusy) ? "disabled" : ""}>
-          ${isDone ? "Nova Mão" : "Distribuir"}
+          ${isDone ? "Nova mão" : "Distribuir"}
         </button>
         <button class="bj-btn bj-btn-hit"
           onclick="bjAction('hit')"
           ${(!isPlaying || bjBusy) ? "disabled" : ""}>
-          Pedir (Hit)
+          Pedir (hit)
         </button>
         <button class="bj-btn bj-btn-stand"
           onclick="bjAction('stand')"
           ${(!isPlaying || bjBusy) ? "disabled" : ""}>
-          Parar (Stand)
+          Parar (stand)
         </button>
       </div>
 
       <div class="bj-status-msg">
-        ${isPlaying ? "Sua vez — Pedir carta ou Parar?" : ""}
+        ${isPlaying ? "Sua vez — pedir carta ou parar?" : ""}
         ${isIdle    ? `Aposta selecionada: <strong style="color:#ffe066">${BET_LABELS[bjSelectedBet]} LC</strong> · Blackjack paga 1,5×` : ""}
       </div>
     </div>
