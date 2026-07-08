@@ -138,7 +138,7 @@ router.post("/blackjack/start", requireAuth, async (req, res) => {
 
     if (playerBJ || dealerBJ) {
       // Resolve immediately — no need to save game state
-      return await resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, playerBJ, dealerBJ);
+      return await resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, playerBJ, dealerBJ, undefined, balance);
     }
 
     await kv.set(`bj_game:${uKey}`, JSON.stringify(game), { ex: 10 * 60 });
@@ -187,11 +187,11 @@ router.post("/blackjack/action", requireAuth, async (req, res) => {
 
       if (pv > 21) {
         // Bust — resolve without dealer drawing
-        return await resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, false, false, "bust");
+        return await resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, false, false, "bust", startBalance);
       }
       if (pv === 21) {
         // Auto-stand on 21
-        return await resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, false, false, "stand");
+        return await resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, false, false, "stand", startBalance);
       }
 
       await kv.set(`bj_game:${uKey}`, JSON.stringify(game), { ex: 10 * 60 });
@@ -209,13 +209,13 @@ router.post("/blackjack/action", requireAuth, async (req, res) => {
     }
 
     // stand
-    return await resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, false, false, "stand");
+    return await resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, false, false, "stand", startBalance);
   } finally {
     await releaseBjLock(kv, uKey);
   }
 });
 
-async function resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, playerBJ, dealerBJ, trigger) {
+async function resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, playerBJ, dealerBJ, trigger, startBalance = 0) {
   const { playerHand, dealerHand, deck, bet } = game;
 
   // Dealer draws to 17+ (only when player didn't bust and no natural)
@@ -307,7 +307,8 @@ async function resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, 
 
   await kv.del(`bj_game:${uKey}`);
 
-  const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
+  // newBalance derivado aritmeticamente — evita chamar calcBalance (scan pesado do histórico)
+  const newBalance = Math.max(0, startBalance + coinsWon - coinsLost);
 
   res.json({
     status: "done",
@@ -318,7 +319,7 @@ async function resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, 
     outcome,
     coinsWon,
     coinsLost,
-    newBalance: Math.max(0, earnedCoins - spentCoins),
+    newBalance,
     dailyEarned: newDailyEarned,
     dailyCap: BJ_DAILY_CAP,
     blocked: newDailyEarned >= BJ_DAILY_CAP,

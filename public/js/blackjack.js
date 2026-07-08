@@ -90,12 +90,30 @@
       font-family: 'Times New Roman', serif;
       position: relative;
       overflow: hidden;
-      animation: bj-deal 0.18s ease-out;
     }
+    .bj-card-new { animation: bj-deal 0.28s ease-out; }
     @keyframes bj-deal {
-      from { transform: translateY(-12px) scale(0.88); opacity: 0; }
+      from { transform: translateY(-14px) scale(0.85); opacity: 0; }
       to   { transform: translateY(0)      scale(1);    opacity: 1; }
     }
+    .bj-loading-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      color: #a8d8a8;
+      font-size: 11px;
+      min-height: 20px;
+    }
+    .bj-spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(168,216,168,0.2);
+      border-top-color: #a8d8a8;
+      border-radius: 50%;
+      animation: bj-spin 0.65s linear infinite;
+    }
+    @keyframes bj-spin { to { transform: rotate(360deg); } }
     .bj-card-back {
       background: repeating-linear-gradient(
         45deg, #1a3eaa, #1a3eaa 4px, #2255cc 4px, #2255cc 8px
@@ -232,6 +250,8 @@ const BJ_DAILY_CAP = 100;
 let bjSelectedBet = "medium";
 let bjGame = null;   // { playerHand, dealerHand?, dealerVisible, playerValue, dealerValue?, outcome?, ... }
 let bjBusy = false;
+let bjLastPlayerCount = 0;  // cartas do jogador na última renderização (para animar só a nova)
+let bjJustResolved = false; // sinaliza que a mão acabou de ser resolvida (animar cartas do dealer)
 
 const BET_LABELS = { low: "5", medium: "15", high: "30" };
 const BET_NAMES  = { low: "Baixa", medium: "Média", high: "Alta" };
@@ -325,8 +345,9 @@ async function dealBlackjack() {
 
 async function bjAction(action) {
   if (bjBusy || bjState !== "playing") return;
+  bjLastPlayerCount = bjGame?.playerHand?.length || 0;
   bjBusy = true;
-  renderBlackjack(); // re-render with disabled buttons
+  renderBlackjack(); // re-render with disabled buttons + spinner
 
   try {
     const res = await fetch("/api/blackjack/action", {
@@ -347,9 +368,9 @@ async function bjAction(action) {
     bjGame = data;
 
     if (data.status === "done") {
-      bjState = "result";
+      bjJustResolved = true;
+      bjState = data.blocked ? "blocked" : "result";
       if (data.coinsWon > 0) showGameCoinsToast(data.coinsWon);
-      if (data.blocked) bjState = "blocked";
       if (data.newAchievements && data.newAchievements.length > 0)
         setTimeout(() => showAchievementToast(data.newAchievements), 2000);
     } else {
@@ -364,19 +385,20 @@ async function bjAction(action) {
 
 // ─── Rendering ────────────────────────────────────────────────────────────────
 
-function cardHTML(card, faceDown) {
-  if (faceDown) return `<div class="bj-card bj-card-back"></div>`;
+function cardHTML(card, faceDown, isNew = false) {
+  const newCls = isNew ? " bj-card-new" : "";
+  if (faceDown) return `<div class="bj-card bj-card-back${newCls}"></div>`;
   const red = card.suit === "♥" || card.suit === "♦";
   const cls = red ? "bj-red" : "bj-black";
-  return `<div class="bj-card ${cls}">
+  return `<div class="bj-card ${cls}${newCls}">
     <div class="bj-card-top">${card.value}</div>
     <div class="bj-card-suit">${card.suit}</div>
     <div class="bj-card-bot">${card.value}</div>
   </div>`;
 }
 
-function handHTML(cards, hideSecond) {
-  return cards.map((c, i) => cardHTML(c, hideSecond && i === 1)).join("");
+function handHTML(cards, hideSecond, prevCount = Infinity) {
+  return cards.map((c, i) => cardHTML(c, hideSecond && i === 1, i >= prevCount)).join("");
 }
 
 function resultHTML(outcome, coinsWon, coinsLost) {
@@ -467,7 +489,10 @@ function renderBlackjack() {
       <div>
         <div class="bj-zone-label">🎩 Dealer ${isDone && dealerValue !== "" ? `— ${dealerValue}` : ""}</div>
         <div class="bj-hand">
-          ${dealerCards.map((c, i) => c ? cardHTML(c, isPlaying && i === 1) : `<div class="bj-card bj-card-back"></div>`).join("")}
+          ${dealerCards.map((c, i) => {
+            const isNew = bjJustResolved && i > 0;
+            return c ? cardHTML(c, isPlaying && i === 1, isNew) : `<div class="bj-card bj-card-back${isNew ? " bj-card-new" : ""}"></div>`;
+          }).join("")}
           ${!bjGame ? `<div style="color:rgba(255,255,255,0.2);font-size:12px;align-self:center">Aguardando...</div>` : ""}
         </div>
       </div>
@@ -477,7 +502,7 @@ function renderBlackjack() {
       <div>
         <div class="bj-zone-label">🎴 Você ${playerValue !== "" ? `— ${playerValue}` : ""}</div>
         <div class="bj-hand">
-          ${handHTML(playerCards, false)}
+          ${handHTML(playerCards, false, bjLastPlayerCount)}
           ${!bjGame ? `<div style="color:rgba(255,255,255,0.2);font-size:12px;align-self:center">Aguardando...</div>` : ""}
         </div>
       </div>
@@ -520,11 +545,17 @@ function renderBlackjack() {
       </div>
 
       <div class="bj-status-msg">
-        ${isPlaying ? "Sua vez — pedir carta ou parar?" : ""}
+        ${bjBusy && isPlaying
+          ? `<div class="bj-loading-row"><div class="bj-spinner"></div> Calculando...</div>`
+          : isPlaying ? "Sua vez — pedir carta ou parar?" : ""}
         ${isIdle    ? `Aposta selecionada: <strong style="color:#ffe066">${BET_LABELS[bjSelectedBet]} LC</strong> · Blackjack paga 1,5×` : ""}
       </div>
     </div>
   `;
+
+  // Resetar flags de animação após a renderização que os usou
+  bjJustResolved = false;
+  if (!bjBusy) bjLastPlayerCount = playerCards.length;
 }
 
 function showBjAlert(msg) {
