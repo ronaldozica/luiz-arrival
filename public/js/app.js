@@ -2165,6 +2165,10 @@ function renderGameRank() {
   const container = document.getElementById("gamerank-content");
   if (!container || !currentGameRankCache.game) return;
   const { game, data } = currentGameRankCache;
+  if (game === "luizjack") {
+    container.innerHTML = buildBjRankTable(data["default"] || []);
+    return;
+  }
   const gameLabel = getGameLabel(game);
   const diffs = GAME_RANK_DIFFICULTIES[game];
   let html = "";
@@ -2192,6 +2196,12 @@ async function loadGameRank(game) {
   container.innerHTML = '<div class="loading">⏳ Carregando ranking...</div>';
   setGameRankTabActive(game);
   try {
+    if (game === "luizjack") {
+      const data = await cachedFetchJSON("bj_rank", `${API}/blackjack/rank`, 30 * 1000);
+      currentGameRankCache = { game, data: { default: data || [] } };
+      renderGameRank();
+      return;
+    }
     const diffs = GAME_RANK_DIFFICULTIES[game];
     if (!diffs) {
       const cacheKey = `game_rank_${game}_default`;
@@ -2308,7 +2318,20 @@ function getDifficultyLabel(diff) {
 }
 
 function getGameLabel(game) {
-  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider" }[game] || game);
+  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider", luizjack: "🃏 LuizJack 21" }[game] || game);
+}
+
+function buildBjRankTable(entries) {
+  if (entries.length === 0) return '<div class="no-data">Nenhuma mão jogada ainda. Seja o primeiro!</div>';
+  let html = `<div class="section-label">🃏 LuizJack 21 — Maiores Ganhadores</div>
+    <table class="win95-table"><thead><tr>
+      <th>#</th><th>Jogador</th><th>LC Ganhos</th><th>Mãos</th>
+    </tr></thead><tbody>`;
+  entries.forEach((e, i) => {
+    const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
+    html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(e.name, true)}</td><td><strong>${e.coinsWon} LC</strong></td><td>${e.handsPlayed}</td></tr>`;
+  });
+  return html + "</tbody></table>";
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -3123,9 +3146,23 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.1.0",
+    date: "08/07/2026",
+    isNew: true,
+    title: "LuizJack 21 — Blackjack no cassino",
+    items: [
+      "🃏 Novo jogo: LuizJack 21! Jogue blackjack contra a mesa com visual cassino (feltro verde, fichas, cartas) dentro do shell Windows 95.",
+      "💰 Três níveis de aposta: Baixa (5 LC), Média (15 LC) e Alta (30 LC). Blackjack natural paga 1,5×.",
+      "🏆 Limite de 100 LuizCoins™ por dia — quando atingido, o jogo é bloqueado até meia-noite.",
+      "🎖️ 5 novas conquistas exclusivas do LuizJack: Sortuda de iniciante, Natural!, High Roller, Em chamas e A casa perdeu.",
+      "📊 Ranking dos Jogos: nova aba 🃏 LuizJack mostrando os maiores ganhadores de todos os tempos.",
+      "⚖️ Prêmios da LuizFarm reduzidos em ~30% para equilibrar a economia de LuizCoins™.",
+    ],
+  },
+  {
     version: "2.0.0",
     date: "04/07/2026",
-    isNew: true,
+    isNew: false,
     title: "LuizFarm 95 e diálogos Win95",
     items: [
       "🌾 Novo jogo: LuizFarm 95! Compre sementes com LuizCoins™, plante na sua fazenda e volte mais tarde para colher — Milho (2h), Tomate (6h), Abóbora (24h) ou Uva (48h). Cada parcela desbloqueia com o tempo; comece com 3 grátis.",

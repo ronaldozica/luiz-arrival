@@ -309,6 +309,8 @@ async function dealBlackjack() {
       bjGame = data;
       bjState = "result";
       if (data.coinsWon > 0) showGameCoinsToast(data.coinsWon);
+      if (data.newAchievements && data.newAchievements.length > 0)
+        setTimeout(() => showAchievementToast(data.newAchievements), 2000);
     } else {
       bjGame = data;
       bjState = "playing";
@@ -347,6 +349,8 @@ async function bjAction(action) {
       bjState = "result";
       if (data.coinsWon > 0) showGameCoinsToast(data.coinsWon);
       if (data.blocked) bjState = "blocked";
+      if (data.newAchievements && data.newAchievements.length > 0)
+        setTimeout(() => showAchievementToast(data.newAchievements), 2000);
     } else {
       bjState = "playing";
     }

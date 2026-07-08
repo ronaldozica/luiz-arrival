@@ -6,6 +6,7 @@ const { getUsers } = require("../lib/users");
 const { userKey, parseRedisNumber } = require("../lib/utils");
 const { calcBalance } = require("../lib/store-items");
 const { todayKey } = require("../lib/datetime");
+const { unlockAchievement } = require("../lib/achievement-defs");
 
 const BJ_DAILY_CAP = 100;
 const BET_AMOUNTS = { low: 5, medium: 15, high: 30 };
@@ -268,10 +269,36 @@ async function resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, 
     await kv.set(lostKey, parseRedisNumber(await kv.get(lostKey)) + coinsLost);
   }
 
+  // Mãos jogadas (para o ranking)
+  const handsKey = `bjhands:${uKey}`;
+  const newHands = parseRedisNumber(await kv.get(handsKey)) + 1;
+  await kv.set(handsKey, newHands);
+
+  // ─── Conquistas ───────────────────────────────────────────────────────────
+  const newDailyEarned = dailyEarned + coinsWon;
+  const newAchievements = [];
+  const streakKey = `bj_streak:${uKey}`;
+
+  if (outcome === "win" || outcome === "blackjack") {
+    const newStreak = parseRedisNumber(await kv.get(streakKey)) + 1;
+    await kv.set(streakKey, newStreak);
+
+    if (await unlockAchievement(kv, user.name, "bj_first_win"))  newAchievements.push("bj_first_win");
+    if (outcome === "blackjack" && await unlockAchievement(kv, user.name, "bj_natural")) newAchievements.push("bj_natural");
+    if (bet === BET_AMOUNTS.high && await unlockAchievement(kv, user.name, "bj_high_roller")) newAchievements.push("bj_high_roller");
+    if (newStreak >= 3 && await unlockAchievement(kv, user.name, "bj_streak_3")) newAchievements.push("bj_streak_3");
+  } else if (outcome === "lose" || outcome === "bust") {
+    await kv.del(streakKey);
+  }
+  // push: mantém a sequência sem alterar
+
+  if (newDailyEarned >= BJ_DAILY_CAP) {
+    if (await unlockAchievement(kv, user.name, "bj_daily_cap")) newAchievements.push("bj_daily_cap");
+  }
+
   await kv.del(`bj_game:${uKey}`);
 
   const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
-  const newDailyEarned = dailyEarned + coinsWon;
 
   res.json({
     status: "done",
@@ -286,7 +313,28 @@ async function resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, 
     dailyEarned: newDailyEarned,
     dailyCap: BJ_DAILY_CAP,
     blocked: newDailyEarned >= BJ_DAILY_CAP,
+    newAchievements,
   });
 }
+
+// ─── GET /api/blackjack/rank ──────────────────────────────────────────────────
+router.get("/blackjack/rank", async (req, res) => {
+  try {
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const entries = [];
+    for (const user of users) {
+      const uKey = userKey(user.name);
+      const coinsWon = parseRedisNumber(await kv.get(`bjwon:${uKey}`));
+      if (coinsWon <= 0) continue;
+      const handsPlayed = parseRedisNumber(await kv.get(`bjhands:${uKey}`));
+      entries.push({ name: user.name, coinsWon, handsPlayed });
+    }
+    entries.sort((a, b) => b.coinsWon - a.coinsWon);
+    res.json(entries.slice(0, 50));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 module.exports = router;
