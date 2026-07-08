@@ -335,4 +335,22 @@ router.post("/admin/password-resets/dismiss", requireAdminAuth, async (req, res)
   }
 });
 
+// POST /api/admin/grant-aimtrainer-legend — concede retroativamente a conquista
+// "Lenda da mira" a todos os jogadores com 3000+ pontos no aim trainer difícil.
+router.post("/admin/grant-aimtrainer-legend", requireAdminAuth, async (req, res) => {
+  try {
+    const kv = getKV();
+    const scores = (await kv.get("gamerank:aimtrainer:hard")) || [];
+    const eligible = scores.filter((e) => e.score >= 3000);
+    const granted = [];
+    for (const entry of eligible) {
+      const wasNew = await unlockAchievement(kv, entry.name, "aimtrainer_legend");
+      if (wasNew) granted.push(entry.name);
+    }
+    res.json({ checked: eligible.length, granted });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

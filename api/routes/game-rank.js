@@ -258,7 +258,7 @@ router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"),
       }
       if (
         difficulty === "hard" &&
-        scoreNum >= 10000 &&
+        scoreNum >= 3000 &&
         !achUnlocked.includes("aimtrainer_legend")
       ) {
         achUnlocked.push("aimtrainer_legend");

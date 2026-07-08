@@ -10,7 +10,7 @@ const ACHIEVEMENT_DEFS = [
   { id: "sudoku_medium", title: "Mestre dos números", description: "Complete um Sudoku no modo Médio", icon: "🧮" },
   { id: "sudoku_hard", title: "Gênio dos números", description: "Complete um Sudoku no modo Difícil", icon: "🧠" },
   { id: "aimtrainer_sharp", title: "Mira afiada", description: "Faça 5000+ pontos no Aim Trainer", icon: "🎯" },
-  { id: "aimtrainer_legend", title: "Lenda da mira", description: "Faça 10000+ pontos no Aim Trainer modo Difícil", icon: "🏆" },
+  { id: "aimtrainer_legend", title: "Lenda da mira", description: "Faça 3000+ pontos no Aim Trainer modo Difícil", icon: "🏆" },
   { id: "spider_easy", title: "Aprendiz do Spider", description: "Complete uma Paciência Spider no modo Fácil (1 naipe)", icon: "🕷️" },
   { id: "spider_medium", title: "Estrategista do Spider", description: "Complete uma Paciência Spider no modo Médio (2 naipes)", icon: "🃏" },
   { id: "spider_hard", title: "Lenda do Spider", description: "Complete uma Paciência Spider no modo Difícil (4 naipes)", icon: "🏆" },
