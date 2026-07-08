@@ -51,12 +51,35 @@ function isNaturalBlackjack(hand) {
   return hand.length === 2 && handValue(hand) === 21;
 }
 
+// ─── Balance cache ────────────────────────────────────────────────────────────
+// Evita chamar calcBalance (100+ leituras Redis) a cada ação do blackjack.
+// Atualizado ao resolver uma mão; invalidado em compras na loja (store.js).
+const BAL_TTL = 5 * 60;
+async function getCachedBalance(kv, uKey) {
+  const v = await kv.get(`bjbal:${uKey}`);
+  return v !== null ? parseRedisNumber(v) : null;
+}
+async function setCachedBalance(kv, uKey, balance) {
+  await kv.set(`bjbal:${uKey}`, String(balance), { ex: BAL_TTL });
+}
+
 async function getUserAndBalance(kv, sessionName) {
   const users = await getUsers(kv);
   const user = users.find((u) => userKey(u.name) === userKey(sessionName));
-  if (!user) return { user: null, balance: 0, users: [] };
+  if (!user) return { user: null, balance: 0 };
+  const uKey = userKey(user.name);
+  const cached = await getCachedBalance(kv, uKey);
+  if (cached !== null) return { user, balance: cached };
   const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
-  return { user, balance: Math.max(0, earnedCoins - spentCoins), users };
+  const balance = Math.max(0, earnedCoins - spentCoins);
+  await setCachedBalance(kv, uKey, balance);
+  return { user, balance };
+}
+
+// Busca apenas o usuário, sem calcBalance — para ações mid-game
+async function getUser(kv, sessionName) {
+  const users = await getUsers(kv);
+  return users.find((u) => userKey(u.name) === userKey(sessionName)) || null;
 }
 
 async function acquireBjLock(kv, uKey) {
@@ -110,7 +133,7 @@ router.post("/blackjack/start", requireAuth, async (req, res) => {
   if (!bet) return res.status(400).json({ error: "Nível de aposta inválido." });
 
   const kv = getKV();
-  const { user, balance, users } = await getUserAndBalance(kv, req.sessionName);
+  const { user, balance } = await getUserAndBalance(kv, req.sessionName);
   if (!user) return res.status(401).json({ error: "Acesso negado." });
 
   const uKey = userKey(user.name);
@@ -131,14 +154,15 @@ router.post("/blackjack/start", requireAuth, async (req, res) => {
     const deck = makeDeck();
     const playerHand = [deck.pop(), deck.pop()];
     const dealerHand = [deck.pop(), deck.pop()];
-    const game = { playerHand, dealerHand, deck, bet, betLevel };
+    // startBalance gravado no estado — actions mid-game não precisam chamar calcBalance
+    const game = { playerHand, dealerHand, deck, bet, betLevel, startBalance: balance };
 
     const playerBJ = isNaturalBlackjack(playerHand);
     const dealerBJ = isNaturalBlackjack(dealerHand);
 
     if (playerBJ || dealerBJ) {
       // Resolve immediately — no need to save game state
-      return await resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, playerBJ, dealerBJ, undefined, balance);
+      return await resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, playerBJ, dealerBJ, undefined, balance);
     }
 
     await kv.set(`bj_game:${uKey}`, JSON.stringify(game), { ex: 10 * 60 });
@@ -166,7 +190,8 @@ router.post("/blackjack/action", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Ação inválida." });
 
   const kv = getKV();
-  const { user, users, balance: startBalance } = await getUserAndBalance(kv, req.sessionName);
+  // Usa getUser (sem calcBalance) — o saldo vem do estado da partida salvo em /start
+  const user = await getUser(kv, req.sessionName);
   if (!user) return res.status(401).json({ error: "Acesso negado." });
 
   const uKey = userKey(user.name);
@@ -180,18 +205,17 @@ router.post("/blackjack/action", requireAuth, async (req, res) => {
 
     const dKey = `bjdaily:${uKey}:${todayKey()}`;
     const dailyEarned = parseRedisNumber(await kv.get(dKey));
+    const startBalance = game.startBalance ?? 0;
 
     if (action === "hit") {
       game.playerHand.push(game.deck.pop());
       const pv = handValue(game.playerHand);
 
       if (pv > 21) {
-        // Bust — resolve without dealer drawing
-        return await resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, false, false, "bust", startBalance);
+        return await resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, false, false, "bust", startBalance);
       }
       if (pv === 21) {
-        // Auto-stand on 21
-        return await resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, false, false, "stand", startBalance);
+        return await resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, false, false, "stand", startBalance);
       }
 
       await kv.set(`bj_game:${uKey}`, JSON.stringify(game), { ex: 10 * 60 });
@@ -209,13 +233,13 @@ router.post("/blackjack/action", requireAuth, async (req, res) => {
     }
 
     // stand
-    return await resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, false, false, "stand", startBalance);
+    return await resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, false, false, "stand", startBalance);
   } finally {
     await releaseBjLock(kv, uKey);
   }
 });
 
-async function resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, playerBJ, dealerBJ, trigger, startBalance = 0) {
+async function resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, playerBJ, dealerBJ, trigger, startBalance = 0) {
   const { playerHand, dealerHand, deck, bet } = game;
 
   // Dealer draws to 17+ (only when player didn't bust and no natural)
@@ -309,6 +333,8 @@ async function resolveHand(kv, user, users, uKey, game, dKey, dailyEarned, res, 
 
   // newBalance derivado aritmeticamente — evita chamar calcBalance (scan pesado do histórico)
   const newBalance = Math.max(0, startBalance + coinsWon - coinsLost);
+  // Atualiza o cache de saldo para que "Nova mão" não precise recomputar calcBalance
+  await setCachedBalance(kv, uKey, newBalance);
 
   res.json({
     status: "done",

@@ -78,6 +78,8 @@ router.post("/store/buy", requireAuth, invalidatesCache("cache:profiles"), async
     const rawPurchases = parseRedisArray(await kv.get(purchasesKey));
     rawPurchases.push({ id: itemId, pricePaid: item.price });
     await kv.set(purchasesKey, JSON.stringify(rawPurchases));
+    // Invalida cache de saldo do blackjack (compra altera o saldo real)
+    await kv.del(`bjbal:${userKey(user.name)}`);
 
     res.json({ success: true, newBalance: balance - item.price });
   } catch (e) {
