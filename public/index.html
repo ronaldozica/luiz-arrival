@@ -84,6 +84,7 @@
       <hr />
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
       <button onclick="openFarmWindow(); closeStartMenu()">🌾 LuizFarm 95</button>
+      <button onclick="openBlackjackWindow(); closeStartMenu()">🃏 LuizJack 21</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
       <button onclick="openWindow('win-aimtrainer'); initAimTrainerGame(); closeStartMenu()">🔫 Aim Trainer</button>
       <button onclick="openMinesweeperWindow(); closeStartMenu()">💣 Campo Minado</button>
@@ -1138,6 +1139,10 @@
           <div class="icon-img">🌾</div>
           <div class="icon-label">LuizFarm 95</div>
         </div>
+        <div class="folder-icon" ondblclick="openBlackjackWindow()">
+          <div class="icon-img">🃏</div>
+          <div class="icon-label">LuizJack 21</div>
+        </div>
         <div class="folder-icon" ondblclick="openWindow('win-snake'); initSnakeGame()">
           <div class="icon-img">🐍</div>
           <div class="icon-label">Snake 95</div>
@@ -1252,6 +1257,20 @@
   </div>
 
   <!-- ══ WINDOW: FARM ══ -->
+  <!-- ══ WINDOW: LUIZJACK 21 ══ -->
+  <div class="win95-window" id="win-luizjack" style="left:170px;top:55px;width:480px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-luizjack')">
+      <span class="win95-title">🃏 LuizJack 21</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-luizjack')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-luizjack')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body" style="padding:0;overflow:hidden">
+      <div id="luizjack-root" style="display:flex;flex-direction:column;min-height:420px"></div>
+    </div>
+  </div>
+
   <div class="win95-window" id="win-farm" style="left:100px;top:60px;width:560px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-farm')">
       <span class="win95-title">🌾 LuizFarm 95</span>
@@ -1275,6 +1294,7 @@
   <script src="js/sudoku.js"></script>
   <script src="js/spider.js"></script>
   <script src="js/farm.js"></script>
+  <script src="js/blackjack.js"></script>
   <script src="js/notepad.js"></script>
   <script src="js/calculator.js"></script>
   <script src="js/paint.js"></script>

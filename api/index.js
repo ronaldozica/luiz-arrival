@@ -18,6 +18,7 @@ app.use("/api", require("./routes/profile"));
 app.use("/api", require("./routes/achievements"));
 app.use("/api", require("./routes/leaderboards"));
 app.use("/api", require("./routes/farm"));
+app.use("/api", require("./routes/blackjack"));
 
 // ─── Export para Vercel ───────────────────────────────────────────────────────
 module.exports = app;

@@ -198,6 +198,9 @@ async function calcBalance(kv, user, users) {
   const farmCoins = parseRedisNumber(await kv.get(`farmcoins:${userKey(user.name)}`));
   earnedCoins += farmCoins;
 
+  const bjWon = parseRedisNumber(await kv.get(`bjwon:${userKey(user.name)}`));
+  earnedCoins += bjWon;
+
   const purchasesKey = `purchases:${userKey(user.name)}`;
   const rawPurchases = parseRedisArray(await kv.get(purchasesKey));
   const purchases = purchaseIds(rawPurchases);
@@ -210,6 +213,9 @@ async function calcBalance(kv, user, users) {
 
   const farmSpent = parseRedisNumber(await kv.get(`farmspent:${userKey(user.name)}`));
   spentCoins += farmSpent;
+
+  const bjLost = parseRedisNumber(await kv.get(`bjlost:${userKey(user.name)}`));
+  spentCoins += bjLost;
 
   return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned };
 }
