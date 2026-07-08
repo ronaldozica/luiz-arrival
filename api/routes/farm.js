@@ -7,10 +7,10 @@ const { userKey, parseRedisNumber } = require("../lib/utils");
 const { calcBalance } = require("../lib/store-items");
 
 const FARM_SEEDS = {
-  corn:    { cost: 8,  growthMs: 2  * 3600000, reward: 20  },
-  tomato:  { cost: 20, growthMs: 6  * 3600000, reward: 55  },
-  pumpkin: { cost: 45, growthMs: 24 * 3600000, reward: 130 },
-  grape:   { cost: 90, growthMs: 48 * 3600000, reward: 270 },
+  corn:    { cost: 8,  growthMs: 2  * 3600000, reward: 14  },
+  tomato:  { cost: 20, growthMs: 6  * 3600000, reward: 38  },
+  pumpkin: { cost: 45, growthMs: 24 * 3600000, reward: 90  },
+  grape:   { cost: 90, growthMs: 48 * 3600000, reward: 190 },
 };
 
 // Primeiras 3 parcelas desbloqueadas desde o início; resto exige compra.

@@ -19,10 +19,10 @@
 })();
 
 const FARM_SEEDS_CLIENT = {
-  corn:    { name: "Milho",   icon: "🌽", cost: 8,  growthMs: 2  * 3600000, reward: 20  },
-  tomato:  { name: "Tomate",  icon: "🍅", cost: 20, growthMs: 6  * 3600000, reward: 55  },
-  pumpkin: { name: "Abóbora", icon: "🎃", cost: 45, growthMs: 24 * 3600000, reward: 130 },
-  grape:   { name: "Uva",     icon: "🍇", cost: 90, growthMs: 48 * 3600000, reward: 270 },
+  corn:    { name: "Milho",   icon: "🌽", cost: 8,  growthMs: 2  * 3600000, reward: 14  },
+  tomato:  { name: "Tomate",  icon: "🍅", cost: 20, growthMs: 6  * 3600000, reward: 38  },
+  pumpkin: { name: "Abóbora", icon: "🎃", cost: 45, growthMs: 24 * 3600000, reward: 90  },
+  grape:   { name: "Uva",     icon: "🍇", cost: 90, growthMs: 48 * 3600000, reward: 190 },
 };
 
 let farmPlots = null;
