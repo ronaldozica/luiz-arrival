@@ -4,7 +4,7 @@ const router = express.Router();
 const { getKV } = require("../lib/redis");
 const { getCachedOrCompute } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
-const { userKey, parseRedisArray } = require("../lib/utils");
+const { userKey, parseRedisArray, parseRedisNumber } = require("../lib/utils");
 const { GAMES } = require("../lib/games");
 const { ACHIEVEMENT_DEFS } = require("../lib/achievement-defs");
 
@@ -36,6 +36,18 @@ router.get("/leaderboards/top1", async (req, res) => {
         if (!out[game]) out[game] = {};
         out[game][diff || "default"] = scores[0] || null;
       });
+
+      // LuizJack 21 — ranking by total LC won (bjwon:* keys), no gamerank key
+      const users = await getUsers(kv);
+      const bjCoins = await Promise.all(
+        users.map((u) => kv.get(`bjwon:${userKey(u.name)}`))
+      );
+      const bjTop = users
+        .map((u, i) => ({ name: u.name, score: parseRedisNumber(bjCoins[i]) }))
+        .filter((e) => e.score > 0)
+        .sort((a, b) => b.score - a.score);
+      out["luizjack"] = { default: bjTop[0] ? { name: bjTop[0].name, score: bjTop[0].score, date: null } : null };
+
       return out;
     });
 

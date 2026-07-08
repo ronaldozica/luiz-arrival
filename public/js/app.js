@@ -147,6 +147,7 @@ function toggleLegacyScore(checked) {
 const TIME_BASED_SCORE_GAMES = new Set(["sudoku", "minesweeper", "spider"]);
 
 function formatGameScore(game, score) {
+  if (game === "luizjack") return `${score} LC`;
   if (!TIME_BASED_SCORE_GAMES.has(game) || showLegacyScore) return score;
   const seconds = Math.max(0, 9999 - score);
   return `${seconds}s`;
@@ -2633,7 +2634,7 @@ async function loadTop1Rank() {
         if (!entry) {
           html += `<tr>${diffCell}<td class="no-data" colspan="3">Nenhum recorde ainda</td></tr>`;
         } else {
-          const date = new Date(entry.date).toLocaleDateString("pt-BR");
+          const date = entry.date ? new Date(entry.date).toLocaleDateString("pt-BR") : "—";
           html += `<tr class="rank-gold">${diffCell}<td>${renderPlayerName(entry.name, true)}</td><td><strong>${formatGameScore(game, entry.score)}</strong></td><td>${date}</td></tr>`;
         }
       });
