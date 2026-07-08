@@ -9,6 +9,8 @@ const { getDayData } = require("./days");
 // poucos dias; esmeralda em até ~4 dias; rubi em menos de 2 semanas; dourado
 // em menos de 1 mês; diamante (2,5x o dourado) em menos de 2 meses.
 const STORE_ITEMS = [
+  { id: "wp_luizbeatle", price: 50, type: "wallpaper", src: "/assets/wallpapers/luizBeatle.jpg", title: "LuizBeatle", wpKey: "luizbeatle" },
+  { id: "wp_luizbliss",  price: 50, type: "wallpaper", src: "/assets/wallpapers/luizBliss.jpg",  title: "LuizBliss",  wpKey: "luizbliss"  },
   { id: "palinha", price: 15, src: "/photos/palinha.gif", title: "Luiz dando uma palinha" },
   { id: "baixista", price: 15, src: "/photos/baixista.gif", title: "Luiz Fernando baixista" },
   { id: "confusp", price: 20, src: "/photos/confuso.gif", title: "Luiz confuso" },

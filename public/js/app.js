@@ -763,11 +763,13 @@ function closeContextMenu() {
 const WALLPAPER_KEY = "luizos_wallpaper";
 const CUSTOM_COLOR_KEY = "luizos_custom_color";
 const WALLPAPERS = {
-  padrao: { label: "Padrão", type: "color", value: "#008080" },
-  windows: { label: "Windows", type: "image", value: "/wallpapers/windows.png" },
-  michaelsoft: { label: "Michaelsoft", type: "image", value: "/wallpapers/michaelsoft.png" },
-  luiz: { label: "Luiz", type: "image", value: "/wallpapers/luiz.png" },
-  custom: { label: "Personalizado", type: "color", value: "#008080" },
+  padrao:      { label: "Padrão",       type: "color", value: "#008080" },
+  windows:     { label: "Windows",      type: "image", value: "/wallpapers/windows.png" },
+  michaelsoft: { label: "Michaelsoft",  type: "image", value: "/wallpapers/michaelsoft.png" },
+  luiz:        { label: "Luiz",         type: "image", value: "/wallpapers/luiz.png" },
+  luizbeatle:  { label: "LuizBeatle",   type: "image", value: "/assets/wallpapers/luizBeatle.jpg" },
+  luizbliss:   { label: "LuizBliss",    type: "image", value: "/assets/wallpapers/luizBliss.jpg" },
+  custom:      { label: "Personalizado", type: "color", value: "#008080" },
 };
 
 function applyWallpaper(key) {
@@ -815,6 +817,36 @@ function applyCustomColor() {
   WALLPAPERS.custom.value = color;
   localStorage.setItem(CUSTOM_COLOR_KEY, color);
   applyWallpaper("custom");
+}
+
+// Atualiza os botões de wallpapers comprados no menu de contexto e na aba de perfil
+function updatePurchasedWallpapers(purchases, wpItems) {
+  const owned = wpItems.filter((i) => purchases.includes(i.id));
+
+  const ctxContainer = document.getElementById("ctx-wallpapers-purchased");
+  if (ctxContainer) {
+    ctxContainer.innerHTML = owned
+      .map((i) => `<button class="ctx-wallpaper-item" data-wp="${i.wpKey}" onclick="applyWallpaper('${i.wpKey}')">${escHtml(i.title)}</button>`)
+      .join("");
+  }
+
+  const profileContainer = document.getElementById("profile-wallpapers-purchased");
+  if (profileContainer) {
+    profileContainer.innerHTML = owned
+      .map((i) => `<button class="win95-action-btn" data-wp="${i.wpKey}" onclick="applyWallpaper('${i.wpKey}')">${escHtml(i.title)}</button>`)
+      .join("");
+  }
+}
+
+async function loadProfileWallpaper() {
+  if (!currentUser) return;
+  try {
+    const res = await fetch(`${API}/store`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) return;
+    const wpItems = data.items.filter((i) => i.type === "wallpaper");
+    updatePurchasedWallpapers(data.purchases, wpItems);
+  } catch { /* silent */ }
 }
 
 // ─── Start Menu ───────────────────────────────────────────────────────────────
@@ -2492,8 +2524,30 @@ async function loadStore() {
 
     const mediaItems = data.items.filter((i) => (i.type || "media") === "media");
     const colorItems = data.items.filter((i) => i.type === "namecolor");
+    const wpItems    = data.items.filter((i) => i.type === "wallpaper");
 
     let html = "";
+
+    if (wpItems.length > 0) {
+      html += `<div class="section-label" style="margin-bottom:8px">🖼️ Planos de fundo</div>`;
+      html += `<div class="store-grid">`;
+      wpItems.forEach((item) => {
+        const isUnlocked = data.purchases.includes(item.id);
+        html += `
+          <div class="${isUnlocked ? "store-item unlocked" : "store-item locked"}">
+            <div class="store-item-title">${escHtml(item.title)}</div>
+            <img src="${item.src}" class="store-item-preview" draggable="false" style="object-fit:cover" />
+            ${!isUnlocked
+              ? `<div class="store-item-price"><img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}</div>
+                 <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>`
+              : `<div class="store-item-price" style="color:#006400">✅ Seu</div>
+                 <button class="win95-action-btn" onclick="applyWallpaper('${item.wpKey}')">Usar</button>`
+            }
+          </div>`;
+      });
+      html += `</div>`;
+      updatePurchasedWallpapers(data.purchases, wpItems);
+    }
 
     if (mediaItems.length > 0) {
       html += `<div class="section-label" style="margin-bottom:8px">🖼️ Skins do Luiz</div>`;
@@ -2803,6 +2857,7 @@ function loadProfileTabData(tab) {
   if (tab === "color") loadProfileColor();
   else if (tab === "achievement") loadProfileAchievement();
   else if (tab === "emoji") loadProfileEmoji();
+  else if (tab === "wallpaper") loadProfileWallpaper();
 }
 
 async function loadProfileColor() {
