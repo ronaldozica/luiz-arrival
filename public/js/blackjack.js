@@ -89,6 +89,7 @@
       font-weight: bold;
       font-family: 'Times New Roman', serif;
       position: relative;
+      overflow: hidden;
       animation: bj-deal 0.18s ease-out;
     }
     @keyframes bj-deal {
@@ -368,9 +369,9 @@ function cardHTML(card, faceDown) {
   const red = card.suit === "♥" || card.suit === "♦";
   const cls = red ? "bj-red" : "bj-black";
   return `<div class="bj-card ${cls}">
-    <div class="bj-card-top">${card.value}<br>${card.suit}</div>
+    <div class="bj-card-top">${card.value}</div>
     <div class="bj-card-suit">${card.suit}</div>
-    <div class="bj-card-bot">${card.value}<br>${card.suit}</div>
+    <div class="bj-card-bot">${card.value}</div>
   </div>`;
 }
 

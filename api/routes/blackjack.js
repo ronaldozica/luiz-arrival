@@ -166,7 +166,7 @@ router.post("/blackjack/action", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Ação inválida." });
 
   const kv = getKV();
-  const { user, users } = await getUserAndBalance(kv, req.sessionName);
+  const { user, users, balance: startBalance } = await getUserAndBalance(kv, req.sessionName);
   if (!user) return res.status(401).json({ error: "Acesso negado." });
 
   const uKey = userKey(user.name);
@@ -195,7 +195,6 @@ router.post("/blackjack/action", requireAuth, async (req, res) => {
       }
 
       await kv.set(`bj_game:${uKey}`, JSON.stringify(game), { ex: 10 * 60 });
-      const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
       return res.json({
         status: "playing",
         playerHand: game.playerHand,
@@ -203,7 +202,7 @@ router.post("/blackjack/action", requireAuth, async (req, res) => {
         playerValue: pv,
         bet: game.bet,
         betLevel: game.betLevel,
-        balance: Math.max(0, earnedCoins - spentCoins),
+        balance: startBalance,
         dailyEarned,
         dailyCap: BJ_DAILY_CAP,
       });
