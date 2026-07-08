@@ -24,7 +24,7 @@ router.get("/store", requireAuth, async (req, res) => {
       if (item.type === "namecolor") {
         return { ...base, color: item.color, description: item.description };
       }
-      return { ...base, src: isUnlocked ? item.src : null };
+      return { ...base, src: isUnlocked ? item.src : null, ...(item.wpKey ? { wpKey: item.wpKey } : {}) };
     });
 
     const activeColorId = (await kv.get(`color_active:${userKey(user.name)}`)) || null;
