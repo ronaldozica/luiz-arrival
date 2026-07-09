@@ -1742,8 +1742,10 @@ function setAdminTab(tab) {
   document.getElementById("admin-tab-tags").style.display = tab === "tags" ? "block" : "none";
   document.getElementById("admin-tab-coins").style.display = tab === "coins" ? "block" : "none";
   document.getElementById("admin-tab-passwords").style.display = tab === "passwords" ? "block" : "none";
+  document.getElementById("admin-tab-requests").style.display = tab === "requests" ? "block" : "none";
   if (tab === "coins") loadAdminCoinsPlayers();
   if (tab === "passwords") loadAdminPasswordResets();
+  if (tab === "requests") loadAdminRequests();
 }
 
 async function invalidateBets() {

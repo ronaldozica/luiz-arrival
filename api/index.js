@@ -19,6 +19,7 @@ app.use("/api", require("./routes/achievements"));
 app.use("/api", require("./routes/leaderboards"));
 app.use("/api", require("./routes/farm"));
 app.use("/api", require("./routes/blackjack"));
+app.use("/api", require("./routes/requests").router);
 
 // ─── Migração única: Lenda da mira rebaixada de 10000→3000 ──────────────────
 // Concede o achievement a todos com 3000+ no aim trainer difícil.

@@ -353,4 +353,29 @@ router.post("/admin/grant-aimtrainer-legend", requireAdminAuth, async (req, res)
   }
 });
 
+// PATCH /api/admin/requests/:id — atualiza status e nota do admin
+router.patch("/admin/requests/:id", requireAdminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNote } = req.body;
+    const validStatuses = ["pending", "approved", "rejected", "done"];
+    if (status !== undefined && !validStatuses.includes(status))
+      return res.status(400).json({ error: "Status inválido." });
+
+    const kv = getKV();
+    const { getRequests, saveRequests } = require("./requests");
+    const requests = await getRequests(kv);
+    const idx = requests.findIndex((r) => r.id === id);
+    if (idx === -1)
+      return res.status(404).json({ error: "Pedido não encontrado." });
+
+    if (status !== undefined) requests[idx].status = status;
+    if (adminNote !== undefined) requests[idx].adminNote = adminNote || null;
+    await saveRequests(kv, requests);
+    res.json({ success: true, request: requests[idx] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

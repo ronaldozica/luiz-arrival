@@ -79,6 +79,7 @@
       <button onclick="openStore(); closeStartMenu()">🛒 Loja</button>
       <button onclick="openAchievements(); closeStartMenu()">🏅 Conquistas</button>
       <button onclick="openProfileWindow(); closeStartMenu()">🧑‍🎨 Perfil</button>
+      <button onclick="openRequestsWindow(); closeStartMenu()">📬 Sugestões & Bugs</button>
       <button onclick="openReleaseNotes(); closeStartMenu()">📰 Novidades</button>
       <button onclick="openWindow('win-scoring-rules'); closeStartMenu()">📐 Regras de Pontuação</button>
       <hr />
@@ -395,6 +396,7 @@
           <button class="rank-tab" data-admin-tab="tags" onclick="setAdminTab('tags')">🏷️ Tags</button>
           <button class="rank-tab" data-admin-tab="coins" onclick="setAdminTab('coins')">💰 Moedas</button>
           <button class="rank-tab" data-admin-tab="passwords" onclick="setAdminTab('passwords')">🔑 Senhas temporárias</button>
+          <button class="rank-tab" data-admin-tab="requests" onclick="setAdminTab('requests')">📬 Pedidos</button>
         </div>
 
         <div id="admin-tab-arrival">
@@ -500,6 +502,16 @@
           <div class="win95-msg" id="admin-passwords-msg"></div>
           <hr />
           <div id="admin-passwords-result"></div>
+        </div>
+
+        <div id="admin-tab-requests" style="display:none">
+          <p><strong>Sugestões e bugs reportados</strong></p>
+          <div class="btn-row">
+            <button class="win95-action-btn" onclick="loadAdminRequests()">🔄 Atualizar</button>
+          </div>
+          <div class="win95-msg" id="admin-requests-msg"></div>
+          <hr />
+          <div id="admin-requests-result"></div>
         </div>
       </div>
     </div>
@@ -1289,6 +1301,51 @@
     </div>
   </div>
 
+  <!-- ══ WINDOW: SUGESTÕES & BUGS ══ -->
+  <div class="win95-window" id="win-requests" style="left:120px;top:80px;width:460px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-requests')">
+      <span class="win95-title">📬 Sugestões &amp; Bugs</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-requests')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-requests')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body win95-body-scroll">
+      <p><strong>Enviar sugestão ou reportar bug</strong></p>
+      <div id="requests-login-hint" style="display:none">
+        <div class="info-box">
+          🔑 <a href="#" onclick="openWindow('win-login'); return false">Faça login</a> para enviar uma sugestão ou bug.
+        </div>
+      </div>
+      <div id="requests-submit-form" style="display:none">
+        <div class="field-group">
+          <label>Tipo:</label>
+          <select id="requests-type">
+            <option value="feature">💡 Sugestão de funcionalidade</option>
+            <option value="bug">🐛 Reportar bug</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Descrição:</label>
+          <textarea id="requests-text" rows="4" maxlength="500" placeholder="Descreva sua sugestão ou o problema encontrado..."
+            style="width:100%;resize:vertical;font-family:inherit;font-size:12px;padding:4px;box-sizing:border-box"
+            oninput="document.getElementById('requests-char-count').textContent=this.value.length+'/500'"></textarea>
+          <div id="requests-char-count" style="font-size:10px;color:#666;text-align:right">0/500</div>
+        </div>
+        <div class="btn-row">
+          <button class="win95-action-btn" onclick="submitRequest()">📤 Enviar</button>
+        </div>
+        <div class="win95-msg" id="requests-submit-msg"></div>
+      </div>
+      <hr />
+      <p><strong>Todos os pedidos</strong></p>
+      <div class="btn-row">
+        <button class="win95-action-btn" onclick="loadRequests()">🔄 Atualizar</button>
+      </div>
+      <div id="requests-list" style="margin-top:8px"></div>
+    </div>
+  </div>
+
   <script src="js/dialog.js"></script>
   <script src="js/app.js"></script>
   <script src="js/snake.js"></script>
@@ -1298,6 +1355,7 @@
   <script src="js/spider.js"></script>
   <script src="js/farm.js"></script>
   <script src="js/blackjack.js"></script>
+  <script src="js/requests.js"></script>
   <script src="js/notepad.js"></script>
   <script src="js/calculator.js"></script>
   <script src="js/paint.js"></script>
