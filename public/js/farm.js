@@ -142,6 +142,20 @@ function renderFarm() {
           <span style="background:#2d8a1f;color:#fff;padding:1px 5px;font-size:9px">Pronto</span>
           <span style="background:#888;color:#fff;padding:1px 5px;font-size:9px">Bloqueado</span>
         </div>
+        <div style="margin-top:6px;display:flex;gap:4px">
+          <button onclick="farmPlantAll()"
+                  ${farmSelectedSeed ? "" : "disabled"}
+                  style="flex:1;padding:3px 6px;font-size:10px;cursor:${farmSelectedSeed ? "pointer" : "not-allowed"};
+                         background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;
+                         opacity:${farmSelectedSeed ? 1 : 0.5}">
+            🌱 Plantar em Todos
+          </button>
+          <button onclick="farmHarvestAll()"
+                  style="flex:1;padding:3px 6px;font-size:10px;cursor:pointer;
+                         background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff">
+            🧺 Colher em Todos
+          </button>
+        </div>
       </div>
       <div style="flex:1;min-width:160px">
         <div style="font-size:11px;font-weight:bold;color:#000;margin-bottom:4px">🌱 Sementes</div>
@@ -376,6 +390,113 @@ function setPlotLoading(plotId, isLoading) {
       <div class="farm-timer"></div>`;
   } else {
     farmLoadingPlots.delete(plotId);
+  }
+}
+
+async function farmPlantAll() {
+  if (farmBusy || !farmPlots || !farmSelectedSeed) return;
+  const seed = FARM_SEEDS_CLIENT[farmSelectedSeed];
+  if (!seed) return;
+
+  const emptyIds = farmPlots
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => getPlotState(p).type === "empty")
+    .map(({ i }) => i);
+
+  if (emptyIds.length === 0) {
+    await w95alert("Nenhuma parcela vazia disponível para plantar.");
+    return;
+  }
+
+  const totalCost = seed.cost * emptyIds.length;
+  if (farmBalance < totalCost) {
+    const canPlant = Math.floor(farmBalance / seed.cost);
+    if (canPlant === 0) {
+      await w95alert(`LuizCoins™ insuficientes para ${seed.name} (${seed.cost}🪙 necessários).`);
+      return;
+    }
+    const ok = await w95confirm(
+      `Saldo insuficiente para todas as parcelas.\nPlantar em ${canPlant} de ${emptyIds.length} parcelas (${canPlant * seed.cost}🪙)?`
+    );
+    if (!ok) return;
+  }
+
+  farmBusy = true;
+  let planted = 0;
+
+  for (const plotId of emptyIds) {
+    if (farmBalance < seed.cost) break;
+    setPlotLoading(plotId, true);
+    try {
+      const resp = await fetch("/api/farm/plant", {
+        method: "POST",
+        headers: { ...authHeaders(sessionToken), "Content-Type": "application/json" },
+        body: JSON.stringify({ plotId, seedType: farmSelectedSeed }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) break;
+      farmPlots = data.plots;
+      farmBalance = data.newBalance;
+      planted++;
+    } catch {
+      break;
+    } finally {
+      setPlotLoading(plotId, false);
+    }
+  }
+
+  farmBusy = false;
+  farmSelectedSeed = null;
+  renderFarm();
+  if (planted > 0) showGameCoinsToast(-seed.cost * planted);
+}
+
+async function farmHarvestAll() {
+  if (farmBusy || !farmPlots) return;
+
+  const harvestIds = farmPlots
+    .map((p, i) => ({ st: getPlotState(p), i }))
+    .filter(({ st }) => st.type === "ready" || st.type === "withered")
+    .map(({ i }) => i);
+
+  if (harvestIds.length === 0) {
+    await w95alert("Nenhuma parcela pronta para colher.");
+    return;
+  }
+
+  farmBusy = true;
+  let totalEarned = 0;
+  let witheredCount = 0;
+
+  for (const plotId of harvestIds) {
+    setPlotLoading(plotId, true);
+    try {
+      const resp = await fetch("/api/farm/harvest", {
+        method: "POST",
+        headers: { ...authHeaders(sessionToken), "Content-Type": "application/json" },
+        body: JSON.stringify({ plotId }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) continue;
+      farmPlots = data.plots;
+      farmBalance = data.newBalance;
+      if (data.withered) witheredCount++;
+      else totalEarned += data.coinsEarned;
+    } catch {
+      continue;
+    } finally {
+      setPlotLoading(plotId, false);
+    }
+  }
+
+  farmBusy = false;
+  renderFarm();
+
+  if (witheredCount > 0 && totalEarned === 0) {
+    await w95alert(`Todas as plantas murcharam! 🍂\nNenhuma moeda desta vez.`);
+  } else {
+    if (witheredCount > 0) await w95alert(`${witheredCount} planta(s) murchou e não rendeu moedas. 🍂`);
+    if (totalEarned > 0) showGameCoinsToast(totalEarned);
   }
 }
 
