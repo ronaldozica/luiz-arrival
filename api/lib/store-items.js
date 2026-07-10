@@ -59,6 +59,24 @@ function emojiPriceForCount(ownedCount) {
   return EMOJI_BASE_PRICE + EMOJI_PRICE_STEP * ownedCount;
 }
 
+// ─── Fontes de ranking (catálogo fixo, compra escalona igual ao emoji) ───────
+const FONTS = [
+  { id: "font_comic_sans",     label: "Comic Sans"       },
+  { id: "font_impact",         label: "Impact"           },
+  { id: "font_courier",        label: "Courier New"      },
+  { id: "font_georgia",        label: "Georgia"          },
+  { id: "font_lobster",        label: "Lobster"          },
+  { id: "font_press_start",    label: "Press Start 2P"   },
+  { id: "font_pacifico",       label: "Pacifico"         },
+  { id: "font_dancing_script", label: "Dancing Script"   },
+];
+const FONT_IDS = new Set(FONTS.map((f) => f.id));
+const FONT_BASE_PRICE = 25;
+const FONT_PRICE_STEP = 25;
+function fontPriceForCount(ownedCount) {
+  return FONT_BASE_PRICE + FONT_PRICE_STEP * ownedCount;
+}
+
 // ─── Preço pago "congelado" (compras passadas não mudam de valor) ──────────
 // Mudar STORE_ITEMS.price ou EMOJI_BASE_PRICE/EMOJI_PRICE_STEP daqui para
 // frente só afeta NOVAS compras: cada compra nova é guardada como
@@ -106,6 +124,15 @@ function emojiSpent(rawOwned) {
     if (typeof e === "string") return sum + LEGACY_EMOJI_BASE_PRICE + LEGACY_EMOJI_PRICE_STEP * i;
     return sum + (e.pricePaid || 0);
   }, 0);
+}
+
+// Fontes: formato `{ fontId, pricePaid }` — sem legado (feature nova).
+function fontList(rawOwned) {
+  return rawOwned.map((f) => f.fontId);
+}
+
+function fontSpent(rawOwned) {
+  return rawOwned.reduce((sum, f) => sum + (f.pricePaid || 0), 0);
 }
 // Aceita um único emoji (incluindo sequências com ZWJ/seletor de variação/modificador de tom de pele) ou uma bandeira (par de Regional Indicator).
 const ZWJ = "‍";
@@ -217,13 +244,17 @@ async function calcBalance(kv, user, users) {
   const emojiOwned = emojiList(rawEmojiOwned);
   spentCoins += emojiSpent(rawEmojiOwned);
 
+  const rawFontOwned = parseRedisArray(await kv.get(`font_owned:${userKey(user.name)}`));
+  const fontOwned = fontList(rawFontOwned);
+  spentCoins += fontSpent(rawFontOwned);
+
   const farmSpent = parseRedisNumber(await kv.get(`farmspent:${userKey(user.name)}`));
   spentCoins += farmSpent;
 
   const bjLost = parseRedisNumber(await kv.get(`bjlost:${userKey(user.name)}`));
   spentCoins += bjLost;
 
-  return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned };
+  return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned, fontOwned };
 }
 
 module.exports = {
@@ -235,6 +266,12 @@ module.exports = {
   EMOJI_PRICE_STEP,
   emojiPriceForCount,
   EMOJI_REGEX,
+  FONTS,
+  FONT_IDS,
+  FONT_BASE_PRICE,
+  FONT_PRICE_STEP,
+  fontPriceForCount,
+  fontList,
   PRECISION_BANDS,
   PARTICIPATION_COINS,
   coinsForGuess,

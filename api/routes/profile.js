@@ -6,7 +6,7 @@ const { requireAuth } = require("../lib/auth-middleware");
 const { invalidatesCache, getCachedOrCompute } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisArray } = require("../lib/utils");
-const { emojiPriceForCount, EMOJI_REGEX, calcBalance, purchaseIds, emojiList, getExclusiveColorIds, findNameColorItem } = require("../lib/store-items");
+const { emojiPriceForCount, EMOJI_REGEX, calcBalance, purchaseIds, emojiList, getExclusiveColorIds, findNameColorItem, FONTS, FONT_IDS, fontPriceForCount, fontList } = require("../lib/store-items");
 const { ACHIEVEMENT_DEFS } = require("../lib/achievement-defs");
 
 // POST /api/profile/color — define qual cor de nome (já comprada) é exibida no ranking
@@ -166,14 +166,97 @@ router.get("/profiles", async (req, res) => {
         } catch {}
 
         const activeEmoji = (await kv.get(`emoji_active:${uk}`)) || null;
+        const activeFont = (await kv.get(`font_active:${uk}`)) || null;
 
-        computed[u.name] = { nameColor: activeColor, achievement: activeAchievement, emoji: activeEmoji };
+        computed[u.name] = { nameColor: activeColor, achievement: activeAchievement, emoji: activeEmoji, font: activeFont };
       }
 
       return computed;
     });
 
     res.json(profiles);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Fontes de ranking ────────────────────────────────────────────────────────
+
+// GET /api/profile/font — fontes compradas, fonte ativa, próximo preço e catálogo
+router.get("/profile/font", requireAuth, async (req, res) => {
+  try {
+    const kv = getKV();
+    const uk = userKey(req.sessionName);
+    const rawOwned = parseRedisArray(await kv.get(`font_owned:${uk}`));
+    const owned = fontList(rawOwned);
+    const active = (await kv.get(`font_active:${uk}`)) || null;
+    res.json({ owned, active, nextPrice: fontPriceForCount(owned.length), catalog: FONTS });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/profile/font/buy — compra uma fonte do catálogo
+router.post("/profile/font/buy", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
+  try {
+    const { fontId } = req.body;
+    if (!fontId || !FONT_IDS.has(fontId))
+      return res.status(400).json({ error: "Fonte inválida." });
+
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const uk = userKey(user.name);
+    const ownedKey = `font_owned:${uk}`;
+    const { earnedCoins, spentCoins, fontOwned } = await calcBalance(kv, user, users);
+
+    if (fontOwned.includes(fontId))
+      return res.status(400).json({ error: "Você já possui esta fonte." });
+
+    const balance = earnedCoins - spentCoins;
+    const price = fontPriceForCount(fontOwned.length);
+    if (balance < price)
+      return res.status(400).json({ error: "LuizCoins™ insuficientes." });
+
+    const rawOwned = parseRedisArray(await kv.get(ownedKey));
+    rawOwned.push({ fontId, pricePaid: price });
+    await kv.set(ownedKey, JSON.stringify(rawOwned));
+    if (rawOwned.length === 1) {
+      await kv.set(`font_active:${uk}`, fontId);
+    }
+
+    res.json({
+      success: true,
+      owned: fontList(rawOwned),
+      newBalance: balance - price,
+      pricePaid: price,
+      nextPrice: fontPriceForCount(rawOwned.length),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/profile/font/set-active — define qual fonte possuída é exibida no ranking
+router.post("/profile/font/set-active", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
+  try {
+    const { fontId } = req.body;
+    const kv = getKV();
+    const uk = userKey(req.sessionName);
+    const activeKey = `font_active:${uk}`;
+
+    if (!fontId) {
+      await kv.del(activeKey);
+    } else {
+      const owned = fontList(parseRedisArray(await kv.get(`font_owned:${uk}`)));
+      if (!owned.includes(fontId))
+        return res.status(400).json({ error: "Você não possui esta fonte." });
+      await kv.set(activeKey, fontId);
+    }
+
+    res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

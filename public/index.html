@@ -7,6 +7,9 @@
   <title>Que horas o Luiz chega? 🕐</title>
   <link rel="icon" href="/photos/luizCoinIcon.png" type="image/png" />
   <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Lobster&family=Pacifico&family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 
 <body>
@@ -955,6 +958,7 @@
         <button class="rank-tab active" data-profile-tab="color" onclick="setProfileTab('color')">🎨 Cor</button>
         <button class="rank-tab" data-profile-tab="achievement" onclick="setProfileTab('achievement')">🏅 Conquista</button>
         <button class="rank-tab" data-profile-tab="emoji" onclick="setProfileTab('emoji')">🙂 Emoji</button>
+        <button class="rank-tab" data-profile-tab="font" onclick="setProfileTab('font')">🔤 Fonte</button>
         <button class="rank-tab" data-profile-tab="wallpaper" onclick="setProfileTab('wallpaper')">🖼️ Papel de Parede</button>
       </div>
 
@@ -984,6 +988,13 @@
           </div>
         </div>
         <div class="win95-msg" id="profile-emoji-msg"></div>
+      </div>
+
+      <div id="profile-tab-font" style="display:none">
+        <p><strong>Fonte do seu nome no ranking</strong></p>
+        <div class="info-box">O primeiro custa 25 LuizCoins e cada nova fonte custa 25 LuizCoins a mais que a anterior.</div>
+        <div id="profile-font-result" style="margin-top:8px"></div>
+        <div class="win95-msg" id="profile-font-msg"></div>
       </div>
 
       <div id="profile-tab-wallpaper" style="display:none">

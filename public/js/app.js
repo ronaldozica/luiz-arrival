@@ -162,20 +162,38 @@ async function loadProfiles() {
 
 function renderPlayerName(name, includeAchievement) {
   const profile = userProfiles[name] || {};
-  let style = "";
+  let inlineStyle = "";
   let colorClass = "";
   if (showDecorations && profile.nameColor) {
     colorClass = getColorClass(profile.nameColor.id);
     if (!colorClass) {
-      style = `style="color:${profile.nameColor.color};${getColorEffect(profile.nameColor.id)}"`;
+      inlineStyle += `color:${profile.nameColor.color};${getColorEffect(profile.nameColor.id)}`;
     }
   }
+  if (showDecorations && profile.font) {
+    inlineStyle += `font-family:${getFontFamily(profile.font)};`;
+  }
+  const style = inlineStyle ? `style="${inlineStyle}"` : "";
   const achievementBadge =
     showDecorations && includeAchievement && profile.achievement
       ? `<span class="achievement-badge" title="${escHtml(profile.achievement.title)}">${profile.achievement.icon}</span>`
       : "";
   const emojiPrefix = showDecorations && profile.emoji ? `<span class="profile-emoji-badge">${profile.emoji}</span> ` : "";
   return `${emojiPrefix}<span class="${colorClass}" ${style}>${escHtml(name)}</span>${achievementBadge}`;
+}
+
+function getFontFamily(fontId) {
+  const map = {
+    font_comic_sans:     "'Comic Sans MS', cursive",
+    font_impact:         "Impact, fantasy",
+    font_courier:        "'Courier New', monospace",
+    font_georgia:        "Georgia, serif",
+    font_lobster:        "'Lobster', cursive",
+    font_press_start:    "'Press Start 2P', monospace",
+    font_pacifico:       "'Pacifico', cursive",
+    font_dancing_script: "'Dancing Script', cursive",
+  };
+  return map[fontId] || "inherit";
 }
 
 // ─── Loading overlay ─────────────────────────────────────────────────────────
@@ -2841,6 +2859,7 @@ let currentProfileTab = "color";
 let profileColorData = null;
 let profileAchievementData = null;
 let profileEmojiData = null;
+let profileFontData = null;
 
 async function openProfileWindow() {
   if (!currentUser) {
@@ -2857,7 +2876,7 @@ function setProfileTab(tab) {
   document.querySelectorAll("#win-profile .rank-tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.profileTab === tab);
   });
-  ["color", "achievement", "emoji", "wallpaper"].forEach((t) => {
+  ["color", "achievement", "emoji", "font", "wallpaper"].forEach((t) => {
     document.getElementById(`profile-tab-${t}`).style.display = t === tab ? "block" : "none";
   });
   loadProfileTabData(tab);
@@ -2867,6 +2886,7 @@ function loadProfileTabData(tab) {
   if (tab === "color") loadProfileColor();
   else if (tab === "achievement") loadProfileAchievement();
   else if (tab === "emoji") loadProfileEmoji();
+  else if (tab === "font") loadProfileFont();
   else if (tab === "wallpaper") loadProfileWallpaper();
 }
 
@@ -3072,6 +3092,113 @@ async function setActiveProfileEmoji(emoji) {
       profileEmojiData.active = emoji || null;
       renderProfileEmoji();
       showMsg(msg, "✅ Emoji atualizado.", "ok");
+      invalidateProfileCache();
+      loadProfiles();
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+// ─── Fontes de ranking ────────────────────────────────────────────────────────
+async function loadProfileFont() {
+  const result = document.getElementById("profile-font-result");
+  const msg = document.getElementById("profile-font-msg");
+  result.innerHTML = '<div class="loading">⏳ Carregando...</div>';
+  try {
+    const res = await fetch(`${API}/profile/font`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    profileFontData = data;
+    renderProfileFont();
+  } catch (e) {
+    showMsg(msg, `Erro: ${e.message}`, "err");
+  }
+}
+
+function renderProfileFont() {
+  if (!profileFontData) return;
+  const { owned, active, nextPrice, catalog } = profileFontData;
+  const result = document.getElementById("profile-font-result");
+  const msg = document.getElementById("profile-font-msg");
+
+  let html = "";
+  if (owned.length > 0) {
+    html += `<div class="info-box" style="margin-bottom:8px">Fontes compradas: ${owned.length} — próxima custa <strong>${nextPrice} LuizCoins</strong></div>`;
+  }
+
+  html += `<div style="display:flex;flex-direction:column;gap:6px">`;
+
+  // Opção padrão
+  const padrao = !active;
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border:1px solid #c0c0c0;background:${padrao ? "#d4e8d4" : "#fff"}">
+    <span style="font-size:13px">Padrão</span>
+    <button class="win95-action-btn" style="font-size:11px" onclick="selectProfileFont(null)">${padrao ? "✓ Ativa" : "Usar"}</button>
+  </div>`;
+
+  catalog.forEach((f) => {
+    const isOwned = owned.includes(f.id);
+    const isActive = active === f.id;
+    const family = getFontFamily(f.id);
+    html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border:1px solid #c0c0c0;background:${isActive ? "#d4e8d4" : "#fff"}">
+      <span style="font-family:${family};font-size:15px;font-weight:bold">${escHtml(f.label)}</span>
+      ${isOwned
+        ? `<button class="win95-action-btn" style="font-size:11px" onclick="selectProfileFont('${f.id}')">${isActive ? "✓ Ativa" : "Usar"}</button>`
+        : `<button class="win95-action-btn" style="font-size:11px" onclick="buyProfileFont('${f.id}')">🛒 ${nextPrice} LC</button>`
+      }
+    </div>`;
+  });
+
+  html += `</div>`;
+  result.innerHTML = html;
+}
+
+async function selectProfileFont(fontId) {
+  const msg = document.getElementById("profile-font-msg");
+  showLoading("Atualizando fonte...");
+  try {
+    const res = await fetch(`${API}/profile/font/set-active`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ fontId: fontId || null }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      profileFontData.active = fontId || null;
+      renderProfileFont();
+      showMsg(msg, "✅ Fonte atualizada.", "ok");
+      invalidateProfileCache();
+      loadProfiles();
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+async function buyProfileFont(fontId) {
+  const msg = document.getElementById("profile-font-msg");
+  showLoading("Comprando fonte...");
+  try {
+    const res = await fetch(`${API}/profile/font/buy`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ fontId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      profileFontData.owned = data.owned;
+      profileFontData.nextPrice = data.nextPrice;
+      profileFontData.active = profileFontData.active || fontId;
+      renderProfileFont();
+      showMsg(msg, `✅ Fonte comprada por ${data.pricePaid} LuizCoins!`, "ok");
       invalidateProfileCache();
       loadProfiles();
     } else {
