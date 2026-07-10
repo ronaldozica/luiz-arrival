@@ -3352,10 +3352,11 @@ const RELEASE_NOTES = [
     title: "Sugestões, fontes de nome e novos títulos elementais",
     items: [
       "📬 Novo app: Sugestões & Bugs! Reporte problemas ou sugira funcionalidades — tudo vai parar num board público visível a todos. O admin pode responder e marcar cada pedido como aprovado, rejeitado ou implementado.",
-      "🔤 Compre fontes para o seu nome nos rankings! Cada fonte nova custa um pouco mais que a anterior — veja na aba Fonte do seu Perfil.",
+      "🔤 Compre fontes para o seu nome nos rankings! Comic Sans, Impact, Courier New, Georgia, Lobster, Press Start 2P, Pacifico e Dancing Script — primeira por 25 LC, cada nova custa 25 LC a mais. Ative na aba Fonte do Perfil.",
       "🔥💧🌍🌬️ 4 novos títulos elementais por 500 LC cada: Fogo (gradiente chama com cintilação), Água (onda profunda), Terra (pulso terroso) e Ar (shimmer ultrarrápido).",
       "✨ Topázio ganhou animação de brasa pulsante e ficou mais avermelhado.",
       "⚪ Platina agora também pulsa além do sweep metálico.",
+      "🛒 Preview na Loja agora mostra a animação real de cada título — nada de \"Seu nome\" estático.",
       "🃏 LuizJack 21 agora se chama Luiz21.",
     ],
   },
