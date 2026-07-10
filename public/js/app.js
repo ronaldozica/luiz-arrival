@@ -237,7 +237,7 @@ function openWindow(id) {
     refreshTodayStatus();
   }
   if (id === "win-sudoku") centerWindow(w);
-  if (id === "win-store") { loadStore(); loadProfileEmoji(); }
+  if (id === "win-store") { loadStore(); loadProfileEmoji(); loadProfileFont(); }
   if (id === "win-achievements") loadAchievements();
   if (id === "win-scoring-rules") renderScoringRules();
   delete minimizedWindows[id];
@@ -464,7 +464,7 @@ function updateTaskbar() {
         if (minimizedWindows[id]) openWindow(id);
         else {
           bringToFront(w);
-          if (id === "win-store") { loadStore(); loadProfileEmoji(); }
+          if (id === "win-store") { loadStore(); loadProfileEmoji(); loadProfileFont(); }
           if (id === "win-profile") loadProfileTabData(currentProfileTab);
         }
       };
@@ -3126,8 +3126,6 @@ async function loadProfileFont() {
 function renderProfileFont() {
   if (!profileFontData) return;
   const { owned, active, nextPrice, catalog } = profileFontData;
-  const result = document.getElementById("profile-font-result");
-  const msg = document.getElementById("profile-font-msg");
 
   let html = "";
   if (owned.length > 0) {
@@ -3136,7 +3134,6 @@ function renderProfileFont() {
 
   html += `<div style="display:flex;flex-direction:column;gap:6px">`;
 
-  // Opção padrão
   const padrao = !active;
   html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border:1px solid #c0c0c0;background:${padrao ? "#d4e8d4" : "#fff"}">
     <span style="font-size:13px">Padrão</span>
@@ -3157,7 +3154,11 @@ function renderProfileFont() {
   });
 
   html += `</div>`;
-  result.innerHTML = html;
+
+  ["profile", "store"].forEach((ctx) => {
+    const el = document.getElementById(`${ctx}-font-result`);
+    if (el) el.innerHTML = html;
+  });
 }
 
 async function selectProfileFont(fontId) {
