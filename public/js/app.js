@@ -2604,9 +2604,12 @@ async function loadStore() {
         const effect = getStoreColorEffect(item.id, item.color);
         html += `
           <div class="store-color-item ${isUnlocked ? "unlocked" : "locked"}">
-            <div class="store-color-preview" style="${effect}">
-              <span style="color:${item.color};${getColorEffect(item.id)}">Seu nome</span>
-            </div>
+            <div class="store-color-preview" style="${effect}">${(() => {
+              const cls = getColorClass(item.id);
+              return cls
+                ? `<span class="${cls}">Seu nome</span>`
+                : `<span style="color:${item.color};${getColorEffect(item.id)}">Seu nome</span>`;
+            })()}</div>
             <div class="store-item-title">${escHtml(item.title)}</div>
             ${!isUnlocked
               ? `<div class="store-item-price"><img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}</div>
