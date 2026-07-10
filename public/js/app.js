@@ -1646,8 +1646,7 @@ function getColorEffect(colorId) {
     case "color_safira":   return "text-shadow: 0 0 6px #64b5f6, 0 0 12px #1e88e5; font-weight:bold;";
     case "color_rubi":     return "text-shadow: 0 0 6px #ff5252, 0 0 12px #e53935; font-weight:bold;";
     case "color_ametista": return "text-shadow: 0 0 6px #ce93d8, 0 0 12px #ab47bc; font-weight:bold;";
-    case "color_topazio":  return "text-shadow: 0 0 6px #ffab91, 0 0 12px #ff7043; font-weight:bold;";
-    // dourado, diamante, platina e coração usam classes CSS em vez de inline style
+    // topázio, dourado, diamante, platina, coração e elementais usam classes CSS
     default: return "";
   }
 }
@@ -1657,10 +1656,15 @@ function getColorEffect(colorId) {
 // diamante, corações flutuantes no coração).
 function getColorClass(colorId) {
   switch (colorId) {
+    case "color_topazio":  return "name-topaz-ember";
     case "color_dourado":  return "name-gold-blink";
     case "color_diamante": return "name-diamond-shine";
     case "color_platina":  return "name-platinum-sweep";
     case "color_coracao":  return "name-heart-particles";
+    case "color_fogo":     return "name-fire-flicker";
+    case "color_agua":     return "name-water-wave";
+    case "color_terra":    return "name-earth-pulse";
+    case "color_ar":       return "name-air-shimmer";
     default: return "";
   }
 }
@@ -2353,12 +2357,12 @@ function getDifficultyLabel(diff) {
 }
 
 function getGameLabel(game) {
-  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider", luizjack: "🃏 LuizJack 21" }[game] || game);
+  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider", luizjack: "🃏 Luiz21" }[game] || game);
 }
 
 function buildBjRankTable(entries) {
   if (entries.length === 0) return '<div class="no-data">Nenhuma mão jogada ainda. Seja o primeiro!</div>';
-  let html = `<div class="section-label">🃏 LuizJack 21 — Maiores Ganhadores</div>
+  let html = `<div class="section-label">🃏 Luiz21 — Maiores Ganhadores</div>
     <table class="win95-table"><thead><tr>
       <th>#</th><th>Jogador</th><th>LC Ganhos</th><th>Mãos</th>
     </tr></thead><tbody>`;
@@ -2610,9 +2614,13 @@ function getStoreColorEffect(colorId, color) {
     case "color_rubi":      return `background: linear-gradient(135deg, #2e0d0d, #1a0505); border: 1px solid ${color}; box-shadow: 0 0 12px #e5393544; border-radius:4px; padding:12px; text-align:center;`;
     case "color_ametista":  return `background: linear-gradient(135deg, #1a0d2e, #0d051f); border: 1px solid ${color}; box-shadow: 0 0 12px #ab47bc44; border-radius:4px; padding:12px; text-align:center;`;
     case "color_dourado":   return `background: linear-gradient(135deg, #2a2000, #1a1400); border: 1px solid ${color}; box-shadow: 0 0 12px #ffd60044; border-radius:4px; padding:12px; text-align:center;`;
-    case "color_topazio":   return `background: linear-gradient(135deg, #2e1505, #1a0c02); border: 1px solid ${color}; box-shadow: 0 0 12px #ff704344; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_topazio":   return `background: linear-gradient(135deg, #2e1505, #1a0c02); border: 1px solid ${color}; box-shadow: 0 0 12px #e64a1944; border-radius:4px; padding:12px; text-align:center;`;
     case "color_diamante":  return `background: linear-gradient(135deg, #0d1a2e, #050d1a); border: 1px solid ${color}; box-shadow: 0 0 16px #81d4fa66; border-radius:4px; padding:12px; text-align:center;`;
     case "color_platina":   return `background: linear-gradient(135deg, #1a1a1a, #2a2a2a); border: 1px solid ${color}; box-shadow: 0 0 16px #e0e0e055; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_fogo":      return `background: linear-gradient(135deg, #1a0800, #2d1000); border: 1px solid ${color}; box-shadow: 0 0 16px #ff450055; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_agua":      return `background: linear-gradient(135deg, #001f3f, #002d5c); border: 1px solid ${color}; box-shadow: 0 0 16px #0288d155; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_terra":     return `background: linear-gradient(135deg, #1a1008, #2a1a0d); border: 1px solid ${color}; box-shadow: 0 0 16px #6d4c4155; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_ar":        return `background: linear-gradient(135deg, #001f26, #00303d); border: 1px solid ${color}; box-shadow: 0 0 16px #80deea55; border-radius:4px; padding:12px; text-align:center;`;
     default: return `padding:12px; text-align:center;`;
   }
 }
@@ -2909,10 +2917,14 @@ function getColorEffectPreview(colorId) {
     case "color_rubi":      return "text-shadow:0 0 4px #ff5252; font-weight:bold;";
     case "color_ametista":  return "text-shadow:0 0 4px #ce93d8; font-weight:bold;";
     case "color_dourado":   return "font-weight:bold;";
-    case "color_topazio":   return "text-shadow:0 0 4px #ffab91; font-weight:bold;";
+    case "color_topazio":   return "text-shadow:0 0 4px #ff5722; font-weight:bold;";
     case "color_diamante":  return "font-weight:bold;";
     case "color_platina":   return "font-weight:bold;";
     case "color_coracao":   return "text-shadow:0 0 4px #ff1744; font-weight:bold;";
+    case "color_fogo":      return "text-shadow:0 0 4px #ff6d00; font-weight:bold;";
+    case "color_agua":      return "text-shadow:0 0 4px #0288d1; font-weight:bold;";
+    case "color_terra":     return "text-shadow:0 0 4px #6d4c41; font-weight:bold;";
+    case "color_ar":        return "text-shadow:0 0 4px #80deea; font-weight:bold;";
     default: return "";
   }
 }
@@ -3204,10 +3216,24 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.2.0",
+    date: "09/07/2026",
+    isNew: true,
+    title: "Sugestões, fontes de nome e novos títulos elementais",
+    items: [
+      "📬 Novo app: Sugestões & Bugs! Reporte problemas ou sugira funcionalidades — tudo vai parar num board público visível a todos. O admin pode responder e marcar cada pedido como aprovado, rejeitado ou implementado.",
+      "🔤 Compre fontes para o seu nome nos rankings! Cada fonte nova custa um pouco mais que a anterior — veja na aba Fonte do seu Perfil.",
+      "🔥💧🌍🌬️ 4 novos títulos elementais por 500 LC cada: Fogo (gradiente chama com cintilação), Água (onda profunda), Terra (pulso terroso) e Ar (shimmer ultrarrápido).",
+      "✨ Topázio ganhou animação de brasa pulsante e ficou mais avermelhado.",
+      "⚪ Platina agora também pulsa além do sweep metálico.",
+      "🃏 LuizJack 21 agora se chama Luiz21.",
+    ],
+  },
+  {
     version: "2.1.0",
     date: "08/07/2026",
-    isNew: true,
-    title: "LuizJack 21 — Blackjack no cassino",
+    isNew: false,
+    title: "Luiz21 — Blackjack no cassino",
     items: [
       "🃏 Novo jogo: LuizJack 21! Jogue blackjack contra a mesa com visual cassino (feltro verde, fichas, cartas) dentro do shell Windows 95.",
       "💰 Três níveis de aposta: Baixa (5 LC), Média (15 LC) e Alta (30 LC). Blackjack natural paga 1,5×.",

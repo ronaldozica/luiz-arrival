@@ -19,9 +19,13 @@ const STORE_ITEMS = [
   { id: "color_rubi", price: 50, type: "namecolor", color: "#e53935", title: "Rubi" },
   { id: "color_ametista", price: 75, type: "namecolor", color: "#ab47bc", title: "Ametista" },
   { id: "color_dourado", price: 90, type: "namecolor", color: "#ffd600", title: "Dourada" },
-  { id: "color_topazio", price: 150, type: "namecolor", color: "#ff7043", title: "Topázio" },
+  { id: "color_topazio", price: 150, type: "namecolor", color: "#e64a19", title: "Topázio" },
   { id: "color_diamante", price: 225, type: "namecolor", color: "#b3e5fc", title: "Diamante" },
   { id: "color_platina", price: 500, type: "namecolor", color: "#e0e0e0", title: "Platina" },
+  { id: "color_fogo",    price: 500, type: "namecolor", color: "#ff4500", title: "Fogo" },
+  { id: "color_agua",    price: 500, type: "namecolor", color: "#0288d1", title: "Água" },
+  { id: "color_terra",   price: 500, type: "namecolor", color: "#6d4c41", title: "Terra" },
+  { id: "color_ar",      price: 500, type: "namecolor", color: "#80deea", title: "Ar" },
 ];
 
 // ─── Cores exclusivas (fora da loja) ────────────────────────────────────────

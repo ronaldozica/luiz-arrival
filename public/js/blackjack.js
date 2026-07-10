@@ -433,7 +433,7 @@ function renderBlackjack() {
     root.innerHTML = `
       <div class="bj-login-msg">
         <span>🔒</span>
-        Faça login para jogar LuizJack.<br>
+        Faça login para jogar Luiz21.<br>
         <button onclick="openWindow('win-login')" class="bj-btn bj-btn-deal" style="margin-top:8px">Fazer Login</button>
       </div>`;
     return;

@@ -85,7 +85,7 @@
       <hr />
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
       <button onclick="openFarmWindow(); closeStartMenu()">🌾 LuizFarm 95</button>
-      <button onclick="openBlackjackWindow(); closeStartMenu()">🃏 LuizJack 21</button>
+      <button onclick="openBlackjackWindow(); closeStartMenu()">🃏 Luiz21</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
       <button onclick="openWindow('win-aimtrainer'); initAimTrainerGame(); closeStartMenu()">🔫 Aim Trainer</button>
       <button onclick="openMinesweeperWindow(); closeStartMenu()">💣 Campo Minado</button>
@@ -875,7 +875,7 @@
         <button class="rank-tab" data-tab="spider"
           onclick="loadGameRank('spider'); setGameRankTabActive('spider')">🕷️ Spider</button>
         <button class="rank-tab" data-tab="luizjack"
-          onclick="loadGameRank('luizjack'); setGameRankTabActive('luizjack')">🃏 LuizJack</button>
+          onclick="loadGameRank('luizjack'); setGameRankTabActive('luizjack')">🃏 Luiz21</button>
       </div>
       <div id="gamerank-content">
         <div class="loading">Carregando...</div>
@@ -1156,7 +1156,7 @@
         </div>
         <div class="folder-icon" ondblclick="openBlackjackWindow()">
           <div class="icon-img">🃏</div>
-          <div class="icon-label">LuizJack 21</div>
+          <div class="icon-label">Luiz21</div>
         </div>
         <div class="folder-icon" ondblclick="openWindow('win-snake'); initSnakeGame()">
           <div class="icon-img">🐍</div>
@@ -1267,6 +1267,10 @@
           <div class="icon-img">📰</div>
           <div class="icon-label">Novidades</div>
         </div>
+        <div class="folder-icon" ondblclick="openRequestsWindow()">
+          <div class="icon-img">📬</div>
+          <div class="icon-label">Sugestões &amp; Bugs</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1275,7 +1279,7 @@
   <!-- ══ WINDOW: LUIZJACK 21 ══ -->
   <div class="win95-window" id="win-luizjack" style="left:170px;top:55px;width:480px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-luizjack')">
-      <span class="win95-title">🃏 LuizJack 21</span>
+      <span class="win95-title">🃏 Luiz21</span>
       <div class="win95-controls">
         <button class="win95-btn-ctrl" onclick="minimizeWindow('win-luizjack')">_</button>
         <button class="win95-btn-ctrl" onclick="closeWindow('win-luizjack')">✕</button>
