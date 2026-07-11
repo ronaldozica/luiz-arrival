@@ -257,6 +257,7 @@ function openWindow(id) {
   delete minimizedWindows[id];
   bringToFront(w);
   updateTaskbar();
+  if (isMobile()) centerWindow(w);
   clampWindowToViewport(w);
 }
 
@@ -884,7 +885,11 @@ async function loadProfileWallpaper() {
 // ─── Start Menu ───────────────────────────────────────────────────────────────
 function toggleStartMenu() {
   const m = document.getElementById("start-menu");
-  m.style.display = m.style.display === "none" ? "block" : "none";
+  if (m.style.display === "none") {
+    m.style.display = isMobile() ? "flex" : "block";
+  } else {
+    m.style.display = "none";
+  }
 }
 function closeStartMenu() {
   document.getElementById("start-menu").style.display = "none";
@@ -3784,3 +3789,59 @@ function toggleScoringRulesAdvanced() {
   scoringRulesAdvancedOpen = !scoringRulesAdvancedOpen;
   renderScoringRules();
 }
+
+// ─── Mobile / Touch Support ───────────────────────────────────────────────────
+
+function isMobile() {
+  return window.matchMedia("(max-width: 600px)").matches;
+}
+
+// Touch drag for window titlebars
+(function initTouchDrag() {
+  document.querySelectorAll(".win95-titlebar").forEach((tb) => {
+    tb.addEventListener("touchstart", (e) => {
+      if (e.target.closest(".win95-btn-ctrl")) return;
+      const win = tb.closest(".win95-window");
+      if (!win) return;
+      bringToFront(win);
+      const t = e.touches[0];
+      drag = {
+        el: win,
+        startX: t.clientX - win.offsetLeft,
+        startY: t.clientY - win.offsetTop,
+        isWindow: true,
+      };
+      e.preventDefault();
+    }, { passive: false });
+  });
+})();
+
+document.addEventListener("touchmove", (e) => {
+  if (!drag || !drag.isWindow) return;
+  const t = e.touches[0];
+  const x = Math.max(0, Math.min(t.clientX - drag.startX, window.innerWidth - drag.el.offsetWidth));
+  const y = Math.max(0, Math.min(t.clientY - drag.startY, window.innerHeight - drag.el.offsetHeight - 34));
+  drag.el.style.left = x + "px";
+  drag.el.style.top = y + "px";
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener("touchend", () => { drag = null; });
+
+// Desktop icons: single tap to open on mobile
+document.querySelector(".desktop").addEventListener("click", (e) => {
+  if (!isMobile()) return;
+  const icon = e.target.closest(".desktop-icon");
+  if (!icon) return;
+  const action = icon.dataset.action;
+  if (action) eval(action);
+});
+
+// Folder icons inside windows: single tap on mobile (ondblclick not fired by touch)
+document.querySelectorAll(".folder-icon").forEach((fi) => {
+  fi.addEventListener("click", () => {
+    if (!isMobile()) return;
+    const handler = fi.getAttribute("ondblclick");
+    if (handler) eval(handler);
+  });
+});
