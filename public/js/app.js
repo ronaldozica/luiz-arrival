@@ -172,6 +172,8 @@ function renderPlayerName(name, includeAchievement) {
   }
   if (showDecorations && profile.font) {
     inlineStyle += `font-family:${getFontFamily(profile.font)};`;
+    const sizeAdjust = getFontSizeAdjust(profile.font);
+    if (sizeAdjust) inlineStyle += `font-size:${sizeAdjust};`;
   }
   const style = inlineStyle ? `style="${inlineStyle}"` : "";
   const achievementBadge =
@@ -194,6 +196,16 @@ function getFontFamily(fontId) {
     font_dancing_script: "'Dancing Script', cursive",
   };
   return map[fontId] || "inherit";
+}
+
+function getFontSizeAdjust(fontId) {
+  const map = {
+    font_press_start:    "0.68em",
+    font_impact:         "0.9em",
+    font_lobster:        "0.95em",
+    font_pacifico:       "0.95em",
+  };
+  return map[fontId] || null;
 }
 
 // ─── Loading overlay ─────────────────────────────────────────────────────────
