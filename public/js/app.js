@@ -2775,11 +2775,12 @@ async function loadAchievementsRank() {
       </tr></thead><tbody>`;
       top.forEach((entry, i) => {
         const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-        const badges = entry.achievements
+        const badgeSpans = entry.achievements
           .map((id) => defById[id])
           .filter(Boolean)
           .map((def) => `<span title="${escHtml(def.title)}">${def.icon}</span>`)
-          .join(" ");
+          .join("");
+        const badges = `<div class="achv-badges-wrap">${badgeSpans}</div>`;
         html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(entry.name, true)}</td><td><strong>${entry.count}</strong></td><td class="achv-rank-badges">${badges}</td></tr>`;
       });
       html += `</tbody></table>`;
@@ -3366,6 +3367,21 @@ function showAchievementToast(achievementIds) {
 // esta atualização mesmo que não tenha sido pedida explicitamente.
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
+  {
+    version: "2.3.0",
+    date: "10/07/2026",
+    isNew: true,
+    title: "LuizFarm melhorado, fonte Minecraft e polimentos visuais",
+    items: [
+      "🌾 LuizFarm: botões 'Plantar em Todos' e 'Colher em Todos' — selecione uma semente e plante todas as parcelas vazias com um clique, ou colha tudo de uma vez!",
+      "⛏️ Nova fonte comprável: Minecraft — disponível na Loja por 25 LC (ou preço escalonado, se já tiver outras fontes).",
+      "💗 Título Coração ganhou gradiente rosa deslizante e pulso de brilho, mantendo os corações animados ao lado do nome.",
+      "📐 Fontes de nome agora ocupam o mesmo espaço no ranking — Press Start 2P, Impact e outras não aumentam mais a altura das linhas.",
+      "🔧 Fix: fonte de nome agora aparece corretamente no ranking principal (antes só aparecia no ranking de jogos).",
+      "🎖️ Ranking de Conquistas com badges maiores e melhor organização visual.",
+      "🏹 Conquista 'Lenda da mira' ganhou emoji exclusivo (arco e flecha).",
+    ],
+  },
   {
     version: "2.2.0",
     date: "09/07/2026",

@@ -693,8 +693,20 @@ body {
 }
 
 .achv-rank-badges {
-  font-size: 14px;
-  letter-spacing: 2px;
+  padding: 2px 0;
+}
+
+.achv-rank-badges .achv-badges-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 5px;
+  max-width: 200px;
+}
+
+.achv-rank-badges .achv-badges-wrap span {
+  font-size: 18px;
+  line-height: 1;
+  cursor: default;
 }
 
 .rank-gold td:first-child::before {
