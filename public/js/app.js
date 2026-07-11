@@ -3404,6 +3404,18 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.4.0",
+    date: "10/07/2026",
+    isNew: true,
+    title: "Nova conquista, emojis únicos e picker completo",
+    items: [
+      "🤡 Nova conquista: Antividente — desbloqueada para quem faz a pior aposta do dia (maior erro) quando há 2 ou mais apostas válidas.",
+      "🎯 Todas as conquistas agora têm emojis únicos — Detonador especialista virou 💥, Lenda do Spider 🕸️, A casa perdeu 🎰, Estrategista do Spider 🧩 e Pura estratégia ♟️.",
+      "🙂 Seletor de emojis completamente expandido: de ~190 para ~550 emojis disponíveis, com nova categoria 🌿 Natureza (plantas, clima, céu) e categorias existentes triplicadas.",
+      "✏️ Conquista 'Sortuda de iniciante' renomeada para 'Sorte de principiante'.",
+    ],
+  },
+  {
     version: "2.3.0",
     date: "10/07/2026",
     isNew: true,
