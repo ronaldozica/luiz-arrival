@@ -2046,19 +2046,32 @@ body {
   50%       { filter: brightness(1.3); }
 }
 
-/* ─── HEART NAME (vermelho brilhante + coraçõezinhos aparecendo) ─── */
+/* ─── HEART NAME (gradiente rosa deslizante + pulso + coraçõezinhos) ─── */
 /* Cor exclusiva, não compra na loja — ver EXCLUSIVE_COLORS em lib/store-items.js */
-/* Sem transform/scale/translate nos corações: qualquer movimento combinado
-   com overflow:hidden cortava o emoji no meio do caminho e parecia torto.
-   Os corações só piscam (opacity) numa posição fixa ao lado do nome, e o
-   brilho do texto é estático (sem pulsar), pra não parecer borrado. */
+/* filter:drop-shadow substitui text-shadow pois background-clip:text exige
+   color:transparent, o que anularia text-shadow. */
 .name-heart-particles {
   position: relative;
   display: inline-block;
   font-weight: bold;
-  color: #ff1744;
   padding: 0 13px;
-  text-shadow: 0 0 4px #ff5252, 0 0 8px #e53935;
+  background: linear-gradient(
+    100deg,
+    #c2185b 0%,
+    #e91e63 20%,
+    #f48fb1 40%,
+    #ffffff 50%,
+    #f48fb1 60%,
+    #e91e63 80%,
+    #c2185b 100%
+  );
+  background-size: 250% 100%;
+  background-position: -120% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: heart-slide 2.4s linear infinite, heart-glow-pulse 1.8s ease-in-out infinite;
 }
 
 .name-heart-particles::before,
@@ -2089,6 +2102,21 @@ body {
   }
   40%, 60% {
     opacity: 1;
+  }
+}
+
+@keyframes heart-slide {
+  to {
+    background-position: 220% 0;
+  }
+}
+
+@keyframes heart-glow-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 3px #e91e63) drop-shadow(0 0 6px #c2185b);
+  }
+  50% {
+    filter: drop-shadow(0 0 8px #ff80ab) drop-shadow(0 0 18px #f50057);
   }
 }
 
