@@ -2083,6 +2083,10 @@ body {
   line-height: 1;
   opacity: 0;
   pointer-events: none;
+  /* sobrescreve o transparent herdado do background-clip:text do parent */
+  color: initial;
+  -webkit-text-fill-color: initial;
+  background: none;
   animation: heart-appear 2.4s ease-in-out infinite;
 }
 
