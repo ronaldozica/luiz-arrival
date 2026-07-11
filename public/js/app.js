@@ -194,6 +194,7 @@ function getFontFamily(fontId) {
     font_press_start:    "'Press Start 2P', monospace",
     font_pacifico:       "'Pacifico', cursive",
     font_dancing_script: "'Dancing Script', cursive",
+    font_minecraft:      "'Pixelify Sans', monospace",
   };
   return map[fontId] || "inherit";
 }
@@ -204,6 +205,7 @@ function getFontSizeAdjust(fontId) {
     font_impact:         "0.9em",
     font_lobster:        "0.95em",
     font_pacifico:       "0.95em",
+    font_minecraft:      "0.85em",
   };
   return map[fontId] || null;
 }

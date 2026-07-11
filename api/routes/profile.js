@@ -210,7 +210,9 @@ router.post("/profile/font/buy", requireAuth, invalidatesCache("cache:profiles")
 
     const uk = userKey(user.name);
     const ownedKey = `font_owned:${uk}`;
-    const { earnedCoins, spentCoins, fontOwned } = await calcBalance(kv, user, users);
+    // rawFontOwned vem do mesmo calcBalance que calculou o saldo —
+    // evita TOCTOU de ler font_owned duas vezes com operações async no meio.
+    const { earnedCoins, spentCoins, fontOwned, rawFontOwned } = await calcBalance(kv, user, users);
 
     if (fontOwned.includes(fontId))
       return res.status(400).json({ error: "Você já possui esta fonte." });
@@ -220,8 +222,7 @@ router.post("/profile/font/buy", requireAuth, invalidatesCache("cache:profiles")
     if (balance < price)
       return res.status(400).json({ error: "LuizCoins™ insuficientes." });
 
-    const rawOwned = parseRedisArray(await kv.get(ownedKey));
-    rawOwned.push({ fontId, pricePaid: price });
+    const rawOwned = [...rawFontOwned, { fontId, pricePaid: price }];
     await kv.set(ownedKey, JSON.stringify(rawOwned));
     if (rawOwned.length === 1) {
       await kv.set(`font_active:${uk}`, fontId);

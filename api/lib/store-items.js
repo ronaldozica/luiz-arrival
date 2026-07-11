@@ -69,6 +69,7 @@ const FONTS = [
   { id: "font_press_start",    label: "Press Start 2P"   },
   { id: "font_pacifico",       label: "Pacifico"         },
   { id: "font_dancing_script", label: "Dancing Script"   },
+  { id: "font_minecraft",      label: "Minecraft"        },
 ];
 const FONT_IDS = new Set(FONTS.map((f) => f.id));
 const FONT_BASE_PRICE = 25;
@@ -254,7 +255,7 @@ async function calcBalance(kv, user, users) {
   const bjLost = parseRedisNumber(await kv.get(`bjlost:${userKey(user.name)}`));
   spentCoins += bjLost;
 
-  return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned, fontOwned };
+  return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned, fontOwned, rawFontOwned };
 }
 
 module.exports = {
