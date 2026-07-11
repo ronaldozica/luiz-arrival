@@ -97,7 +97,8 @@ router.post("/admin/arrival", requireAdminAuth, async (req, res) => {
 
     // Conquistas ligadas ao resultado do dia
     if (day.rankings && day.rankings.length > 0) {
-      const top3 = day.rankings.filter((r) => r.position && r.position <= 3);
+      const valid = day.rankings.filter((r) => r.position != null);
+      const top3 = valid.filter((r) => r.position <= 3);
       for (const entry of top3) {
         if (entry.position === 1) await unlockAchievement(kv, entry.name, "bet_winner");
 
@@ -105,6 +106,13 @@ router.post("/admin/arrival", requireAdminAuth, async (req, res) => {
         if (playedBefore < MIN_DAYS_FOR_OVERALL_RANK) {
           await unlockAchievement(kv, entry.name, "novato_em_ascensao");
         }
+      }
+
+      // Pior aposta do dia: último da lista válida, só quando há 2+ apostadores
+      // (evita dar a mesma pessoa que ganhou quando joga sozinha).
+      if (valid.length >= 2) {
+        const worst = valid[valid.length - 1];
+        await unlockAchievement(kv, worst.name, "bet_loser");
       }
     }
 
