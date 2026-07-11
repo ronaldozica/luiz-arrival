@@ -1562,14 +1562,20 @@ function switchRankTab(tab) {
 function renderPlayerCell(r) {
   const hcmBadge = r.isHCM ? ' <span class="hcm-badge">HCM</span>' : "";
   const profile = userProfiles[r.name] || {};
-  let nameStyle = "";
+  let inlineStyle = "";
   let nameColorClass = "";
   if (showDecorations && profile.nameColor) {
     nameColorClass = getColorClass(profile.nameColor.id);
     if (!nameColorClass) {
-      nameStyle = `style="color:${profile.nameColor.color};${getColorEffect(profile.nameColor.id)}"`;
+      inlineStyle += `color:${profile.nameColor.color};${getColorEffect(profile.nameColor.id)}`;
     }
   }
+  if (showDecorations && profile.font) {
+    inlineStyle += `font-family:${getFontFamily(profile.font)};`;
+    const sizeAdjust = getFontSizeAdjust(profile.font);
+    if (sizeAdjust) inlineStyle += `font-size:${sizeAdjust};`;
+  }
+  const nameStyle = inlineStyle ? `style="${inlineStyle}"` : "";
   const achBadge =
     showDecorations && profile.achievement
       ? `<span class="achievement-badge" title="${escHtml(profile.achievement.title)}">${profile.achievement.icon}</span>`
