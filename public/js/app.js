@@ -3409,9 +3409,22 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.5.0",
+    date: "12/07/2026",
+    isNew: true,
+    title: "Site compatível com celular 📱",
+    items: [
+      "📱 O LuizOS 95 agora funciona no celular! Todas as janelas se adaptam à tela pequena, o menu Iniciar vira scrollável, os ícones do desktop e das pastas respondem ao toque e as janelas abrem centradas automaticamente.",
+      "📋 Taskbar comprimida no mobile: a lista de apps abertos some para dar espaço, botões ficam maiores para toque.",
+      "🔒 Painel Admin adaptado: as 7 abas agora quebram em duas linhas no celular para ficarem todas acessíveis.",
+      "🏪 Loja reorganizada em 2 colunas no celular (era 3).",
+      "🖱️ Janelas podem ser arrastadas pelo título usando o dedo — drag por touch.",
+    ],
+  },
+  {
     version: "2.4.0",
     date: "10/07/2026",
-    isNew: true,
+    isNew: false,
     title: "Nova conquista, emojis únicos e picker completo",
     items: [
       "🤡 Nova conquista: Antividente — desbloqueada para quem faz a pior aposta do dia (maior erro) quando há 2 ou mais apostas válidas.",
