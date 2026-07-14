@@ -3431,9 +3431,23 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.6.0",
+    date: "13/07/2026",
+    isNew: true,
+    title: "LuizFarm melhorado e Luiz21 revisado 🌾🃏",
+    items: [
+      "🌾 Murcha graduada no LuizFarm: agora as plantas passam por 3 fases — pronta (100%), murchando (75% do valor) e murchou (0%). Você tem o triplo do tempo de crescimento antes de perder tudo!",
+      "⚡ Plantar em Todos e Colher em Todos agora usam uma única requisição ao servidor — muito mais rápidos.",
+      "✨ UI otimista no plantio: a parcela aparece imediatamente ao plantar, sem esperar o servidor confirmar.",
+      "📱 LuizFarm corrigido no mobile: parcelas menores e layout empilhado em telas pequenas.",
+      "🍓 Sementes premium na loja: Morango (1h), Laranja (12h) e Abacaxi (3 dias) desbloqueáveis por LuizCoins™.",
+      "🃏 Luiz21: aposta agora precisa ser escolhida antes de cada mão. Fichas ficam bloqueadas durante o jogo.",
+    ],
+  },
+  {
     version: "2.5.0",
     date: "12/07/2026",
-    isNew: true,
+    isNew: false,
     title: "Site compatível com celular 📱",
     items: [
       "📱 O LuizOS 95 agora funciona no celular! Todas as janelas se adaptam à tela pequena, o menu Iniciar vira scrollável, os ícones do desktop e das pastas respondem ao toque e as janelas abrem centradas automaticamente.",

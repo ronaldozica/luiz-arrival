@@ -247,7 +247,7 @@ let bjState = "idle"; // idle | playing | result | blocked | loading | unauth
 let bjBalance = 0;
 let bjDailyEarned = 0;
 const BJ_DAILY_CAP = 100;
-let bjSelectedBet = "medium";
+let bjSelectedBet = null;
 let bjGame = null;   // { playerHand, dealerHand?, dealerVisible, playerValue, dealerValue?, outcome?, ... }
 let bjBusy = false;
 let bjLastPlayerCount = 0;  // cartas do jogador na última renderização (para animar só a nova)
@@ -286,6 +286,7 @@ async function initBlackjack() {
     } else if (data.activeGame) {
       bjGame = data.activeGame;
       bjState = "playing";
+      bjSelectedBet = data.activeGame.betLevel || bjSelectedBet;
     } else {
       bjState = "idle";
     }
@@ -302,7 +303,7 @@ function selectBjBet(level) {
 }
 
 async function dealBlackjack() {
-  if (bjBusy || bjState === "playing" || bjState === "blocked") return;
+  if (bjBusy || bjState === "playing" || bjState === "blocked" || !bjSelectedBet) return;
   bjBusy = true;
   bjState = "loading";
   renderBlackjack();
@@ -511,7 +512,7 @@ function renderBlackjack() {
     <div class="bj-controls">
       ${isDone ? resultHTML(bjGame?.outcome, bjGame?.coinsWon, bjGame?.coinsLost) : `<div class="bj-result"></div>`}
 
-      <div class="bj-bet-row">
+      <div class="bj-bet-row" style="${isPlaying ? 'opacity:0.38;pointer-events:none' : ''}">
         <button class="bj-chip bj-chip-low    ${bjSelectedBet === 'low'    ? 'active' : ''}" onclick="selectBjBet('low')"    title="Aposta baixa">
           <span class="bj-chip-val">5</span>
           <span class="bj-chip-label">BAIXA</span>
@@ -529,7 +530,7 @@ function renderBlackjack() {
       <div class="bj-action-row">
         <button class="bj-btn bj-btn-deal"
           onclick="dealBlackjack()"
-          ${(isPlaying || bjBusy) ? "disabled" : ""}>
+          ${(isPlaying || bjBusy || !bjSelectedBet) ? "disabled" : ""}>
           ${isDone ? "Nova mão" : "Distribuir"}
         </button>
         <button class="bj-btn bj-btn-hit"
@@ -547,8 +548,11 @@ function renderBlackjack() {
       <div class="bj-status-msg">
         ${bjBusy && isPlaying
           ? `<div class="bj-loading-row"><div class="bj-spinner"></div> Calculando...</div>`
-          : isPlaying ? "Sua vez — pedir carta ou parar?" : ""}
-        ${isIdle    ? `Aposta selecionada: <strong style="color:#ffe066">${BET_LABELS[bjSelectedBet]} LC</strong> · Blackjack paga 1,5×` : ""}
+          : isPlaying ? `Aposta: <strong style="color:#ffe066">${BET_LABELS[bjSelectedBet]} LC</strong> — pedir carta ou parar?` : ""}
+        ${isIdle && !bjSelectedBet ? `<span style="color:#f5c518">⬆ Selecione uma aposta para começar</span>` : ""}
+        ${isIdle && bjSelectedBet  ? `Aposta: <strong style="color:#ffe066">${BET_LABELS[bjSelectedBet]} LC</strong> · Blackjack paga 1,5×` : ""}
+        ${isDone && !bjSelectedBet ? `<span style="color:#f5c518">⬆ Selecione uma aposta para nova mão</span>` : ""}
+        ${isDone && bjSelectedBet  ? `Aposta: <strong style="color:#ffe066">${BET_LABELS[bjSelectedBet]} LC</strong> · Pode trocar antes de distribuir` : ""}
       </div>
     </div>
   `;
