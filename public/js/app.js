@@ -2177,6 +2177,30 @@ async function deleteAdminRankEntry(game, difficulty, name) {
   }
 }
 
+async function adminMigrateAimtrainerPlatform() {
+  const msg = document.getElementById("admin-migrate-aimtrainer-msg");
+  if (!await w95confirm("Migrar scores legados do Aim Trainer para mobile? Scores existentes na chave mobile serão preservados.")) return;
+  showLoading("Migrando...");
+  try {
+    const res = await fetch(`${API}/admin/migrate-aimtrainer-platform`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+    });
+    const data = await res.json();
+    if (res.ok) {
+      const summary = data.report.map((r) => `${r.diff}: ${r.status}${r.count ? ` (${r.count} scores)` : ""}`).join(", ");
+      showMsg(msg, `✅ Concluído — ${summary}`, "ok");
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+      handleAdminAuthError(res.status);
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
 async function setArrival() {
   const time = document.getElementById("admin-arrival-time").value;
   const date = document.getElementById("admin-date").value || undefined;
@@ -2254,7 +2278,19 @@ function renderGameRank() {
   const gameLabel = getGameLabel(game);
   const diffs = GAME_RANK_DIFFICULTIES[game];
   let html = "";
-  if (!diffs) {
+  if (game === "aimtrainer" && diffs) {
+    const platforms = [
+      { key: "mobile", label: "📱 Mobile" },
+      { key: "desktop", label: "🖥️ Desktop" },
+    ];
+    platforms.forEach(({ key, label }) => {
+      html += `<div class="section-label" style="margin-top:8px;font-size:13px">${label}</div>`;
+      diffs.forEach((diff) => {
+        html += `<div class="section-label" style="margin-top:4px">${gameLabel} — ${getDifficultyLabel(diff)} — Top 50</div>`;
+        html += buildGameRankTable(game, data[`${diff}:${key}`] || []);
+      });
+    });
+  } else if (!diffs) {
     html += `<div class="section-label">${gameLabel} — Top 50</div>`;
     html += buildGameRankTable(game, data["default"] || []);
   } else {
@@ -2285,7 +2321,25 @@ async function loadGameRank(game) {
       return;
     }
     const diffs = GAME_RANK_DIFFICULTIES[game];
-    if (!diffs) {
+    if (game === "aimtrainer" && diffs) {
+      // Aimtrainer tem ranking separado por plataforma: busca mobile + desktop
+      const platforms = ["mobile", "desktop"];
+      const results = await Promise.all(
+        diffs.flatMap((diff) =>
+          platforms.map((platform) => {
+            const cacheKey = `game_rank_aimtrainer_${diff}_${platform}`;
+            return cachedFetchJSON(cacheKey, `${API}/game-rank?game=aimtrainer&difficulty=${diff}&platform=${platform}`, 20 * 1000);
+          }),
+        ),
+      );
+      const data = {};
+      diffs.forEach((diff, di) => {
+        platforms.forEach((platform, pi) => {
+          data[`${diff}:${platform}`] = results[di * platforms.length + pi];
+        });
+      });
+      currentGameRankCache = { game, data };
+    } else if (!diffs) {
       const cacheKey = `game_rank_${game}_default`;
       const scores = await cachedFetchJSON(cacheKey, `${API}/game-rank?game=${game}`, 20 * 1000);
       currentGameRankCache = { game, data: { default: scores } };
@@ -2332,7 +2386,11 @@ async function submitGameScore(game, difficulty, score, callback, token, extra) 
   const authToken = token || sessionToken;
   if (!currentUser || !authToken) return;
   try {
-    const personalKey = difficulty ? `luizos_pb_${game}_${difficulty}` : `luizos_pb_${game}`;
+    const platform = extra?.platform;
+    const platformSuffix = (game === "aimtrainer" && platform) ? `_${platform}` : "";
+    const personalKey = difficulty
+      ? `luizos_pb_${game}_${difficulty}${platformSuffix}`
+      : `luizos_pb_${game}${platformSuffix}`;
     const personalBest = parseInt(localStorage.getItem(personalKey) || "0", 10);
     const scoreValue = Number(score);
     const isNewBest = scoreValue > personalBest;
@@ -2351,8 +2409,8 @@ async function submitGameScore(game, difficulty, score, callback, token, extra) 
     if (res.ok) {
       // Atualiza PB local se for novo recorde
       if (isNewBest) localStorage.setItem(personalKey, String(scoreValue));
-      // Invalida cache local do ranking pra mostrar o score atualizado imediatamente
-      const rankCacheKey = `${CACHE_PREFIX}game_rank_${game}_${difficulty || "default"}`;
+      // Invalida cache local do ranking (inclui plataforma para aimtrainer)
+      const rankCacheKey = `${CACHE_PREFIX}game_rank_${game}_${difficulty || "default"}${platformSuffix}`;
       try { localStorage.removeItem(rankCacheKey); } catch {}
     }
     if (callback) callback(data.coinsEarned || 0);
@@ -2387,8 +2445,11 @@ function showGameCoinsToast(coins) {
   }, 2200);
 }
 
-function getPersonalBest(game, difficulty) {
-  const key = difficulty ? `luizos_pb_${game}_${difficulty}` : `luizos_pb_${game}`;
+function getPersonalBest(game, difficulty, platform) {
+  const platformSuffix = (game === "aimtrainer" && platform) ? `_${platform}` : "";
+  const key = difficulty
+    ? `luizos_pb_${game}_${difficulty}${platformSuffix}`
+    : `luizos_pb_${game}${platformSuffix}`;
   return parseInt(localStorage.getItem(key) || "0", 10);
 }
 
@@ -3431,9 +3492,25 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.7.0",
+    date: "14/07/2026",
+    isNew: true,
+    title: "Aim Trainer com ranking separado por plataforma 🎯📱🖥️",
+    items: [
+      "📱🖥️ Ranking do Aim Trainer agora é separado: jogadores no celular (toque) competem entre si, e jogadores no desktop (mouse) competem entre si.",
+      "🖥️ No desktop, o canvas do Aim Trainer tem tamanho fixo (560×400px) — sem vantagem por ter tela menor.",
+      "🏆 Novas conquistas exclusivas para o Aim Trainer Desktop: 'Mira afiada (Desktop)' e 'Lenda da mira (Desktop)'.",
+      "🏅 Conquistas do Aim Trainer Mobile renomeadas para deixar claro a plataforma.",
+      "📜 Scores antigos migrados automaticamente para o ranking Mobile (não havia como saber a plataforma original).",
+      "🐛 Menu Iniciar no mobile não tinha mais scroll infinito após o último item.",
+      "🐛 Wallpaper não ficava mais cortado na parte de baixo no mobile.",
+      "🐛 Botões de aba no Ranking não sumiam mais no mobile.",
+    ],
+  },
+  {
     version: "2.6.0",
     date: "13/07/2026",
-    isNew: true,
+    isNew: false,
     title: "LuizFarm melhorado e Luiz21 revisado 🌾🃏",
     items: [
       "🌾 Murcha graduada no LuizFarm: agora as plantas passam por 3 fases — pronta (100%), murchando (75% do valor) e murchou (0%). Você tem o triplo do tempo de crescimento antes de perder tudo!",

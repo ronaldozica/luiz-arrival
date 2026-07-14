@@ -27,8 +27,16 @@ let atLastClickTime = 0; // debounce para ignorar o segundo click de um duplo cl
 // Config
 const AT_ROUND_DURATION = 15000; // ms
 const AT_MIN_CANVAS_SIZE = 280;
+const AT_DESKTOP_CANVAS_W = 560; // tamanho fixo no desktop (impede vantagem de tela menor)
+const AT_DESKTOP_CANVAS_H = 400;
 const AT_SENSITIVITY_STORAGE_KEY = "at-sensitivity";
 const AT_HIT_TOLERANCE_PX = 6; // margem extra em volta do alvo pra absorver imprecisão de clique/render
+
+// Toque → mobile; só mouse → desktop. Dispositivos híbridos → mobile (na dúvida).
+function atGetPlatform() {
+  if ("ontouchstart" in window || navigator.maxTouchPoints > 0) return "mobile";
+  return "desktop";
+}
 
 const AT_DIFFICULTY_CONFIG = {
   easy:   { radius: 30, lifetime: 1100 },
@@ -87,11 +95,18 @@ function setAtSensitivity(value) {
 // "zona morta" cinza nas laterais quando a janela é mais larga que alta.
 function atResizeCanvas() {
   if (!atCanvas || !atCanvasWrap) return;
-  const rect = atCanvasWrap.getBoundingClientRect();
-  const w = Math.max(AT_MIN_CANVAS_SIZE, Math.floor(rect.width));
-  const h = Math.max(AT_MIN_CANVAS_SIZE, Math.floor(rect.height));
+  let w, h;
+  if (atGetPlatform() === "desktop") {
+    // Tamanho fixo no desktop: todos os jogadores têm o mesmo canvas,
+    // impedindo vantagem de quem tem tela menor ou janela menor.
+    w = AT_DESKTOP_CANVAS_W;
+    h = AT_DESKTOP_CANVAS_H;
+  } else {
+    const rect = atCanvasWrap.getBoundingClientRect();
+    w = Math.max(AT_MIN_CANVAS_SIZE, Math.floor(rect.width));
+    h = Math.max(AT_MIN_CANVAS_SIZE, Math.floor(rect.height));
+  }
   if (atCanvas.width === w && atCanvas.height === h) return;
-
   atCanvas.width = w;
   atCanvas.height = h;
   atCanvas.style.width = w + "px";
@@ -388,7 +403,7 @@ function updateAtDisplays() {
     const remaining = isAtPlaying ? Math.max(0, Math.ceil((atRoundEndTime - Date.now()) / 1000)) : AT_ROUND_DURATION / 1000;
     timeEl.innerText = remaining;
   }
-  if (bestEl) bestEl.innerText = Math.max(atScore, getPersonalBest("aimtrainer", currentAtDifficulty));
+  if (bestEl) bestEl.innerText = Math.max(atScore, getPersonalBest("aimtrainer", currentAtDifficulty, atGetPlatform()));
 }
 
 function atDrawResultScreen() {
@@ -421,6 +436,7 @@ function atEndRound() {
 
   atDrawResultScreen();
 
+  const atPlatform = atGetPlatform();
   atRoundTokenPromise.then((roundToken) => {
     submitGameScore("aimtrainer", currentAtDifficulty, atScore, function (coinsEarned) {
       if (coinsEarned > 0) {
@@ -430,7 +446,7 @@ function atEndRound() {
           atCtx.fillText(`🎉 +${coinsEarned} LuizCoins™`, atCanvas.width / 2, atCanvas.height / 2 + 60);
         }, 100);
       }
-    }, undefined, { roundToken });
+    }, undefined, { roundToken, platform: atPlatform });
   });
 
   updateAtDisplays();

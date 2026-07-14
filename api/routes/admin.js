@@ -361,6 +361,36 @@ router.post("/admin/grant-aimtrainer-legend", requireAdminAuth, async (req, res)
   }
 });
 
+// POST /api/admin/migrate-aimtrainer-platform — copia scores legados
+// (gamerank:aimtrainer:diff) para gamerank:aimtrainer:diff:mobile.
+// Seguro de re-executar: pula se a chave mobile já tiver dados.
+router.post("/admin/migrate-aimtrainer-platform", requireAdminAuth, async (req, res) => {
+  try {
+    const kv = getKV();
+    const diffs = ["easy", "normal", "hard"];
+    const report = [];
+    for (const diff of diffs) {
+      const oldKey = `gamerank:aimtrainer:${diff}`;
+      const newKey = `gamerank:aimtrainer:${diff}:mobile`;
+      const existing = await kv.get(newKey);
+      if (existing && Array.isArray(existing) && existing.length > 0) {
+        report.push({ diff, status: "skipped", reason: "chave mobile já tem dados" });
+        continue;
+      }
+      const scores = await kv.get(oldKey);
+      if (!scores || !Array.isArray(scores) || scores.length === 0) {
+        report.push({ diff, status: "skipped", reason: "sem dados na chave legada" });
+        continue;
+      }
+      await kv.set(newKey, scores);
+      report.push({ diff, status: "migrated", count: scores.length });
+    }
+    res.json({ success: true, report });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // PATCH /api/admin/requests/:id — atualiza status e nota do admin
 router.patch("/admin/requests/:id", requireAdminAuth, async (req, res) => {
   try {

@@ -33,11 +33,16 @@ const RANK_SIZE = 50;
 // GET /api/game-rank
 router.get("/game-rank", async (req, res) => {
   try {
-    const { game, difficulty } = req.query;
+    const { game, difficulty, platform } = req.query;
     if (!game) return res.status(400).json({ error: "game é obrigatório." });
-    const rankKey = difficulty
-      ? `gamerank:${game}:${difficulty}`
-      : `gamerank:${game}`;
+    let rankKey;
+    if (game === "aimtrainer" && difficulty && platform) {
+      rankKey = `gamerank:aimtrainer:${difficulty}:${platform}`;
+    } else if (difficulty) {
+      rankKey = `gamerank:${game}:${difficulty}`;
+    } else {
+      rankKey = `gamerank:${game}`;
+    }
     const kv = getKV();
     const scores = (await kv.get(rankKey)) || [];
     res.json(scores);
@@ -85,7 +90,7 @@ router.post("/game-rank/start", requireAuth, async (req, res) => {
 // decorrido desde POST /api/game-rank/start (ver roundToken abaixo).
 router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"), async (req, res) => {
   try {
-    const { game, difficulty, score, hintsUsed, undoUsed, roundToken } = req.body;
+    const { game, difficulty, score, hintsUsed, undoUsed, roundToken, platform } = req.body;
     const playerName = req.sessionName; // Sempre do token de sessão, nunca do body
 
     if (!game || score === undefined) {
@@ -147,9 +152,15 @@ router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"),
       return res.status(400).json({ error: "Tempo de partida incompatível com a pontuação enviada." });
     }
 
-    const rankKey = difficulty
-      ? `gamerank:${game}:${difficulty}`
-      : `gamerank:${game}`;
+    let rankKey;
+    if (game === "aimtrainer" && difficulty) {
+      const atPlatform = platform === "desktop" ? "desktop" : "mobile";
+      rankKey = `gamerank:aimtrainer:${difficulty}:${atPlatform}`;
+    } else if (difficulty) {
+      rankKey = `gamerank:${game}:${difficulty}`;
+    } else {
+      rankKey = `gamerank:${game}`;
+    }
     let scores = (await kv.get(rankKey)) || [];
 
     const existingEntry = scores.find(
@@ -252,17 +263,16 @@ router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"),
       }
     }
     if (game === "aimtrainer") {
-      if (scoreNum >= 5000 && !achUnlocked.includes("aimtrainer_sharp")) {
-        achUnlocked.push("aimtrainer_sharp");
-        newAchievements.push("aimtrainer_sharp");
+      const atPlatform = platform === "desktop" ? "desktop" : "mobile";
+      const sharpId = atPlatform === "desktop" ? "aimtrainer_sharp_desktop" : "aimtrainer_sharp";
+      const legendId = atPlatform === "desktop" ? "aimtrainer_legend_desktop" : "aimtrainer_legend";
+      if (scoreNum >= 5000 && !achUnlocked.includes(sharpId)) {
+        achUnlocked.push(sharpId);
+        newAchievements.push(sharpId);
       }
-      if (
-        difficulty === "hard" &&
-        scoreNum >= 3000 &&
-        !achUnlocked.includes("aimtrainer_legend")
-      ) {
-        achUnlocked.push("aimtrainer_legend");
-        newAchievements.push("aimtrainer_legend");
+      if (difficulty === "hard" && scoreNum >= 3000 && !achUnlocked.includes(legendId)) {
+        achUnlocked.push(legendId);
+        newAchievements.push(legendId);
       }
     }
 
