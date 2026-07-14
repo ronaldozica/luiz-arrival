@@ -2325,6 +2325,13 @@ body {
 
 @media (max-width: 600px) {
 
+  /* ─── VIEWPORT ────────────────────────────── */
+  /* 100dvh acompanha a barra de endereço do navegador móvel,
+     evitando que o wallpaper fique cortado quando ela aparece */
+  body {
+    height: 100dvh;
+  }
+
   /* ─── TASKBAR ─────────────────────────────── */
   .taskbar {
     gap: 2px;
@@ -2363,7 +2370,7 @@ body {
     flex-direction: row;
     width: min(260px, 90vw);
     max-height: calc(100vh - 50px);
-    overflow: hidden;
+    overflow-x: hidden; /* não clipa scroll vertical dos filhos */
   }
 
   .start-menu-header {
@@ -2389,6 +2396,7 @@ body {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-y; /* garante scroll por toque em iOS */
   }
 
   /* Alvos de toque maiores para mobile */
@@ -2492,8 +2500,17 @@ body {
 
   /* ─── ÍCONES DAS PASTAS ───────────────────── */
   .folder-items {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
     gap: 12px;
     padding: 12px;
+  }
+
+  /* ─── FAZENDA ─────────────────────────────── */
+  #farm-root {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* ─── SCROLLBAR MAIS FINA NO MOBILE ──────── */

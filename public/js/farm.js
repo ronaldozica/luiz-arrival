@@ -489,6 +489,13 @@ async function farmPlantAll() {
   }
 
   farmBusy = true;
+  const emptyIds = farmPlots
+    .map((p, i) => ({ i, type: getPlotState(p).type }))
+    .filter(({ type }) => type === "empty")
+    .slice(0, canPlant)
+    .map(({ i }) => i);
+  renderFarm();
+  emptyIds.forEach((id) => setPlotLoading(id, true));
   try {
     const resp = await fetch("/api/farm/plant-all", {
       method: "POST",
@@ -522,6 +529,12 @@ async function farmHarvestAll() {
   }
 
   farmBusy = true;
+  const harvestableIds = farmPlots
+    .map((p, i) => ({ i, type: getPlotState(p).type }))
+    .filter(({ type }) => ["ready", "degraded", "withered"].includes(type))
+    .map(({ i }) => i);
+  renderFarm();
+  harvestableIds.forEach((id) => setPlotLoading(id, true));
   try {
     const resp = await fetch("/api/farm/harvest-all", {
       method: "POST",
