@@ -2325,13 +2325,6 @@ body {
 
 @media (max-width: 600px) {
 
-  /* ─── VIEWPORT ────────────────────────────── */
-  /* 100dvh acompanha a barra de endereço do navegador móvel,
-     evitando que o wallpaper fique cortado quando ela aparece */
-  body {
-    height: 100dvh;
-  }
-
   /* ─── TASKBAR ─────────────────────────────── */
   .taskbar {
     gap: 2px;
@@ -2393,16 +2386,26 @@ body {
   }
 
   .start-menu-items {
-    flex: 1;
+    /* flex: none + max-height: o div cresce só até o conteúdo (sem área
+       vazia scrollável) e passa a scrollar só quando ultrapassa o limite */
+    flex: none;
+    width: 100%;
+    max-height: calc(100vh - 80px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y; /* garante scroll por toque em iOS */
+    touch-action: pan-y;
   }
 
   /* Alvos de toque maiores para mobile */
   .start-menu-items button {
     padding: 10px 10px;
     font-size: 13px;
+  }
+
+  /* ─── DESKTOP / WALLPAPER ────────────────── */
+  /* Cobre a tela inteira; taskbar (position:fixed) já fica por cima */
+  .desktop {
+    bottom: 0;
   }
 
   /* ─── JANELAS ─────────────────────────────── */
