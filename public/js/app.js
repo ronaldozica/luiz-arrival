@@ -2574,6 +2574,7 @@ async function loadStore() {
     const mediaItems = data.items.filter((i) => (i.type || "media") === "media");
     const colorItems = data.items.filter((i) => i.type === "namecolor");
     const wpItems    = data.items.filter((i) => i.type === "wallpaper");
+    const seedItems  = data.items.filter((i) => i.type === "farmseed");
 
     let html = "";
 
@@ -2641,6 +2642,27 @@ async function loadStore() {
                  <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>`
               : `<div class="store-item-price" style="color:#006400">✅ Desbloqueado</div>
                  <div class="store-item-current-price">custa <img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price} hoje</div>`
+            }
+          </div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (seedItems.length > 0) {
+      html += `<div class="section-label" style="margin:16px 0 8px">🌾 Sementes para LuizFarm</div>`;
+      html += `<div class="store-grid">`;
+      seedItems.forEach((item) => {
+        const isUnlocked = data.purchases.includes(item.id);
+        html += `
+          <div class="${isUnlocked ? "store-item unlocked" : "store-item locked"}">
+            <div class="store-item-title">${escHtml(item.title)}</div>
+            <div style="font-size:40px;text-align:center;padding:6px 0">${item.icon || "🌱"}</div>
+            <div style="font-size:10px;color:#555;text-align:center;margin-bottom:4px">${escHtml(item.desc || "")}</div>
+            ${!isUnlocked
+              ? `<div class="store-item-price"><img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}</div>
+                 <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>`
+              : `<div class="store-item-price" style="color:#006400">✅ Desbloqueado</div>
+                 <div style="font-size:9px;color:#444;text-align:center">Disponível na fazenda</div>`
             }
           </div>`;
       });

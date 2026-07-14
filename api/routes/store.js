@@ -24,6 +24,9 @@ router.get("/store", requireAuth, async (req, res) => {
       if (item.type === "namecolor") {
         return { ...base, color: item.color, description: item.description };
       }
+      if (item.type === "farmseed") {
+        return { ...base, icon: item.icon, seedKey: item.seedKey, desc: item.desc };
+      }
       return { ...base, src: isUnlocked ? item.src : null, ...(item.wpKey ? { wpKey: item.wpKey } : {}) };
     });
 

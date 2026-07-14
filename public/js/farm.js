@@ -19,14 +19,18 @@
 })();
 
 const FARM_SEEDS_CLIENT = {
-  corn:    { name: "Milho",   icon: "🌽", cost: 8,  growthMs: 2  * 3600000, reward: 14  },
-  tomato:  { name: "Tomate",  icon: "🍅", cost: 20, growthMs: 6  * 3600000, reward: 38  },
-  pumpkin: { name: "Abóbora", icon: "🎃", cost: 45, growthMs: 24 * 3600000, reward: 90  },
-  grape:   { name: "Uva",     icon: "🍇", cost: 90, growthMs: 48 * 3600000, reward: 190 },
+  corn:       { name: "Milho",    icon: "🌽", cost: 8,   growthMs: 2  * 3600000, reward: 14  },
+  tomato:     { name: "Tomate",   icon: "🍅", cost: 20,  growthMs: 6  * 3600000, reward: 38  },
+  pumpkin:    { name: "Abóbora",  icon: "🎃", cost: 45,  growthMs: 24 * 3600000, reward: 90  },
+  grape:      { name: "Uva",      icon: "🍇", cost: 90,  growthMs: 48 * 3600000, reward: 190 },
+  strawberry: { name: "Morango",  icon: "🍓", cost: 12,  growthMs: 1  * 3600000, reward: 22,  premium: true },
+  orange:     { name: "Laranja",  icon: "🍊", cost: 30,  growthMs: 12 * 3600000, reward: 68,  premium: true },
+  pineapple:  { name: "Abacaxi",  icon: "🍍", cost: 100, growthMs: 72 * 3600000, reward: 330, premium: true },
 };
 
 let farmPlots = null;
 let farmBalance = 0;
+let farmOwnedSeeds = [];
 let farmTimerInterval = null;
 let farmSelectedSeed = null;
 let farmBusy = false;
@@ -74,6 +78,7 @@ async function loadFarm() {
     if (!resp.ok) throw new Error(data.error || "Erro ao carregar fazenda.");
     farmPlots = data.plots;
     farmBalance = data.balance;
+    farmOwnedSeeds = data.ownedSeeds || [];
     renderFarm();
   } catch (e) {
     const root = document.getElementById("farm-root");
@@ -88,8 +93,9 @@ function getPlotState(plot) {
   const seed = FARM_SEEDS_CLIENT[plot.seedType];
   if (!seed) return { type: "empty" };
   const elapsed = Date.now() - plot.plantedAt;
-  if (elapsed > seed.growthMs * 2) return { type: "withered", seed, plot };
-  if (elapsed >= seed.growthMs)    return { type: "ready",    seed, plot };
+  if (elapsed >= seed.growthMs * 3) return { type: "withered",  seed, plot };
+  if (elapsed >= seed.growthMs * 2) return { type: "degraded",  seed, plot };
+  if (elapsed >= seed.growthMs)     return { type: "ready",     seed, plot };
   const pct = elapsed / seed.growthMs;
   if (pct >= 0.3) return { type: "growing",  seed, plot, pct };
   return              { type: "seedling", seed, plot, pct };
@@ -115,7 +121,13 @@ function renderFarm() {
   const root = document.getElementById("farm-root");
   if (!root || !farmPlots) return;
 
-  const plotsHTML = farmPlots.map((p, i) => renderPlotHTML(p, i)).join("");
+  const mobile = typeof isMobile === "function" && isMobile();
+  const plotSize = mobile ? 62 : 80;
+  const outerFlex = mobile
+    ? "display:flex;flex-direction:column;gap:8px;padding:8px"
+    : "display:flex;gap:8px;padding:8px;align-items:flex-start";
+
+  const plotsHTML = farmPlots.map((p, i) => renderPlotHTML(p, i, plotSize)).join("");
   const seedShopHTML = renderSeedShop();
 
   root.innerHTML = `
@@ -127,11 +139,11 @@ function renderFarm() {
           : "Selecione uma semente e clique numa parcela"}
       </span>
     </div>
-    <div style="display:flex;gap:8px;padding:8px;align-items:flex-start">
+    <div style="${outerFlex}">
       <div>
         <div style="font-size:11px;font-weight:bold;color:#000;margin-bottom:4px">🌾 Sua fazenda</div>
         <div style="background:#006400;border:2px solid;border-color:#808080 #fff #fff #808080;padding:6px;display:inline-block">
-          <div id="farm-plots" style="display:grid;grid-template-columns:repeat(3,80px);gap:5px">
+          <div id="farm-plots" style="display:grid;grid-template-columns:repeat(3,${plotSize}px);gap:5px">
             ${plotsHTML}
           </div>
         </div>
@@ -140,6 +152,7 @@ function renderFarm() {
           <span style="background:#5C4A1E;color:#fff;padding:1px 5px;font-size:9px">Broto</span>
           <span style="background:#3d6b1f;color:#fff;padding:1px 5px;font-size:9px">Crescendo</span>
           <span style="background:#2d8a1f;color:#fff;padding:1px 5px;font-size:9px">Pronto</span>
+          <span style="background:#8B5E0A;color:#fff;padding:1px 5px;font-size:9px">Murchando</span>
           <span style="background:#888;color:#fff;padding:1px 5px;font-size:9px">Bloqueado</span>
         </div>
         <div style="margin-top:6px;display:flex;gap:4px">
@@ -168,14 +181,15 @@ function renderFarm() {
           2. Clique numa parcela vazia<br>
           3. Volte quando estiver pronta<br>
           4. Clique na parcela para colher<br>
-          <span style="color:#800000">⚠ Planta murcha após 2× o tempo!</span>
+          <span style="color:#994400">⚠ 2× o tempo: valor cai 25%</span><br>
+          <span style="color:#800000">⚠ 3× o tempo: murcha!</span>
         </div>
       </div>
     </div>
   `;
 }
 
-function renderPlotHTML(plot, i) {
+function renderPlotHTML(plot, i, plotSize = 80) {
   const st = getPlotState(plot);
   let bg, icon, label, timerText, cursor, extraClass = "", badgeHTML = "";
 
@@ -217,6 +231,15 @@ function renderPlotHTML(plot, i) {
       extraClass = "farm-plot-ready";
       badgeHTML = `<div style="position:absolute;top:-5px;right:-5px;background:#ff0;border:1px solid #000;font-size:8px;padding:1px 3px;color:#000;font-weight:bold">✔</div>`;
       break;
+    case "degraded":
+      bg = "#8B5E0A";
+      icon = st.seed.icon;
+      label = "Murchando!";
+      timerText = "murcha: " + formatTimeRemaining(Math.max(0, st.seed.growthMs * 3 - (Date.now() - st.plot.plantedAt)));
+      cursor = "pointer";
+      extraClass = "farm-plot-ready";
+      badgeHTML = `<div style="position:absolute;top:-5px;right:-5px;background:#ff8c00;border:1px solid #000;font-size:8px;padding:1px 3px;color:#fff;font-weight:bold">75%</div>`;
+      break;
     case "withered":
       bg = "#5a4020";
       icon = "🍂";
@@ -237,11 +260,11 @@ function renderPlotHTML(plot, i) {
          data-planted-at="${plantedAt}"
          data-growth-ms="${growthMs}"
          class="${extraClass}"
-         style="width:80px;height:80px;background:${bg};
+         style="width:${plotSize}px;height:${plotSize}px;background:${bg};
                 border:2px solid;border-color:#808080 #fff #fff #808080;
                 display:flex;flex-direction:column;align-items:center;justify-content:center;
                 cursor:${cursor};text-align:center;position:relative;box-sizing:border-box">
-      <div style="font-size:26px;line-height:1">${icon}</div>
+      <div style="font-size:${plotSize >= 75 ? 26 : 20}px;line-height:1">${icon}</div>
       <div style="color:#fff;font-size:10px;text-shadow:1px 1px 0 #000;margin-top:2px">${label}</div>
       <div class="farm-timer" style="color:#ffdd00;font-size:9px;text-shadow:1px 1px 0 #000">${timerText}</div>
       ${badgeHTML}
@@ -250,12 +273,25 @@ function renderPlotHTML(plot, i) {
 
 function renderSeedShop() {
   return Object.entries(FARM_SEEDS_CLIENT).map(([key, seed]) => {
+    const isLocked = seed.premium && !farmOwnedSeeds.includes(key);
+    if (isLocked) {
+      return `
+        <div style="border:2px solid;border-color:#fff #808080 #808080 #fff;background:#c0c0c0;
+                    padding:4px 6px;margin-bottom:3px;opacity:0.65;
+                    display:flex;align-items:center;gap:6px">
+          <span style="font-size:20px">🔒</span>
+          <div style="flex:1">
+            <div style="font-size:11px;font-weight:bold;color:#000">${seed.name}</div>
+            <div style="font-size:9px;color:#444">${formatGrowthTime(seed.growthMs)} · +${seed.reward - seed.cost}🪙</div>
+          </div>
+          <div style="font-size:9px;color:#888;white-space:nowrap;text-align:right">Compre<br>na loja</div>
+        </div>`;
+    }
     const canAfford = farmBalance >= seed.cost;
     const isSelected = farmSelectedSeed === key;
     const borderStyle = isSelected
       ? "border:2px solid;border-color:#808080 #fff #fff #808080;background:#99ff99"
       : "border:2px solid;border-color:#fff #808080 #808080 #fff;background:#c0c0c0";
-    const profit = seed.reward - seed.cost;
     return `
       <div onclick="farmSelectSeed('${key}')"
            style="${borderStyle};padding:4px 6px;margin-bottom:3px;cursor:pointer;
@@ -263,7 +299,7 @@ function renderSeedShop() {
         <span style="font-size:20px">${seed.icon}</span>
         <div style="flex:1">
           <div style="font-size:11px;font-weight:bold;color:#000">${seed.name}</div>
-          <div style="font-size:9px;color:#444">${formatGrowthTime(seed.growthMs)} · lucro: +${profit}🪙</div>
+          <div style="font-size:9px;color:#444">${formatGrowthTime(seed.growthMs)} · +${seed.reward - seed.cost}🪙</div>
         </div>
         <div style="font-size:11px;color:${canAfford ? "#000" : "#888"};white-space:nowrap">${seed.cost}🪙</div>
       </div>`;
@@ -278,6 +314,10 @@ async function farmSelectSeed(seedType) {
   }
   const seed = FARM_SEEDS_CLIENT[seedType];
   if (!seed) return;
+  if (seed.premium && !farmOwnedSeeds.includes(seedType)) {
+    await w95alert(`${seed.name} está bloqueada. Compre-a na loja para desbloquear!`);
+    return;
+  }
   if (farmBalance < seed.cost) {
     await w95alert(`LuizCoins™ insuficientes para ${seed.name} (${seed.cost}🪙).`);
     return;
@@ -300,15 +340,26 @@ async function farmPlotClick(plotId) {
     if (!sessionToken) { await w95alert("Faça login para desbloquear."); return; }
     if (!await w95confirm(`Desbloquear esta parcela por ${st.cost} LuizCoins™?`)) return;
     await doFarmUnlock(plotId);
-  } else if (st.type === "ready" || st.type === "withered") {
+  } else if (st.type === "ready" || st.type === "degraded" || st.type === "withered") {
     if (!sessionToken) { await w95alert("Faça login para colher."); return; }
     await doFarmHarvest(plotId);
   }
 }
 
 async function doFarmPlant(plotId, seedType) {
-  farmBusy = true;
-  setPlotLoading(plotId, true);
+  const seed = FARM_SEEDS_CLIENT[seedType];
+  if (!seed) return;
+
+  // Optimistic update
+  const prevPlots = farmPlots.map((p) => (p ? { ...p } : p));
+  const prevBalance = farmBalance;
+  const prevSelected = farmSelectedSeed;
+
+  farmPlots[plotId] = { seedType, plantedAt: Date.now() };
+  farmBalance -= seed.cost;
+  farmSelectedSeed = null;
+  renderFarm();
+
   try {
     const resp = await fetch("/api/farm/plant", {
       method: "POST",
@@ -316,17 +367,35 @@ async function doFarmPlant(plotId, seedType) {
       body: JSON.stringify({ plotId, seedType }),
     });
     const data = await resp.json();
-    if (!resp.ok) { await w95alert(data.error || "Erro ao plantar."); return; }
+    if (!resp.ok) {
+      farmPlots = prevPlots;
+      farmBalance = prevBalance;
+      farmSelectedSeed = prevSelected;
+      renderFarm();
+      showPlotError(plotId, data.error || "Erro ao plantar.");
+      return;
+    }
     farmPlots = data.plots;
     farmBalance = data.newBalance;
-    farmSelectedSeed = null;
-  } catch (e) {
-    await w95alert("Erro ao plantar: " + e.message);
-  } finally {
-    setPlotLoading(plotId, false);
-    farmBusy = false;
     renderFarm();
+  } catch (e) {
+    farmPlots = prevPlots;
+    farmBalance = prevBalance;
+    farmSelectedSeed = prevSelected;
+    renderFarm();
+    showPlotError(plotId, "Erro de conexão.");
   }
+}
+
+function showPlotError(plotId, msg) {
+  const el = document.querySelector(`#farm-plots [data-plot-id="${plotId}"]`);
+  if (!el) return;
+  el.style.background = "#8b0000";
+  el.style.animation = "none";
+  el.innerHTML = `
+    <div style="font-size:18px;line-height:1">❌</div>
+    <div style="color:#fff;font-size:9px;text-align:center;padding:2px;text-shadow:1px 1px 0 #000;word-break:break-word">${msg.slice(0, 50)}</div>`;
+  setTimeout(() => { renderFarm(); }, 3000);
 }
 
 async function doFarmHarvest(plotId) {
@@ -344,6 +413,9 @@ async function doFarmHarvest(plotId) {
     farmBalance = data.newBalance;
     if (data.withered) {
       await w95alert("A planta murchou! 🍂\nNenhuma moeda desta vez — plante de novo.");
+    } else if (data.degraded) {
+      showGameCoinsToast(data.coinsEarned);
+      await w95alert(`A planta estava murchando! 🟡\nVocê recebeu 75% do valor: ${data.coinsEarned}🪙.`);
     } else if (data.coinsEarned > 0) {
       showGameCoinsToast(data.coinsEarned);
     }
@@ -398,105 +470,80 @@ async function farmPlantAll() {
   const seed = FARM_SEEDS_CLIENT[farmSelectedSeed];
   if (!seed) return;
 
-  const emptyIds = farmPlots
-    .map((p, i) => ({ p, i }))
-    .filter(({ p }) => getPlotState(p).type === "empty")
-    .map(({ i }) => i);
-
-  if (emptyIds.length === 0) {
+  const emptyCount = farmPlots.filter((p) => getPlotState(p).type === "empty").length;
+  if (emptyCount === 0) {
     await w95alert("Nenhuma parcela vazia disponível para plantar.");
     return;
   }
 
-  const totalCost = seed.cost * emptyIds.length;
-  if (farmBalance < totalCost) {
-    const canPlant = Math.floor(farmBalance / seed.cost);
-    if (canPlant === 0) {
-      await w95alert(`LuizCoins™ insuficientes para ${seed.name} (${seed.cost}🪙 necessários).`);
-      return;
-    }
+  const canPlant = Math.min(emptyCount, Math.floor(farmBalance / seed.cost));
+  if (canPlant === 0) {
+    await w95alert(`LuizCoins™ insuficientes para ${seed.name} (${seed.cost}🪙 necessários).`);
+    return;
+  }
+  if (canPlant < emptyCount) {
     const ok = await w95confirm(
-      `Saldo insuficiente para todas as parcelas.\nPlantar em ${canPlant} de ${emptyIds.length} parcelas (${canPlant * seed.cost}🪙)?`
+      `Saldo insuficiente para todas as parcelas.\nPlantar em ${canPlant} de ${emptyCount} parcelas (${canPlant * seed.cost}🪙)?`
     );
     if (!ok) return;
   }
 
   farmBusy = true;
-  let planted = 0;
-
-  for (const plotId of emptyIds) {
-    if (farmBalance < seed.cost) break;
-    setPlotLoading(plotId, true);
-    try {
-      const resp = await fetch("/api/farm/plant", {
-        method: "POST",
-        headers: { ...authHeaders(sessionToken), "Content-Type": "application/json" },
-        body: JSON.stringify({ plotId, seedType: farmSelectedSeed }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) break;
-      farmPlots = data.plots;
-      farmBalance = data.newBalance;
-      planted++;
-    } catch {
-      break;
-    } finally {
-      setPlotLoading(plotId, false);
-    }
+  try {
+    const resp = await fetch("/api/farm/plant-all", {
+      method: "POST",
+      headers: { ...authHeaders(sessionToken), "Content-Type": "application/json" },
+      body: JSON.stringify({ seedType: farmSelectedSeed }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { await w95alert(data.error || "Erro ao plantar."); return; }
+    farmPlots = data.plots;
+    farmBalance = data.newBalance;
+    farmSelectedSeed = null;
+    if (data.planted > 0) showGameCoinsToast(-seed.cost * data.planted);
+  } catch (e) {
+    await w95alert("Erro ao plantar: " + e.message);
+  } finally {
+    farmBusy = false;
+    renderFarm();
   }
-
-  farmBusy = false;
-  farmSelectedSeed = null;
-  renderFarm();
-  if (planted > 0) showGameCoinsToast(-seed.cost * planted);
 }
 
 async function farmHarvestAll() {
   if (farmBusy || !farmPlots) return;
 
-  const harvestIds = farmPlots
-    .map((p, i) => ({ st: getPlotState(p), i }))
-    .filter(({ st }) => st.type === "ready" || st.type === "withered")
-    .map(({ i }) => i);
-
-  if (harvestIds.length === 0) {
+  const hasHarvestable = farmPlots.some((p) => {
+    const t = getPlotState(p).type;
+    return t === "ready" || t === "degraded" || t === "withered";
+  });
+  if (!hasHarvestable) {
     await w95alert("Nenhuma parcela pronta para colher.");
     return;
   }
 
   farmBusy = true;
-  let totalEarned = 0;
-  let witheredCount = 0;
+  try {
+    const resp = await fetch("/api/farm/harvest-all", {
+      method: "POST",
+      headers: { ...authHeaders(sessionToken), "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { await w95alert(data.error || "Erro ao colher."); return; }
+    farmPlots = data.plots;
+    farmBalance = data.newBalance;
 
-  for (const plotId of harvestIds) {
-    setPlotLoading(plotId, true);
-    try {
-      const resp = await fetch("/api/farm/harvest", {
-        method: "POST",
-        headers: { ...authHeaders(sessionToken), "Content-Type": "application/json" },
-        body: JSON.stringify({ plotId }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) continue;
-      farmPlots = data.plots;
-      farmBalance = data.newBalance;
-      if (data.withered) witheredCount++;
-      else totalEarned += data.coinsEarned;
-    } catch {
-      continue;
-    } finally {
-      setPlotLoading(plotId, false);
+    if (data.witheredCount > 0 && data.totalEarned === 0) {
+      await w95alert(`Todas as plantas murcharam! 🍂\nNenhuma moeda desta vez.`);
+    } else {
+      if (data.witheredCount > 0) await w95alert(`${data.witheredCount} planta(s) murchou e não rendeu moedas. 🍂`);
+      if (data.totalEarned > 0) showGameCoinsToast(data.totalEarned);
     }
-  }
-
-  farmBusy = false;
-  renderFarm();
-
-  if (witheredCount > 0 && totalEarned === 0) {
-    await w95alert(`Todas as plantas murcharam! 🍂\nNenhuma moeda desta vez.`);
-  } else {
-    if (witheredCount > 0) await w95alert(`${witheredCount} planta(s) murchou e não rendeu moedas. 🍂`);
-    if (totalEarned > 0) showGameCoinsToast(totalEarned);
+  } catch (e) {
+    await w95alert("Erro ao colher: " + e.message);
+  } finally {
+    farmBusy = false;
+    renderFarm();
   }
 }
 
@@ -506,18 +553,30 @@ function tickFarmTimers() {
 
   plots.forEach((el) => {
     const state = el.dataset.state;
-    if (state !== "seedling" && state !== "growing") return;
-
     const plantedAt = parseInt(el.dataset.plantedAt, 10);
     const growthMs  = parseInt(el.dataset.growthMs, 10);
     if (!plantedAt || !growthMs) return;
 
     const elapsed = Date.now() - plantedAt;
-    const remaining = Math.max(0, growthMs - elapsed);
-    const timerEl = el.querySelector(".farm-timer");
-    if (timerEl) timerEl.textContent = formatTimeRemaining(remaining);
 
-    if (remaining === 0) needsFullRender = true;
+    if (state === "seedling" || state === "growing") {
+      const remaining = Math.max(0, growthMs - elapsed);
+      const timerEl = el.querySelector(".farm-timer");
+      if (timerEl) timerEl.textContent = formatTimeRemaining(remaining);
+      if (remaining === 0) needsFullRender = true;
+      return;
+    }
+
+    if (state === "ready" || state === "degraded") {
+      const newState = elapsed >= growthMs * 3 ? "withered"
+                     : elapsed >= growthMs * 2 ? "degraded"
+                     : "ready";
+      if (newState !== state) { needsFullRender = true; return; }
+      if (state === "degraded") {
+        const timerEl = el.querySelector(".farm-timer");
+        if (timerEl) timerEl.textContent = "murcha: " + formatTimeRemaining(Math.max(0, growthMs * 3 - elapsed));
+      }
+    }
   });
 
   if (needsFullRender) renderFarm();

@@ -26,6 +26,9 @@ const STORE_ITEMS = [
   { id: "color_agua",    price: 500, type: "namecolor", color: "#0288d1", title: "Água" },
   { id: "color_terra",   price: 500, type: "namecolor", color: "#6d4c41", title: "Terra" },
   { id: "color_ar",      price: 500, type: "namecolor", color: "#80deea", title: "Ar" },
+  { id: "farmseed_strawberry", price: 60,  type: "farmseed", seedKey: "strawberry", icon: "🍓", title: "Semente de Morango",  desc: "Plante morangos na fazenda (1h · +10🪙)" },
+  { id: "farmseed_orange",     price: 120, type: "farmseed", seedKey: "orange",     icon: "🍊", title: "Semente de Laranja",  desc: "Plante laranjas na fazenda (12h · +38🪙)" },
+  { id: "farmseed_pineapple",  price: 300, type: "farmseed", seedKey: "pineapple",  icon: "🍍", title: "Semente de Abacaxi", desc: "Plante abacaxis na fazenda (3 dias · +230🪙)" },
 ];
 
 // ─── Cores exclusivas (fora da loja) ────────────────────────────────────────
