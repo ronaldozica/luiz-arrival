@@ -2430,16 +2430,13 @@ body {
   }
 
   /* ─── TABS ────────────────────────────────── */
-  /* Tabs gerais: scroll horizontal para não quebrar layout */
+  /* overflow-x: auto transformaria .win95-tabs em "scroll container" (CSS
+     spec), zerando seu min-height e permitindo que o flex-column pai a
+     encolha a 0–2 px. Usamos flex-wrap:wrap + flex-shrink:0 para que a
+     barra de tabs nunca seja espremida, quebra para nova linha se precisar. */
   .win95-tabs {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .win95-tabs::-webkit-scrollbar {
-    display: none;
+    flex-wrap: wrap;
+    flex-shrink: 0;
   }
 
   .rank-tab,
@@ -2450,10 +2447,10 @@ body {
     flex-shrink: 0;
   }
 
-  /* Admin: 7 tabs — deixa quebrar em duas linhas */
-  #win-admin .win95-tabs {
-    flex-wrap: wrap;
-    overflow-x: visible;
+  /* Admin: 7 tabs — já usa flex-wrap:wrap acima, sem alteração extra */
+  #win-admin .rank-tab {
+    font-size: 10px;
+    padding: 5px 6px;
   }
 
   #win-admin .rank-tab {
