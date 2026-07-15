@@ -35,16 +35,23 @@ router.get("/game-rank", async (req, res) => {
   try {
     const { game, difficulty, platform } = req.query;
     if (!game) return res.status(400).json({ error: "game é obrigatório." });
-    let rankKey;
-    if (game === "aimtrainer" && difficulty && platform) {
-      rankKey = `gamerank:aimtrainer:${difficulty}:${platform}`;
-    } else if (difficulty) {
-      rankKey = `gamerank:${game}:${difficulty}`;
-    } else {
-      rankKey = `gamerank:${game}`;
-    }
     const kv = getKV();
-    const scores = (await kv.get(rankKey)) || [];
+    let scores;
+    if (game === "aimtrainer" && difficulty && platform) {
+      const platformKey = `gamerank:aimtrainer:${difficulty}:${platform}`;
+      const platformScores = await kv.get(platformKey);
+      if (platformScores && Array.isArray(platformScores) && platformScores.length > 0) {
+        scores = platformScores;
+      } else if (platform === "mobile") {
+        // Fallback: dados legados ainda não migrados vão para o mobile
+        scores = (await kv.get(`gamerank:aimtrainer:${difficulty}`)) || [];
+      } else {
+        scores = [];
+      }
+    } else {
+      const rankKey = difficulty ? `gamerank:${game}:${difficulty}` : `gamerank:${game}`;
+      scores = (await kv.get(rankKey)) || [];
+    }
     res.json(scores);
   } catch (e) {
     res.status(500).json({ error: e.message });
