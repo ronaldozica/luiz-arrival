@@ -1007,12 +1007,25 @@ function setDesktopView(view) {
 }
 
 function toggleAppsView() {
+  markAppsViewBtnSeen();
   const isGrid = document.getElementById("apps-grid").style.display !== "none";
   setDesktopView(isGrid ? "desktop" : "apps");
 }
 
+// Destaque piscando dourado no botão até o usuário clicar nele pela primeira
+// vez — só faz sentido no desktop, já que no mobile a grade já abre sozinha.
+const APPS_VIEW_HINT_SEEN_KEY = "luizos_apps_view_hint_seen";
+
+function markAppsViewBtnSeen() {
+  localStorage.setItem(APPS_VIEW_HINT_SEEN_KEY, "1");
+  document.getElementById("apps-view-btn").classList.remove("hint-target");
+}
+
 function initAppsView() {
   setDesktopView(isMobile() ? "apps" : "desktop");
+  if (!isMobile() && !localStorage.getItem(APPS_VIEW_HINT_SEEN_KEY)) {
+    document.getElementById("apps-view-btn").classList.add("hint-target");
+  }
 }
 
 // ─── Session (apenas token + nome — sem senha) ────────────────────────────────
@@ -3649,9 +3662,18 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.10.0",
+    version: "2.10.1",
     date: "18/07/2026",
     isNew: true,
+    title: "Destaque no botão de Todos os Aplicativos ✨",
+    items: [
+      "✨ O botão ▦ na taskbar (Todos os Aplicativos) agora pisca com um brilho dourado no desktop até você clicar nele pela primeira vez — depois disso some para sempre.",
+    ],
+  },
+  {
+    version: "2.10.0",
+    date: "18/07/2026",
+    isNew: false,
     title: "LuizFarm rebalanceado 🌾⚖️",
     items: [
       "⚖️ Abóbora, uva, laranja e abacaxi renderam pouco perto do milho/tomate — lucro por hora ajustado pra ficar mais parecido entre as sementes normais (abóbora e uva também subiram de preço de venda).",
