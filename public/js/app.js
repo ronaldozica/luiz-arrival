@@ -230,21 +230,59 @@ function hideLoading() {
 }
 
 // ─── Sound effects (sintetizados, sem assets externos) ────────────────────────
+// "Clack" mecânico: um transiente de ruído filtrado (o "click" agudo) somado
+// a um thud grave curto (o "corpo" do clique) — soa como um mouse/teclado
+// antigo, em vez de um bipe eletrônico. `variant` ajusta o timbre conforme
+// a ação: "open" (mais agudo/brilhante), "close" (mais grave/surdo) ou
+// "menu" (intermediário).
 let audioCtx = null;
-function playBlip(freq, duration) {
+function playClick(variant) {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") audioCtx.resume();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = "square";
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime + duration);
+    const now = audioCtx.currentTime;
+
+    const tone = { open: 2600, menu: 2000, close: 1100 }[variant] || 1800;
+    const thudFreq = { open: 150, menu: 130, close: 100 }[variant] || 120;
+
+    // Transiente de ruído filtrado — o "click"
+    const duration = 0.045;
+    const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2.5);
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(tone, now);
+    filter.frequency.exponentialRampToValueAtTime(tone * 0.5, now + duration);
+    filter.Q.value = 1.1;
+
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.4, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(audioCtx.destination);
+    noise.start(now);
+    noise.stop(now + duration);
+
+    // Thud grave — dá corpo/peso ao clique
+    const thud = audioCtx.createOscillator();
+    const thudGain = audioCtx.createGain();
+    thud.type = "sine";
+    thud.frequency.value = thudFreq;
+    thudGain.gain.setValueAtTime(0.22, now);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+    thud.connect(thudGain);
+    thudGain.connect(audioCtx.destination);
+    thud.start(now);
+    thud.stop(now + 0.03);
   } catch { /* AudioContext indisponível — falha silenciosa */ }
 }
 
@@ -274,7 +312,7 @@ function openWindow(id) {
     const clearOpening = () => w.classList.remove("win-opening");
     w.addEventListener("animationend", clearOpening, { once: true });
     setTimeout(clearOpening, 150);
-    playBlip(700, 0.05);
+    playClick("open");
   }
   if (id === "win-guess") {
     centerWindow(w);
@@ -467,7 +505,7 @@ function playCloseAnimation(w, then) {
 function closeWindow(id) {
   const w = document.getElementById(id);
   if (!w || w.style.display === "none") return;
-  playBlip(350, 0.05);
+  playClick("close");
   playCloseAnimation(w, () => {
     w.style.display = "none";
     delete minimizedWindows[id];
@@ -478,7 +516,7 @@ function closeWindow(id) {
 function minimizeWindow(id) {
   const w = document.getElementById(id);
   if (!w || w.style.display === "none") return;
-  playBlip(350, 0.04);
+  playClick("close");
   playCloseAnimation(w, () => {
     minimizedWindows[id] = true;
     w.style.display = "none";
@@ -943,7 +981,7 @@ function toggleStartMenu() {
   const m = document.getElementById("start-menu");
   if (m.style.display === "none") {
     m.style.display = isMobile() ? "flex" : "block";
-    playBlip(600, 0.04);
+    playClick("menu");
   } else {
     m.style.display = "none";
   }
@@ -3578,7 +3616,7 @@ const RELEASE_NOTES = [
     title: "Polish visual: janelas, som e cursor 🪟🔊",
     items: [
       "🪟 Janelas agora abrem e fecham com uma transição suave (fade + zoom), em vez de aparecer/sumir seco.",
-      "🔊 Sons curtos estilo Windows 95 ao abrir/fechar janelas e abrir o Menu Iniciar.",
+      "🔊 Clique mecânico (clack) estilo computador antigo ao abrir/fechar janelas, pastas e o Menu Iniciar.",
       "⏳ O cursor do mouse vira ampulheta durante carregamentos, além do ícone de loading na tela.",
     ],
   },
