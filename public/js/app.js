@@ -221,10 +221,31 @@ function showLoading(msg) {
   }
   el.querySelector(".loading-text").textContent = msg || "Aguarde...";
   el.style.display = "flex";
+  document.body.classList.add("cursor-wait");
 }
 function hideLoading() {
   const el = document.getElementById("global-loading");
   if (el) el.style.display = "none";
+  document.body.classList.remove("cursor-wait");
+}
+
+// ─── Sound effects (sintetizados, sem assets externos) ────────────────────────
+let audioCtx = null;
+function playBlip(freq, duration) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "square";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch { /* AudioContext indisponível — falha silenciosa */ }
 }
 
 // ─── Clock ────────────────────────────────────────────────────────────────────
@@ -245,7 +266,16 @@ const minimizedWindows = {};
 function openWindow(id) {
   const w = document.getElementById(id);
   if (!w) return;
+  const wasHidden = w.style.display !== "block";
   w.style.display = "block";
+  if (wasHidden) {
+    w.classList.remove("win-closing");
+    w.classList.add("win-opening");
+    const clearOpening = () => w.classList.remove("win-opening");
+    w.addEventListener("animationend", clearOpening, { once: true });
+    setTimeout(clearOpening, 150);
+    playBlip(700, 0.05);
+  }
   if (id === "win-guess") {
     centerWindow(w);
     refreshTodayStatus();
@@ -418,20 +448,42 @@ window.addEventListener("resize", () => {
   });
 });
 
+// Toca a animação de fechar e só então executa `then` — com fallback por
+// timeout, já que animationend pode não disparar (aba em background, etc).
+function playCloseAnimation(w, then) {
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    w.classList.remove("win-closing");
+    then();
+  };
+  w.classList.remove("win-opening");
+  w.classList.add("win-closing");
+  w.addEventListener("animationend", finish, { once: true });
+  setTimeout(finish, 150);
+}
+
 function closeWindow(id) {
   const w = document.getElementById(id);
-  if (!w) return;
-  w.style.display = "none";
-  delete minimizedWindows[id];
-  updateTaskbar();
+  if (!w || w.style.display === "none") return;
+  playBlip(350, 0.05);
+  playCloseAnimation(w, () => {
+    w.style.display = "none";
+    delete minimizedWindows[id];
+    updateTaskbar();
+  });
 }
 
 function minimizeWindow(id) {
   const w = document.getElementById(id);
-  if (!w) return;
-  minimizedWindows[id] = true;
-  w.style.display = "none";
-  updateTaskbar();
+  if (!w || w.style.display === "none") return;
+  playBlip(350, 0.04);
+  playCloseAnimation(w, () => {
+    minimizedWindows[id] = true;
+    w.style.display = "none";
+    updateTaskbar();
+  });
 }
 
 function bringToFront(el) {
@@ -891,6 +943,7 @@ function toggleStartMenu() {
   const m = document.getElementById("start-menu");
   if (m.style.display === "none") {
     m.style.display = isMobile() ? "flex" : "block";
+    playBlip(600, 0.04);
   } else {
     m.style.display = "none";
   }
@@ -3519,9 +3572,20 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.8.0",
+    version: "2.8.1",
     date: "18/07/2026",
     isNew: true,
+    title: "Polish visual: janelas, som e cursor 🪟🔊",
+    items: [
+      "🪟 Janelas agora abrem e fecham com uma transição suave (fade + zoom), em vez de aparecer/sumir seco.",
+      "🔊 Sons curtos estilo Windows 95 ao abrir/fechar janelas e abrir o Menu Iniciar.",
+      "⏳ O cursor do mouse vira ampulheta durante carregamentos, além do ícone de loading na tela.",
+    ],
+  },
+  {
+    version: "2.8.0",
+    date: "18/07/2026",
+    isNew: false,
     title: "Visão \"Todos os Aplicativos\" 🗂️",
     items: [
       "▦ Novo botão na barra de tarefas alterna entre o Desktop clássico (pastas) e uma grade com todos os aplicativos lado a lado — mais fácil de descobrir apps escondidos nas pastas.",

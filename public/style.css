@@ -304,6 +304,40 @@ body {
   z-index: 500;
 }
 
+/* ─── WINDOW OPEN/CLOSE TRANSITIONS ────────── */
+@keyframes win-open {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes win-close {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+.win95-window.win-opening {
+  animation: win-open 0.12s ease-out;
+}
+
+.win95-window.win-closing {
+  animation: win-close 0.1s ease-in;
+  pointer-events: none;
+}
+
 .win95-window.maximized {
   border-width: 1px;
 }
@@ -954,6 +988,11 @@ body {
   100% {
     transform: rotate(0deg);
   }
+}
+
+body.cursor-wait,
+body.cursor-wait * {
+  cursor: wait !important;
 }
 
 .loading-text {
