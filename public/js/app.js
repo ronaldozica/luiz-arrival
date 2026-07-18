@@ -809,14 +809,18 @@ function applyWallpaper(key) {
   const wp = WALLPAPERS[key];
   if (!wp) return;
   const desktop = document.querySelector(".desktop");
+  const appsGrid = document.getElementById("apps-grid");
   if (wp.type === "color") {
     document.body.style.background = wp.value;
     desktop.style.backgroundImage = "none";
+    appsGrid.style.backgroundImage = "none";
   } else {
     document.body.style.background = "#000";
-    desktop.style.backgroundImage = `url('${wp.value}')`;
-    desktop.style.backgroundSize = "cover";
-    desktop.style.backgroundPosition = "center";
+    [desktop, appsGrid].forEach((el) => {
+      el.style.backgroundImage = `url('${wp.value}')`;
+      el.style.backgroundSize = "cover";
+      el.style.backgroundPosition = "center";
+    });
   }
   localStorage.setItem(WALLPAPER_KEY, key);
   document.querySelectorAll(".ctx-wallpaper-item[data-wp]").forEach((el) => {
@@ -897,6 +901,28 @@ function closeStartMenu() {
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".start-menu") && !e.target.closest(".start-btn")) closeStartMenu();
 });
+
+// ─── Apps Grid (visão "Todos os Aplicativos") ──────────────────────────────────
+function setDesktopView(view) {
+  const desktop = document.querySelector(".desktop");
+  const grid = document.getElementById("apps-grid");
+  const btn = document.getElementById("apps-view-btn");
+  const showGrid = view === "apps";
+  desktop.style.display = showGrid ? "none" : "flex";
+  grid.style.display = showGrid ? "flex" : "none";
+  btn.classList.toggle("active", showGrid);
+  btn.textContent = showGrid ? "🖥️" : "▦";
+  btn.title = showGrid ? "Ver Área de Trabalho" : "Todos os Aplicativos";
+}
+
+function toggleAppsView() {
+  const isGrid = document.getElementById("apps-grid").style.display !== "none";
+  setDesktopView(isGrid ? "desktop" : "apps");
+}
+
+function initAppsView() {
+  setDesktopView(isMobile() ? "apps" : "desktop");
+}
 
 // ─── Session (apenas token + nome — sem senha) ────────────────────────────────
 const SESSION_KEY = "luizos_session";
@@ -2600,6 +2626,7 @@ loadUsers().then(() => {
 updateTaskbar();
 loadIconPositions();
 loadWallpaper();
+initAppsView();
 
 // ─── Loja do Luiz ─────────────────────────────────────────────────────────────
 async function openStore() {
@@ -3492,9 +3519,20 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.8.0",
+    date: "18/07/2026",
+    isNew: true,
+    title: "Visão \"Todos os Aplicativos\" 🗂️",
+    items: [
+      "▦ Novo botão na barra de tarefas alterna entre o Desktop clássico (pastas) e uma grade com todos os aplicativos lado a lado — mais fácil de descobrir apps escondidos nas pastas.",
+      "📱 No celular, a grade de aplicativos agora abre por padrão em vez das pastas, como um menu de apps de celular. O botão continua disponível para quem preferir o Desktop clássico.",
+      "🐛 Corrigido: o plano de fundo sumia ao abrir a grade de aplicativos.",
+    ],
+  },
+  {
     version: "2.7.0",
     date: "14/07/2026",
-    isNew: true,
+    isNew: false,
     title: "Aim Trainer com ranking separado por plataforma 🎯📱🖥️",
     items: [
       "📱🖥️ Ranking do Aim Trainer agora é separado: jogadores no celular (toque) competem entre si, e jogadores no desktop (mouse) competem entre si.",

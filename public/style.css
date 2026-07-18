@@ -101,6 +101,30 @@ body {
   background: #d4d0c8;
 }
 
+.apps-view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--win-gray);
+  border: none;
+  box-shadow: var(--shadow-out);
+  cursor: pointer;
+  font-size: 15px;
+  font-family: inherit;
+  height: 28px;
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.apps-view-btn:active,
+.apps-view-btn.active {
+  box-shadow: var(--shadow-in);
+}
+
+.apps-view-btn:hover {
+  background: #d4d0c8;
+}
+
 .taskbar-clock {
   background: var(--win-gray);
   box-shadow: var(--shadow-in);
@@ -225,6 +249,43 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ─── APPS GRID (visão "Todos os Aplicativos") ────────── */
+.apps-grid {
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 34px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  padding: 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.appgrid-icon {
+  width: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px;
+  border: 1px solid transparent;
+}
+
+.appgrid-icon:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.appgrid-icon:active {
+  background: rgba(0, 0, 128, 0.5);
 }
 
 /* ─── WIN95 WINDOWS ───────────────────────── */
@@ -2342,6 +2403,11 @@ body {
     display: none;
   }
 
+  .apps-view-btn {
+    width: 36px;
+    font-size: 16px;
+  }
+
   .taskbar-user-area {
     max-width: 110px;
     padding: 0 4px;
@@ -2496,6 +2562,16 @@ body {
 
   .icon-img {
     font-size: 28px;
+  }
+
+  /* ─── APPS GRID ────────────────────────────── */
+  .apps-grid {
+    padding: 12px;
+    justify-content: center;
+  }
+
+  .appgrid-icon {
+    width: 68px;
   }
 
   /* ─── ÍCONES DAS PASTAS ───────────────────── */

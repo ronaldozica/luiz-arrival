@@ -63,6 +63,7 @@
       <span class="start-logo">🪟</span> <strong>Iniciar</strong>
     </button>
     <div class="taskbar-apps" id="taskbar-apps"></div>
+    <button class="apps-view-btn" id="apps-view-btn" onclick="toggleAppsView()" title="Todos os Aplicativos">▦</button>
     <div class="taskbar-user-area">
       <span id="current-user-name" class="taskbar-user">👤 Visitante</span>
       <button id="taskbar-logout" class="taskbar-logout-btn" style="display:none" onclick="logout()">Sair</button>
@@ -126,6 +127,110 @@
     <div class="desktop-icon" data-icon-id="folder-acessorios" data-action="openWindow('win-folder-acessorios')">
       <div class="icon-img">📁</div>
       <div class="icon-label">Acessórios</div>
+    </div>
+  </div>
+
+  <!-- APPS GRID (visão "Todos os Aplicativos") -->
+  <div class="apps-grid" id="apps-grid" style="display:none">
+    <div class="appgrid-icon" onclick="openWindow('win-guess')">
+      <div class="icon-img">🎯</div>
+      <div class="icon-label">Fazer Aposta</div>
+    </div>
+    <div class="appgrid-icon" onclick="openWindow('win-today'); loadToday()">
+      <div class="icon-img">📋</div>
+      <div class="icon-label">Apostas abertas</div>
+    </div>
+    <div class="appgrid-icon" onclick="openWindow('win-history'); loadHistory()">
+      <div class="icon-img">📅</div>
+      <div class="icon-label">Histórico</div>
+    </div>
+    <div class="appgrid-icon" onclick="openWindow('win-rank'); loadOverallRank()">
+      <div class="icon-img">🏆</div>
+      <div class="icon-label">Ranking</div>
+    </div>
+    <div class="appgrid-icon" onclick="openWindow('win-scoring-rules')">
+      <div class="icon-img">📐</div>
+      <div class="icon-label">Regras de Pontuação</div>
+    </div>
+    <div class="appgrid-icon" onclick="openFarmWindow()">
+      <div class="icon-img">🌾</div>
+      <div class="icon-label">LuizFarm 95</div>
+    </div>
+    <div class="appgrid-icon" onclick="openBlackjackWindow()">
+      <div class="icon-img">🃏</div>
+      <div class="icon-label">Luiz21</div>
+    </div>
+    <div class="appgrid-icon" onclick="openWindow('win-snake'); initSnakeGame()">
+      <div class="icon-img">🐍</div>
+      <div class="icon-label">Snake 95</div>
+    </div>
+    <div class="appgrid-icon" onclick="openWindow('win-aimtrainer'); initAimTrainerGame()">
+      <div class="icon-img">🔫</div>
+      <div class="icon-label">Aim Trainer</div>
+    </div>
+    <div class="appgrid-icon" onclick="openMinesweeperWindow()">
+      <div class="icon-img">💣</div>
+      <div class="icon-label">Campo Minado</div>
+    </div>
+    <div class="appgrid-icon" onclick="openSudokuWindow()">
+      <div class="icon-img">🔢</div>
+      <div class="icon-label">Sudoku</div>
+    </div>
+    <div class="appgrid-icon" onclick="openSpiderWindow()">
+      <div class="icon-img">🕷️</div>
+      <div class="icon-label">Paciência Spider</div>
+    </div>
+    <div class="appgrid-icon" onclick="openWindow('win-gamerank'); loadGameRank('snake')">
+      <div class="icon-img">🎮</div>
+      <div class="icon-label">Rank Jogos</div>
+    </div>
+    <div class="appgrid-icon" onclick="openTop1Rank()">
+      <div class="icon-img">🏅</div>
+      <div class="icon-label">Top 1 dos Jogos</div>
+    </div>
+    <div class="appgrid-icon" onclick="openAchievementsRank()">
+      <div class="icon-img">🎖️</div>
+      <div class="icon-label">Rank de Conquistas</div>
+    </div>
+    <div class="appgrid-icon" onclick="openWindow('win-register')">
+      <div class="icon-img">👤</div>
+      <div class="icon-label">Novo Usuário</div>
+    </div>
+    <div class="appgrid-icon" onclick="openStore()">
+      <div class="icon-img">🛒</div>
+      <div class="icon-label">Loja</div>
+    </div>
+    <div class="appgrid-icon" onclick="openAchievements()">
+      <div class="icon-img">🏅</div>
+      <div class="icon-label">Conquistas</div>
+    </div>
+    <div class="appgrid-icon" onclick="openProfileWindow()">
+      <div class="icon-img">🧑‍🎨</div>
+      <div class="icon-label">Perfil</div>
+    </div>
+    <div class="appgrid-icon" onclick="openNotepadWindow()">
+      <div class="icon-img">📝</div>
+      <div class="icon-label">Bloco de Notas</div>
+    </div>
+    <div class="appgrid-icon" onclick="openCalculatorWindow()">
+      <div class="icon-img">🧮</div>
+      <div class="icon-label">Calculadora</div>
+    </div>
+    <div class="appgrid-icon" onclick="openPaintWindow()">
+      <div class="icon-img">🎨</div>
+      <div class="icon-label">Paint 95</div>
+    </div>
+    <div class="appgrid-icon" onclick="openReleaseNotes()">
+      <div class="icon-img">📰</div>
+      <div class="icon-label">Novidades</div>
+    </div>
+    <div class="appgrid-icon" onclick="openRequestsWindow()">
+      <div class="icon-img">📬</div>
+      <div class="icon-label">Sugestões &amp; Bugs</div>
+    </div>
+    <div class="appgrid-icon" onclick="openWindow('win-admin')">
+      <div class="icon-img">🔒</div>
+      <div class="icon-label">Admin</div>
     </div>
   </div>
 
