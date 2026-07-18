@@ -55,6 +55,9 @@ function renderRequestCard(r) {
       </div>
       <div style="font-size:12px;line-height:1.4;word-break:break-word">${escapeHtml(r.text)}</div>
       ${adminNoteHtml}
+      <div class="btn-row" style="margin-top:6px">
+        <button class="win95-action-btn" style="font-size:10px;padding:2px 6px" data-text="${escapeHtml(r.text)}" onclick="copyToClipboard(this.dataset.text, this)">📋 Copiar texto</button>
+      </div>
     </div>`;
 }
 

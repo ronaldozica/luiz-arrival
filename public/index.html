@@ -83,7 +83,7 @@
       <button onclick="openStore(); closeStartMenu()">🛒 Loja</button>
       <button onclick="openAchievements(); closeStartMenu()">🏅 Conquistas</button>
       <button onclick="openProfileWindow(); closeStartMenu()">🧑‍🎨 Perfil</button>
-      <button onclick="openRequestsWindow(); closeStartMenu()">📬 Sugestões & Bugs</button>
+      <button onclick="openRequestsWindow(); closeStartMenu()">📬 Tickets</button>
       <button onclick="openReleaseNotes(); closeStartMenu()">📰 Novidades</button>
       <button onclick="openWindow('win-scoring-rules'); closeStartMenu()">📐 Regras de Pontuação</button>
       <hr />
@@ -226,7 +226,7 @@
     </div>
     <div class="appgrid-icon" onclick="openRequestsWindow()">
       <div class="icon-img">📬</div>
-      <div class="icon-label">Sugestões &amp; Bugs</div>
+      <div class="icon-label">Tickets</div>
     </div>
     <div class="appgrid-icon" onclick="openWindow('win-admin')">
       <div class="icon-img">🔒</div>
@@ -504,7 +504,7 @@
           <button class="rank-tab" data-admin-tab="tags" onclick="setAdminTab('tags')">🏷️ Tags</button>
           <button class="rank-tab" data-admin-tab="coins" onclick="setAdminTab('coins')">💰 Moedas</button>
           <button class="rank-tab" data-admin-tab="passwords" onclick="setAdminTab('passwords')">🔑 Senhas temporárias</button>
-          <button class="rank-tab" data-admin-tab="requests" onclick="setAdminTab('requests')">📬 Pedidos</button>
+          <button class="rank-tab" data-admin-tab="requests" onclick="setAdminTab('requests')">📬 Tickets</button>
         </div>
 
         <div id="admin-tab-arrival">
@@ -620,7 +620,7 @@
         </div>
 
         <div id="admin-tab-requests" style="display:none">
-          <p><strong>Sugestões e bugs reportados</strong></p>
+          <p><strong>Tickets reportados</strong></p>
           <div class="btn-row">
             <button class="win95-action-btn" onclick="loadAdminRequests()">🔄 Atualizar</button>
           </div>
@@ -1397,7 +1397,7 @@
         </div>
         <div class="folder-icon" ondblclick="openRequestsWindow()">
           <div class="icon-img">📬</div>
-          <div class="icon-label">Sugestões &amp; Bugs</div>
+          <div class="icon-label">Tickets</div>
         </div>
       </div>
     </div>
@@ -1433,10 +1433,10 @@
     </div>
   </div>
 
-  <!-- ══ WINDOW: SUGESTÕES & BUGS ══ -->
+  <!-- ══ WINDOW: TICKETS ══ -->
   <div class="win95-window" id="win-requests" style="left:120px;top:80px;width:460px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-requests')">
-      <span class="win95-title">📬 Sugestões &amp; Bugs</span>
+      <span class="win95-title">📬 Tickets</span>
       <div class="win95-controls">
         <button class="win95-btn-ctrl" onclick="minimizeWindow('win-requests')">_</button>
         <button class="win95-btn-ctrl" onclick="closeWindow('win-requests')">✕</button>

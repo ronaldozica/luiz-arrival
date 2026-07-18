@@ -1989,7 +1989,10 @@ function renderAdminPasswordResets(resets) {
       <td>${escHtml(r.name)}</td>
       <td><code>${escHtml(r.password)}</code></td>
       <td>${date}</td>
-      <td><button class="win95-action-btn" style="font-size:10px;padding:2px 6px" onclick="dismissAdminPasswordReset('${safeName}')">✖ Remover</button></td>
+      <td style="white-space:nowrap">
+        <button class="win95-action-btn" style="font-size:10px;padding:2px 6px" data-text="${escHtml(r.password)}" onclick="copyToClipboard(this.dataset.text, this)">📋 Copiar</button>
+        <button class="win95-action-btn" style="font-size:10px;padding:2px 6px" onclick="dismissAdminPasswordReset('${safeName}')">✖ Remover</button>
+      </td>
     </tr>`;
   });
   html += "</tbody></table>";
@@ -2595,6 +2598,41 @@ function buildBjRankTable(entries) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+// Copia `text` para a área de transferência e dá feedback visual trocando o
+// texto do botão clicado por um instante (sem precisar de toast/alerta).
+async function copyToClipboard(text, btn) {
+  const original = btn ? btn.textContent : null;
+  try {
+    let ok = false;
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      } catch { /* cai para o fallback abaixo (ex: documento sem foco) */ }
+    }
+    if (!ok) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      ok = document.execCommand("copy");
+      ta.remove();
+    }
+    if (!ok) throw new Error("copy failed");
+    if (btn) {
+      btn.textContent = "✅ Copiado!";
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }
+  } catch {
+    if (btn) {
+      btn.textContent = "❌ Falhou";
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }
+  }
+}
+
 function showMsg(el, text, type) {
   el.textContent = text;
   el.className = `win95-msg ${type}`;
@@ -2657,7 +2695,8 @@ function escHtml(s) {
   return String(s)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function formatMinutes(mins) {
@@ -3610,9 +3649,20 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.8.1",
+    version: "2.9.0",
     date: "18/07/2026",
     isNew: true,
+    title: "Sugestões & Bugs virou Tickets 📬",
+    items: [
+      "📬 \"Sugestões & Bugs\" foi renomeado para \"Tickets\" (ícone, menu, título da janela e aba do painel Admin).",
+      "📋 Botão para copiar o texto de cada ticket com um clique.",
+      "📋 Painel Admin: botão para copiar a senha temporária de cada jogador, sem precisar selecionar o texto manualmente.",
+    ],
+  },
+  {
+    version: "2.8.1",
+    date: "18/07/2026",
+    isNew: false,
     title: "Polish visual: janelas, som e cursor 🪟🔊",
     items: [
       "🪟 Janelas agora abrem e fecham com uma transição suave (fade + zoom), em vez de aparecer/sumir seco.",
