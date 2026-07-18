@@ -3649,9 +3649,20 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.9.0",
+    version: "2.10.0",
     date: "18/07/2026",
     isNew: true,
+    title: "LuizFarm rebalanceado 🌾⚖️",
+    items: [
+      "⚖️ Abóbora, uva, laranja e abacaxi renderam pouco perto do milho/tomate — lucro por hora ajustado pra ficar mais parecido entre as sementes normais (abóbora e uva também subiram de preço de venda).",
+      "✨ Sementes premium (laranja e abacaxi) agora rendem bem mais que as normais — laranja +60🪙 (era +38🪙) e abacaxi +324🪙 (era +230🪙). Morango não mudou.",
+      "🔒 Novo limite diário para sementes premium: só dá pra plantar até 1 vez por parcela desbloqueada por dia (mostrado no topo da fazenda). Evita repetir o morango dezenas de vezes por dia sem mexer no lucro dele.",
+    ],
+  },
+  {
+    version: "2.9.0",
+    date: "18/07/2026",
+    isNew: false,
     title: "Sugestões & Bugs virou Tickets 📬",
     items: [
       "📬 \"Sugestões & Bugs\" foi renomeado para \"Tickets\" (ícone, menu, título da janela e aba do painel Admin).",

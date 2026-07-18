@@ -21,16 +21,18 @@
 const FARM_SEEDS_CLIENT = {
   corn:       { name: "Milho",    icon: "🌽", cost: 8,   growthMs: 2  * 3600000, reward: 14  },
   tomato:     { name: "Tomate",   icon: "🍅", cost: 20,  growthMs: 6  * 3600000, reward: 38  },
-  pumpkin:    { name: "Abóbora",  icon: "🎃", cost: 45,  growthMs: 24 * 3600000, reward: 90  },
-  grape:      { name: "Uva",      icon: "🍇", cost: 90,  growthMs: 48 * 3600000, reward: 190 },
+  pumpkin:    { name: "Abóbora",  icon: "🎃", cost: 45,  growthMs: 24 * 3600000, reward: 125 },
+  grape:      { name: "Uva",      icon: "🍇", cost: 90,  growthMs: 48 * 3600000, reward: 270 },
   strawberry: { name: "Morango",  icon: "🍓", cost: 12,  growthMs: 1  * 3600000, reward: 22,  premium: true },
-  orange:     { name: "Laranja",  icon: "🍊", cost: 30,  growthMs: 12 * 3600000, reward: 68,  premium: true },
-  pineapple:  { name: "Abacaxi",  icon: "🍍", cost: 100, growthMs: 72 * 3600000, reward: 330, premium: true },
+  orange:     { name: "Laranja",  icon: "🍊", cost: 30,  growthMs: 12 * 3600000, reward: 90,  premium: true },
+  pineapple:  { name: "Abacaxi",  icon: "🍍", cost: 100, growthMs: 72 * 3600000, reward: 424, premium: true },
 };
 
 let farmPlots = null;
 let farmBalance = 0;
 let farmOwnedSeeds = [];
+let farmPremiumUsedToday = 0;
+let farmPremiumDailyLimit = 0;
 let farmTimerInterval = null;
 let farmSelectedSeed = null;
 let farmBusy = false;
@@ -79,6 +81,8 @@ async function loadFarm() {
     farmPlots = data.plots;
     farmBalance = data.balance;
     farmOwnedSeeds = data.ownedSeeds || [];
+    farmPremiumUsedToday = data.premiumUsedToday || 0;
+    farmPremiumDailyLimit = data.premiumDailyLimit || 0;
     renderFarm();
   } catch (e) {
     const root = document.getElementById("farm-root");
@@ -130,9 +134,14 @@ function renderFarm() {
   const plotsHTML = farmPlots.map((p, i) => renderPlotHTML(p, i, plotSize)).join("");
   const seedShopHTML = renderSeedShop();
 
+  const premiumStatusHTML = farmPremiumDailyLimit > 0
+    ? `<span title="Plantios de sementes premium hoje (limite = parcelas desbloqueadas)">✨ Premium hoje: <strong>${farmPremiumUsedToday}/${farmPremiumDailyLimit}</strong></span>`
+    : "";
+
   root.innerHTML = `
-    <div style="background:#000080;color:#fff;padding:4px 8px;font-size:11px;display:flex;align-items:center;gap:10px">
+    <div style="background:#000080;color:#fff;padding:4px 8px;font-size:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span>🪙 LuizCoins: <strong id="farm-balance-display">${farmBalance}</strong></span>
+      ${premiumStatusHTML}
       <span id="farm-seed-hint" style="font-size:10px;color:#adf">
         ${farmSelectedSeed
           ? `✔ ${FARM_SEEDS_CLIENT[farmSelectedSeed].name} selecionada — clique numa parcela vazia`
@@ -182,7 +191,8 @@ function renderFarm() {
           3. Volte quando estiver pronta<br>
           4. Clique na parcela para colher<br>
           <span style="color:#994400">⚠ 2× o tempo: valor cai 25%</span><br>
-          <span style="color:#800000">⚠ 3× o tempo: murcha!</span>
+          <span style="color:#800000">⚠ 3× o tempo: murcha!</span><br>
+          <span style="color:#004a80">✨ Sementes premium: limite diário = parcelas desbloqueadas</span>
         </div>
       </div>
     </div>
@@ -287,11 +297,15 @@ function renderSeedShop() {
           <div style="font-size:9px;color:#888;white-space:nowrap;text-align:right">Compre<br>na loja</div>
         </div>`;
     }
-    const canAfford = farmBalance >= seed.cost;
+    const premiumLimitReached = seed.premium && farmPremiumUsedToday >= farmPremiumDailyLimit;
+    const canAfford = farmBalance >= seed.cost && !premiumLimitReached;
     const isSelected = farmSelectedSeed === key;
     const borderStyle = isSelected
       ? "border:2px solid;border-color:#808080 #fff #fff #808080;background:#99ff99"
       : "border:2px solid;border-color:#fff #808080 #808080 #fff;background:#c0c0c0";
+    const premiumBadge = seed.premium
+      ? `<div style="font-size:9px;color:${premiumLimitReached ? "#8b0000" : "#666"}">✨ ${farmPremiumUsedToday}/${farmPremiumDailyLimit} hoje</div>`
+      : "";
     return `
       <div onclick="farmSelectSeed('${key}')"
            style="${borderStyle};padding:4px 6px;margin-bottom:3px;cursor:pointer;
@@ -300,6 +314,7 @@ function renderSeedShop() {
         <div style="flex:1">
           <div style="font-size:11px;font-weight:bold;color:#000">${seed.name}</div>
           <div style="font-size:9px;color:#444">${formatGrowthTime(seed.growthMs)} · +${seed.reward - seed.cost}🪙</div>
+          ${premiumBadge}
         </div>
         <div style="font-size:11px;color:${canAfford ? "#000" : "#888"};white-space:nowrap">${seed.cost}🪙</div>
       </div>`;
@@ -316,6 +331,10 @@ async function farmSelectSeed(seedType) {
   if (!seed) return;
   if (seed.premium && !farmOwnedSeeds.includes(seedType)) {
     await w95alert(`${seed.name} está bloqueada. Compre-a na loja para desbloquear!`);
+    return;
+  }
+  if (seed.premium && farmPremiumUsedToday >= farmPremiumDailyLimit) {
+    await w95alert(`Limite diário de sementes premium atingido (${farmPremiumUsedToday}/${farmPremiumDailyLimit}). Desbloqueie mais parcelas para aumentar o limite.`);
     return;
   }
   if (farmBalance < seed.cost) {
@@ -377,6 +396,8 @@ async function doFarmPlant(plotId, seedType) {
     }
     farmPlots = data.plots;
     farmBalance = data.newBalance;
+    if (data.premiumUsedToday !== undefined) farmPremiumUsedToday = data.premiumUsedToday;
+    if (data.premiumDailyLimit !== undefined) farmPremiumDailyLimit = data.premiumDailyLimit;
     renderFarm();
   } catch (e) {
     farmPlots = prevPlots;
@@ -476,7 +497,15 @@ async function farmPlantAll() {
     return;
   }
 
-  const canPlant = Math.min(emptyCount, Math.floor(farmBalance / seed.cost));
+  let canPlant = Math.min(emptyCount, Math.floor(farmBalance / seed.cost));
+  if (seed.premium) {
+    const premiumRemaining = Math.max(0, farmPremiumDailyLimit - farmPremiumUsedToday);
+    if (premiumRemaining === 0) {
+      await w95alert(`Limite diário de sementes premium atingido (${farmPremiumUsedToday}/${farmPremiumDailyLimit}). Desbloqueie mais parcelas para aumentar o limite.`);
+      return;
+    }
+    canPlant = Math.min(canPlant, premiumRemaining);
+  }
   if (canPlant === 0) {
     await w95alert(`LuizCoins™ insuficientes para ${seed.name} (${seed.cost}🪙 necessários).`);
     return;
@@ -507,6 +536,8 @@ async function farmPlantAll() {
     farmPlots = data.plots;
     farmBalance = data.newBalance;
     farmSelectedSeed = null;
+    if (data.premiumUsedToday !== undefined) farmPremiumUsedToday = data.premiumUsedToday;
+    if (data.premiumDailyLimit !== undefined) farmPremiumDailyLimit = data.premiumDailyLimit;
     if (data.planted > 0) showGameCoinsToast(-seed.cost * data.planted);
   } catch (e) {
     await w95alert("Erro ao plantar: " + e.message);

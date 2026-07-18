@@ -5,15 +5,22 @@ const { requireAuth } = require("../lib/auth-middleware");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisNumber } = require("../lib/utils");
 const { calcBalance } = require("../lib/store-items");
+const { todayKey } = require("../lib/datetime");
 
+// Balanceamento por lucro/hora (reward - cost, dividido pelo tempo de
+// crescimento): sementes normais ficam na faixa de 3.0–3.75 LC/h (um pouco
+// mais para as mais longas, compensando o risco maior de murchar). Premium
+// ficam claramente acima disso — strawberry continua sendo a mais lucrativa
+// de todas (10 LC/h), mas seu uso intensivo agora é limitado por
+// PREMIUM_DAILY... ver farmPremiumDailyLimit() abaixo.
 const FARM_SEEDS = {
-  corn:       { cost: 8,   growthMs: 2  * 3600000, reward: 14  },
-  tomato:     { cost: 20,  growthMs: 6  * 3600000, reward: 38  },
-  pumpkin:    { cost: 45,  growthMs: 24 * 3600000, reward: 90  },
-  grape:      { cost: 90,  growthMs: 48 * 3600000, reward: 190 },
-  strawberry: { cost: 12,  growthMs: 1  * 3600000, reward: 22,  premium: true },
-  orange:     { cost: 30,  growthMs: 12 * 3600000, reward: 68,  premium: true },
-  pineapple:  { cost: 100, growthMs: 72 * 3600000, reward: 330, premium: true },
+  corn:       { cost: 8,   growthMs: 2  * 3600000, reward: 14  },              // 3.00 LC/h
+  tomato:     { cost: 20,  growthMs: 6  * 3600000, reward: 38  },              // 3.00 LC/h
+  pumpkin:    { cost: 45,  growthMs: 24 * 3600000, reward: 125 },              // 3.33 LC/h
+  grape:      { cost: 90,  growthMs: 48 * 3600000, reward: 270 },              // 3.75 LC/h
+  strawberry: { cost: 12,  growthMs: 1  * 3600000, reward: 22,  premium: true }, // 10.00 LC/h
+  orange:     { cost: 30,  growthMs: 12 * 3600000, reward: 90,  premium: true }, // 5.00 LC/h
+  pineapple:  { cost: 100, growthMs: 72 * 3600000, reward: 424, premium: true }, // 4.50 LC/h
 };
 
 // Primeiras 3 parcelas desbloqueadas desde o início; resto exige compra.
@@ -24,6 +31,24 @@ function defaultFarm() {
   return Array.from({ length: TOTAL_PLOTS }, (_, i) =>
     i < 3 ? null : { locked: true, cost: PLOT_UNLOCK_COSTS[i] }
   );
+}
+
+// Limite diário de plantios de sementes premium = quantidade de parcelas
+// desbloqueadas (dá pra plantar até 1 semente premium por parcela/dia).
+// Evita que uma semente de ciclo curto (ex: morango, 1h) seja replantada
+// dezenas de vezes por dia, sem precisar nerfar o lucro dela diretamente.
+function farmPremiumDailyLimit(plots) {
+  return plots.filter((p) => !(p && p.locked)).length;
+}
+
+async function getFarmPremiumUsedToday(kv, uKey) {
+  return parseRedisNumber(await kv.get(`farmpremium:${uKey}:${todayKey()}`));
+}
+
+async function addFarmPremiumUsedToday(kv, uKey, amount) {
+  const key = `farmpremium:${uKey}:${todayKey()}`;
+  const current = parseRedisNumber(await kv.get(key));
+  await kv.set(key, current + amount);
 }
 
 async function getFarmPlots(kv, uKey) {
@@ -58,13 +83,16 @@ router.get("/farm", requireAuth, async (req, res) => {
     const users = await getUsers(kv);
     const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
     if (!user) return res.status(401).json({ error: "Acesso negado." });
-    const plots = await getFarmPlots(kv, userKey(user.name));
+    const uKey = userKey(user.name);
+    const plots = await getFarmPlots(kv, uKey);
     const { earnedCoins, spentCoins, purchases } = await calcBalance(kv, user, users);
     const balance = Math.max(0, earnedCoins - spentCoins);
     const ownedSeeds = Object.keys(FARM_SEEDS).filter(
       (key) => FARM_SEEDS[key].premium && purchases.includes(`farmseed_${key}`)
     );
-    res.json({ plots, balance, ownedSeeds });
+    const premiumDailyLimit = farmPremiumDailyLimit(plots);
+    const premiumUsedToday = await getFarmPremiumUsedToday(kv, uKey);
+    res.json({ plots, balance, ownedSeeds, premiumDailyLimit, premiumUsedToday });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -99,14 +127,35 @@ router.post("/farm/plant", requireAuth, async (req, res) => {
     if (seed.premium && !purchases.includes(`farmseed_${seedType}`))
       return res.status(403).json({ error: "Você não possui esta semente. Compre na loja!" });
 
+    if (seed.premium) {
+      const limit = farmPremiumDailyLimit(plots);
+      const usedToday = await getFarmPremiumUsedToday(kv, uKey);
+      if (usedToday >= limit) {
+        return res.status(400).json({
+          error: `Limite diário de sementes premium atingido (${usedToday}/${limit}). Desbloqueie mais parcelas para aumentar o limite.`,
+        });
+      }
+    }
+
     plots[plotId] = { seedType, plantedAt: Date.now() };
 
     const farmSpentKey = `farmspent:${uKey}`;
     const currentSpent = parseRedisNumber(await kv.get(farmSpentKey));
     await kv.set(farmSpentKey, currentSpent + seed.cost);
     await kv.set(`farm:${uKey}`, JSON.stringify(plots));
+    let premiumUsedToday = await getFarmPremiumUsedToday(kv, uKey);
+    if (seed.premium) {
+      premiumUsedToday += 1;
+      await addFarmPremiumUsedToday(kv, uKey, 1);
+    }
 
-    res.json({ success: true, plots, newBalance: balance - seed.cost });
+    res.json({
+      success: true,
+      plots,
+      newBalance: balance - seed.cost,
+      premiumUsedToday,
+      premiumDailyLimit: farmPremiumDailyLimit(plots),
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   } finally {
@@ -225,6 +274,18 @@ router.post("/farm/plant-all", requireAuth, async (req, res) => {
     if (seed.premium && !purchases.includes(`farmseed_${seedType}`))
       return res.status(403).json({ error: "Você não possui esta semente. Compre na loja!" });
 
+    let premiumRemaining = Infinity;
+    if (seed.premium) {
+      const limit = farmPremiumDailyLimit(plots);
+      const usedToday = await getFarmPremiumUsedToday(kv, uKey);
+      premiumRemaining = Math.max(0, limit - usedToday);
+      if (premiumRemaining === 0) {
+        return res.status(400).json({
+          error: `Limite diário de sementes premium atingido (${usedToday}/${limit}). Desbloqueie mais parcelas para aumentar o limite.`,
+        });
+      }
+    }
+
     let totalCost = 0;
     let planted = 0;
     const now = Date.now();
@@ -233,6 +294,7 @@ router.post("/farm/plant-all", requireAuth, async (req, res) => {
       const p = plots[i];
       if (p && (p.locked || p.seedType)) continue;
       if (balance < seed.cost) break;
+      if (planted >= premiumRemaining) break;
       plots[i] = { seedType, plantedAt: now };
       balance -= seed.cost;
       totalCost += seed.cost;
@@ -244,9 +306,17 @@ router.post("/farm/plant-all", requireAuth, async (req, res) => {
       const currentSpent = parseRedisNumber(await kv.get(farmSpentKey));
       await kv.set(farmSpentKey, currentSpent + totalCost);
       await kv.set(`farm:${uKey}`, JSON.stringify(plots));
+      if (seed.premium) await addFarmPremiumUsedToday(kv, uKey, planted);
     }
 
-    res.json({ success: true, plots, newBalance: balance, planted });
+    res.json({
+      success: true,
+      plots,
+      newBalance: balance,
+      planted,
+      premiumUsedToday: await getFarmPremiumUsedToday(kv, uKey),
+      premiumDailyLimit: farmPremiumDailyLimit(plots),
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   } finally {
