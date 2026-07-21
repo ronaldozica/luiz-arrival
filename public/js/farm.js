@@ -19,13 +19,13 @@
 })();
 
 const FARM_SEEDS_CLIENT = {
-  corn:       { name: "Milho",    icon: "🌽", cost: 8,   growthMs: 2  * 3600000, reward: 14  },
-  tomato:     { name: "Tomate",   icon: "🍅", cost: 20,  growthMs: 6  * 3600000, reward: 38  },
-  pumpkin:    { name: "Abóbora",  icon: "🎃", cost: 45,  growthMs: 24 * 3600000, reward: 125 },
-  grape:      { name: "Uva",      icon: "🍇", cost: 90,  growthMs: 48 * 3600000, reward: 270 },
-  strawberry: { name: "Morango",  icon: "🍓", cost: 12,  growthMs: 1  * 3600000, reward: 22,  premium: true },
-  orange:     { name: "Laranja",  icon: "🍊", cost: 30,  growthMs: 12 * 3600000, reward: 90,  premium: true },
-  pineapple:  { name: "Abacaxi",  icon: "🍍", cost: 100, growthMs: 72 * 3600000, reward: 424, premium: true },
+  corn:       { name: "Milho",    icon: "🌽", cost: 8,   growthMs: 2  * 3600000, reward: 10  },
+  tomato:     { name: "Tomate",   icon: "🍅", cost: 20,  growthMs: 6  * 3600000, reward: 27  },
+  pumpkin:    { name: "Abóbora",  icon: "🎃", cost: 45,  growthMs: 24 * 3600000, reward: 77  },
+  grape:      { name: "Uva",      icon: "🍇", cost: 90,  growthMs: 48 * 3600000, reward: 160 },
+  strawberry: { name: "Morango",  icon: "🍓", cost: 12,  growthMs: 1  * 3600000, reward: 16,  premium: true },
+  orange:     { name: "Laranja",  icon: "🍊", cost: 30,  growthMs: 12 * 3600000, reward: 54,  premium: true },
+  pineapple:  { name: "Abacaxi",  icon: "🍍", cost: 100, growthMs: 72 * 3600000, reward: 230, premium: true },
 };
 
 let farmPlots = null;

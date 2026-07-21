@@ -246,7 +246,7 @@
 let bjState = "idle"; // idle | playing | result | blocked | loading | unauth
 let bjBalance = 0;
 let bjDailyEarned = 0;
-const BJ_DAILY_CAP = 100;
+const BJ_DAILY_CAP = 250;
 let bjSelectedBet = null;
 let bjGame = null;   // { playerHand, dealerHand?, dealerVisible, playerValue, dealerValue?, outcome?, ... }
 let bjBusy = false;

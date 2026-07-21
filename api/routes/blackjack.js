@@ -8,7 +8,7 @@ const { calcBalance } = require("../lib/store-items");
 const { todayKey } = require("../lib/datetime");
 const { unlockAchievement } = require("../lib/achievement-defs");
 
-const BJ_DAILY_CAP = 100;
+const BJ_DAILY_CAP = 250;
 const BET_AMOUNTS = { low: 5, medium: 15, high: 30 };
 
 const SUITS = ["♠", "♥", "♦", "♣"];

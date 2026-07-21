@@ -8,19 +8,20 @@ const { calcBalance } = require("../lib/store-items");
 const { todayKey } = require("../lib/datetime");
 
 // Balanceamento por lucro/hora (reward - cost, dividido pelo tempo de
-// crescimento): sementes normais ficam na faixa de 3.0–3.75 LC/h (um pouco
-// mais para as mais longas, compensando o risco maior de murchar). Premium
-// ficam claramente acima disso — strawberry continua sendo a mais lucrativa
-// de todas (10 LC/h), mas seu uso intensivo agora é limitado por
+// crescimento): rebalanceado pra baixo (2026-07-21) porque os jogadores
+// estavam acumulando LuizCoins™ rápido demais (a maioria batendo ~2000 e
+// comprando tudo da loja). Sementes normais agora ficam na faixa de
+// 1.0–1.5 LC/h. Premium seguem acima disso — strawberry continua sendo a
+// mais lucrativa (4.0 LC/h), mas seu uso intensivo segue limitado por
 // PREMIUM_DAILY... ver farmPremiumDailyLimit() abaixo.
 const FARM_SEEDS = {
-  corn:       { cost: 8,   growthMs: 2  * 3600000, reward: 14  },              // 3.00 LC/h
-  tomato:     { cost: 20,  growthMs: 6  * 3600000, reward: 38  },              // 3.00 LC/h
-  pumpkin:    { cost: 45,  growthMs: 24 * 3600000, reward: 125 },              // 3.33 LC/h
-  grape:      { cost: 90,  growthMs: 48 * 3600000, reward: 270 },              // 3.75 LC/h
-  strawberry: { cost: 12,  growthMs: 1  * 3600000, reward: 22,  premium: true }, // 10.00 LC/h
-  orange:     { cost: 30,  growthMs: 12 * 3600000, reward: 90,  premium: true }, // 5.00 LC/h
-  pineapple:  { cost: 100, growthMs: 72 * 3600000, reward: 424, premium: true }, // 4.50 LC/h
+  corn:       { cost: 8,   growthMs: 2  * 3600000, reward: 10  },              // 1.00 LC/h
+  tomato:     { cost: 20,  growthMs: 6  * 3600000, reward: 27  },              // 1.17 LC/h
+  pumpkin:    { cost: 45,  growthMs: 24 * 3600000, reward: 77  },              // 1.33 LC/h
+  grape:      { cost: 90,  growthMs: 48 * 3600000, reward: 160 },              // 1.46 LC/h
+  strawberry: { cost: 12,  growthMs: 1  * 3600000, reward: 16,  premium: true }, // 4.00 LC/h
+  orange:     { cost: 30,  growthMs: 12 * 3600000, reward: 54,  premium: true }, // 2.00 LC/h
+  pineapple:  { cost: 100, growthMs: 72 * 3600000, reward: 230, premium: true }, // 1.81 LC/h
 };
 
 // Primeiras 3 parcelas desbloqueadas desde o início; resto exige compra.
