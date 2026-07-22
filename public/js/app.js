@@ -545,15 +545,12 @@ function updateTaskbar() {
     "win-register": "👤 Cadastro",
     "win-admin": "🔒 Admin",
     "win-gamerank": "🎮 Rank Jogos",
-    "win-top1-rank": "🏅 Top 1 Jogos",
-    "win-achievements-rank": "🎖️ Rank Conquistas",
     "win-achievements": "🏅 Conquistas",
     "win-profile": "🧑‍🎨 Perfil",
     "win-release-notes": "📰 Novidades",
     "win-scoring-rules": "📐 Regras",
     "win-folder-apostas": "📁 Apostas",
     "win-folder-jogos": "📁 Jogos",
-    "win-folder-rankings": "📁 Rankings",
     "win-folder-perfil": "📁 Perfil & Loja",
     "win-folder-acessorios": "📁 Acessórios",
   };
@@ -2394,8 +2391,7 @@ function buildGameRankTable(game, scores) {
   </tr></thead><tbody>`;
   scores.forEach((s, i) => {
     const date = new Date(s.date).toLocaleDateString("pt-BR");
-    const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-    html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${formatGameScore(game, s.score)}</strong></td><td>${date}</td></tr>`;
+    html += `<tr class="${rankMedalClass(i)}"><td>${i + 1}º</td><td>${renderPlayerName(s.name, true)}</td><td><strong>${formatGameScore(game, s.score)}</strong></td><td>${date}</td></tr>`;
   });
   return html + `</tbody></table>`;
 }
@@ -2451,6 +2447,16 @@ async function loadGameRank(game) {
       const data = await cachedFetchJSON("bj_rank", `${API}/blackjack/rank`, 30 * 1000);
       currentGameRankCache = { game, data: { default: data || [] } };
       renderGameRank();
+      return;
+    }
+    if (game === "top1") {
+      currentGameRankCache = { game: null, data: {} };
+      await renderTop1Rank(container);
+      return;
+    }
+    if (game === "achievements") {
+      currentGameRankCache = { game: null, data: {} };
+      await renderAchievementsRank(container);
       return;
     }
     const diffs = GAME_RANK_DIFFICULTIES[game];
@@ -2622,8 +2628,7 @@ function buildBjRankTable(entries) {
       <th>#</th><th>Jogador</th><th>LC Ganhos</th><th>Mãos</th>
     </tr></thead><tbody>`;
   entries.forEach((e, i) => {
-    const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
-    html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(e.name, true)}</td><td><strong>${e.coinsWon} LC</strong></td><td>${e.handsPlayed}</td></tr>`;
+    html += `<tr class="${rankMedalClass(i)}"><td>${i + 1}º</td><td>${renderPlayerName(e.name, true)}</td><td><strong>${e.coinsWon} LC</strong></td><td>${e.handsPlayed}</td></tr>`;
   });
   return html + "</tbody></table>";
 }
@@ -2987,17 +2992,15 @@ function openGallery(id, src, title) {
   openWindow("win-gallery");
 }
 
-// ─── Conquistas (Achievements) ────────────────────────────────────────────────
-// ─── Top 1 de cada jogo ─────────────────────────────────────────────────────
-async function openTop1Rank() {
-  openWindow("win-top1-rank");
-  await loadTop1Rank();
+// Classe de medalha (ouro/prata/bronze) pros 3 primeiros de qualquer tabela
+// de ranking — reusada por buildGameRankTable, buildBjRankTable,
+// renderTop1Rank e renderAchievementsRank, que antes repetiam essa ternária.
+function rankMedalClass(i) {
+  return i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
 }
 
-async function loadTop1Rank() {
-  const container = document.getElementById("top1-rank-content");
-  if (!container) return;
-  container.innerHTML = '<div class="loading">⏳ Carregando...</div>';
+// ─── Top 1 de cada jogo — aba "🏅 Top 1" dentro de win-gamerank ─────────────
+async function renderTop1Rank(container) {
   try {
     const data = await cachedFetchJSON("top1_all_games", `${API}/leaderboards/top1`, 60 * 1000);
     let html = "";
@@ -3027,16 +3030,8 @@ async function loadTop1Rank() {
   }
 }
 
-// ─── Ranking de conquistas (top 10) ─────────────────────────────────────────
-async function openAchievementsRank() {
-  openWindow("win-achievements-rank");
-  await loadAchievementsRank();
-}
-
-async function loadAchievementsRank() {
-  const container = document.getElementById("achievements-rank-content");
-  if (!container) return;
-  container.innerHTML = '<div class="loading">⏳ Carregando...</div>';
+// ─── Ranking de conquistas (top 10) — aba "🎖️ Conquistas" dentro de win-gamerank ─
+async function renderAchievementsRank(container) {
   try {
     const data = await cachedFetchJSON("achievements_leaderboard", `${API}/leaderboards/achievements`, 60 * 1000);
     const { definitions, top } = data;
@@ -3050,14 +3045,13 @@ async function loadAchievementsRank() {
         <th>#</th><th>Jogador</th><th>Qtd</th><th>Conquistas</th>
       </tr></thead><tbody>`;
       top.forEach((entry, i) => {
-        const medalClass = i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : "";
         const badgeSpans = entry.achievements
           .map((id) => defById[id])
           .filter(Boolean)
           .map((def) => `<span title="${escHtml(def.title)}">${def.icon}</span>`)
           .join("");
         const badges = `<div class="achv-badges-wrap">${badgeSpans}</div>`;
-        html += `<tr class="${medalClass}"><td>${i + 1}º</td><td>${renderPlayerName(entry.name, true)}</td><td><strong>${entry.count}</strong></td><td class="achv-rank-badges">${badges}</td></tr>`;
+        html += `<tr class="${rankMedalClass(i)}"><td>${i + 1}º</td><td>${renderPlayerName(entry.name, true)}</td><td><strong>${entry.count}</strong></td><td class="achv-rank-badges">${badges}</td></tr>`;
       });
       html += `</tbody></table>`;
     }

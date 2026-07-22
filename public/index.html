@@ -95,8 +95,6 @@
       <button onclick="openMinesweeperWindow(); closeStartMenu()">💣 Campo Minado</button>
       <button onclick="openSudokuWindow(); closeStartMenu()">🔢 Sudoku</button>
       <button onclick="openWindow('win-gamerank'); loadGameRank('snake'); closeStartMenu()">🎮 Rank Jogos</button>
-      <button onclick="openTop1Rank(); closeStartMenu()">🏅 Top 1 dos Jogos</button>
-      <button onclick="openAchievementsRank(); closeStartMenu()">🎖️ Rank de Conquistas</button>
       <hr />
       <button onclick="openNotepadWindow(); closeStartMenu()">📝 Bloco de Notas</button>
       <button onclick="openCalculatorWindow(); closeStartMenu()">🧮 Calculadora</button>
@@ -115,10 +113,6 @@
     <div class="desktop-icon" data-icon-id="folder-jogos" data-action="openWindow('win-folder-jogos')">
       <div class="icon-img">📁</div>
       <div class="icon-label">Jogos</div>
-    </div>
-    <div class="desktop-icon" data-icon-id="folder-rankings" data-action="openWindow('win-folder-rankings')">
-      <div class="icon-img">📁</div>
-      <div class="icon-label">Rankings</div>
     </div>
     <div class="desktop-icon" data-icon-id="folder-perfil" data-action="openWindow('win-folder-perfil')">
       <div class="icon-img">📁</div>
@@ -183,14 +177,6 @@
     <div class="appgrid-icon" onclick="openWindow('win-gamerank'); loadGameRank('snake')">
       <div class="icon-img">🎮</div>
       <div class="icon-label">Rank Jogos</div>
-    </div>
-    <div class="appgrid-icon" onclick="openTop1Rank()">
-      <div class="icon-img">🏅</div>
-      <div class="icon-label">Top 1 dos Jogos</div>
-    </div>
-    <div class="appgrid-icon" onclick="openAchievementsRank()">
-      <div class="icon-img">🎖️</div>
-      <div class="icon-label">Rank de Conquistas</div>
     </div>
     <div class="appgrid-icon" onclick="openWindow('win-register')">
       <div class="icon-img">👤</div>
@@ -970,7 +956,7 @@
   <!-- ══ WINDOW: RANKING JOGOS ══ -->
   <div class="win95-window" id="win-gamerank" style="left:220px;top:100px;width:420px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-gamerank')">
-      <span class="win95-title">🎮 Ranking dos Jogos</span>
+      <span class="win95-title">🎮 Rankings dos Jogos</span>
       <div class="win95-controls">
         <button class="win95-btn-ctrl" onclick="minimizeWindow('win-gamerank')">_</button>
         <button class="win95-btn-ctrl" onclick="closeWindow('win-gamerank')">✕</button>
@@ -991,6 +977,10 @@
           onclick="loadGameRank('spider'); setGameRankTabActive('spider')">🕷️ Spider</button>
         <button class="rank-tab" data-tab="luizjack"
           onclick="loadGameRank('luizjack'); setGameRankTabActive('luizjack')">🃏 Luiz21</button>
+        <button class="rank-tab" data-tab="top1"
+          onclick="loadGameRank('top1'); setGameRankTabActive('top1')">🏅 Top 1</button>
+        <button class="rank-tab" data-tab="achievements"
+          onclick="loadGameRank('achievements'); setGameRankTabActive('achievements')">🎖️ Conquistas</button>
       </div>
       <div id="gamerank-content">
         <div class="loading">Carregando...</div>
@@ -1024,37 +1014,6 @@
     </div>
   </div>
 
-  <!-- ══ WINDOW: TOP 1 DOS JOGOS ══ -->
-  <div class="win95-window" id="win-top1-rank" style="left:200px;top:80px;width:420px;display:none">
-    <div class="win95-titlebar" onmousedown="startDrag(event,'win-top1-rank')">
-      <span class="win95-title">🏅 Top 1 dos Jogos</span>
-      <div class="win95-controls">
-        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-top1-rank')">_</button>
-        <button class="win95-btn-ctrl" onclick="closeWindow('win-top1-rank')">✕</button>
-      </div>
-    </div>
-    <div class="win95-body win95-body-scroll">
-      <div id="top1-rank-content">
-        <div class="loading">⏳ Carregando...</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ WINDOW: RANKING DE CONQUISTAS ══ -->
-  <div class="win95-window" id="win-achievements-rank" style="left:210px;top:90px;width:480px;display:none">
-    <div class="win95-titlebar" onmousedown="startDrag(event,'win-achievements-rank')">
-      <span class="win95-title">🎖️ Ranking de Conquistas</span>
-      <div class="win95-controls">
-        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-achievements-rank')">_</button>
-        <button class="win95-btn-ctrl" onclick="closeWindow('win-achievements-rank')">✕</button>
-      </div>
-    </div>
-    <div class="win95-body win95-body-scroll">
-      <div id="achievements-rank-content">
-        <div class="loading">⏳ Carregando...</div>
-      </div>
-    </div>
-  </div>
 
   <!-- ══ WINDOW: PERFIL ══ -->
   <div class="win95-window" id="win-profile" style="left:160px;top:70px;width:460px;display:none">
@@ -1305,33 +1264,6 @@
         <div class="folder-icon" ondblclick="openSpiderWindow()">
           <div class="icon-img">🕷️</div>
           <div class="icon-label">Paciência Spider</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ FOLDER: RANKINGS ══ -->
-  <div class="win95-window" id="win-folder-rankings" style="left:180px;top:100px;width:320px;display:none">
-    <div class="win95-titlebar" onmousedown="startDrag(event,'win-folder-rankings')">
-      <span class="win95-title">📁 Rankings</span>
-      <div class="win95-controls">
-        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-folder-rankings')">_</button>
-        <button class="win95-btn-ctrl" onclick="closeWindow('win-folder-rankings')">✕</button>
-      </div>
-    </div>
-    <div class="win95-body">
-      <div class="folder-items">
-        <div class="folder-icon" ondblclick="openWindow('win-gamerank'); loadGameRank('snake')">
-          <div class="icon-img">🎮</div>
-          <div class="icon-label">Rank Jogos</div>
-        </div>
-        <div class="folder-icon" ondblclick="openTop1Rank()">
-          <div class="icon-img">🏅</div>
-          <div class="icon-label">Top 1 Jogos</div>
-        </div>
-        <div class="folder-icon" ondblclick="openAchievementsRank()">
-          <div class="icon-img">🎖️</div>
-          <div class="icon-label">Rank Conquistas</div>
         </div>
       </div>
     </div>
