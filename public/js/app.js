@@ -2493,11 +2493,12 @@ async function loadGameRank(game) {
   }
 }
 
-// Avisa o servidor que uma partida começou de verdade, pra ele guardar o
-// horário real de início (anti-trapaça: ver POST /api/game-rank/start no
-// backend). Retorna uma Promise com o roundToken — disparada no início da
-// partida mas só precisa ser aguardada na hora de enviar o score final, então
-// não adiciona latência perceptível ao clique que inicia o jogo.
+// Avisa o servidor que uma partida começou de verdade — e cobra a ficha de
+// entrada do fliperama (ver POST /api/game-rank/start no backend). Guarda o
+// horário real de início no servidor (anti-trapaça) e debita o saldo ali
+// mesmo. Chamada pelo portão de moeda (arcade-coin.js), que aguarda o
+// resultado antes de liberar a partida — diferente do antigo fluxo "fire and
+// forget", agora o jogador precisa saber na hora se não tem saldo.
 async function startGameRound(game, difficulty) {
   try {
     const body = difficulty ? { game, difficulty } : { game };
@@ -2506,12 +2507,27 @@ async function startGameRound(game, difficulty) {
       headers: authHeaders(sessionToken),
       body: JSON.stringify(body),
     });
-    if (!res.ok) return null;
     const data = await res.json();
-    return data.roundToken || null;
+    if (!res.ok) return { ok: false, error: data.error || "Erro ao iniciar a partida." };
+    return { ok: true, roundToken: data.roundToken, balance: data.balance };
   } catch (e) {
     console.error("startGameRound", e);
-    return null;
+    return { ok: false, error: "Erro de conexão." };
+  }
+}
+
+// Fecha uma rodada perdida (Campo Minado/Sudoku/Spider) — a ficha já foi
+// debitada em startGameRound, isso só consome o roundToken no servidor.
+async function forfeitGameRound(roundToken) {
+  if (!roundToken) return;
+  try {
+    await fetch(`${API}/game-rank/forfeit`, {
+      method: "POST",
+      headers: authHeaders(sessionToken),
+      body: JSON.stringify({ roundToken }),
+    });
+  } catch (e) {
+    console.error("forfeitGameRound", e);
   }
 }
 
@@ -2565,10 +2581,12 @@ function formatCoinValue(coins) {
 
 function showGameCoinsToast(coins) {
   const amount = Number(coins);
-  if (!Number.isFinite(amount) || amount <= 0) return;
+  if (!Number.isFinite(amount) || amount === 0) return;
   const el = document.getElementById("game-toast");
   if (!el) return;
-  el.textContent = `+${formatCoinValue(amount)} LuizCoins™`;
+  const isLoss = amount < 0;
+  el.textContent = `${isLoss ? "−" : "+"}${formatCoinValue(Math.abs(amount))} LuizCoins™`;
+  el.classList.toggle("loss", isLoss);
   el.style.display = "block";
   el.classList.add("show");
   if (gameToastTimeout) clearTimeout(gameToastTimeout);

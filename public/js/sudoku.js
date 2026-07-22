@@ -21,7 +21,8 @@ let sdMistakes = 0;
 let sdTimer = 0;
 let sdInterval = null;
 let sdGameOver = false;
-let sdRoundTokenPromise = null;
+let sdPaid = false;
+let sdRoundToken = null;
 
 /**
  * Abre a janela do Sudoku, inicializa o tabuleiro e valida a sessão.
@@ -87,13 +88,27 @@ function initSudoku() {
   sdMistakes = 0;
   sdTimer = 0;
   sdGameOver = false;
+  sdPaid = false;
+  sdRoundToken = null;
 
   document.getElementById("sd-face").innerText = "🙂";
   updateSdCounters();
   renderSdGrid();
-  startSdTimer();
-  sdRoundTokenPromise = startGameRound("sudoku", currentSdDifficulty);
+  sdSetDifficultyButtonsEnabled(true);
   refreshGameZoom("win-sudoku");
+
+  const boardContainer = document.querySelector("#win-sudoku .ms-board-container");
+  arcadeInsertCoin(boardContainer, "sudoku", currentSdDifficulty).then((result) => {
+    if (!result.started) return;
+    sdPaid = true;
+    sdRoundToken = result.roundToken;
+    sdSetDifficultyButtonsEnabled(false);
+    startSdTimer();
+  });
+}
+
+function sdSetDifficultyButtonsEnabled(enabled) {
+  document.querySelectorAll(".sd-diff-btn").forEach((b) => { b.disabled = !enabled; });
 }
 
 // ─── GENERATION ─────────────────────────────
@@ -184,7 +199,7 @@ function renderSdGrid() {
 }
 
 function selectSdCell(r, c) {
-  if (sdGameOver || sdGivenMask[r][c]) return;
+  if (!sdPaid || sdGameOver || sdGivenMask[r][c]) return;
   if (sdSelected) {
     sdCells[sdSelected.r][sdSelected.c].classList.remove("selected");
   }
@@ -249,16 +264,20 @@ function triggerSdGameOver(won) {
   stopSdTimer();
   const faceBtn = document.getElementById("sd-face");
 
+  sdSetDifficultyButtonsEnabled(true);
+
   if (won) {
     faceBtn.innerText = "😎";
     const winScore = Math.max(1, 9999 - sdTimer);
-    sdRoundTokenPromise.then((roundToken) => {
-      submitGameScore("sudoku", currentSdDifficulty, winScore, function (coinsEarned) {
-        if (coinsEarned > 0) showGameCoinsToast(coinsEarned);
-      }, undefined, { roundToken });
-    });
+    submitGameScore("sudoku", currentSdDifficulty, winScore, function (coinsEarned) {
+      showGameCoinsToast(coinsEarned - ARCADE_ENTRY_FEE_DISPLAY);
+    }, undefined, { roundToken: sdRoundToken });
   } else {
     faceBtn.innerText = "😵";
+    if (sdPaid) {
+      forfeitGameRound(sdRoundToken);
+      showGameCoinsToast(-ARCADE_ENTRY_FEE_DISPLAY);
+    }
   }
 }
 

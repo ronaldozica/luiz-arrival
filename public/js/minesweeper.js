@@ -19,7 +19,8 @@ let msInterval = null;
 let msGameOver = false;
 let msFirstClick = true;
 let msRevealedCount = 0;
-let msRoundTokenPromise = null;
+let msPaid = false;
+let msRoundToken = null;
 
 /**
  * Abre a janela do Campo Minado, inicializa o tabuleiro e valida a sessão.
@@ -59,11 +60,15 @@ function setMsDifficulty(diff) {
   currentMsDifficulty = diff;
 
   // Update button states
-  document.querySelectorAll(".ms-diff-btn").forEach((b) => {
+  document.querySelectorAll("#win-minesweeper .ms-diff-btn").forEach((b) => {
     b.classList.toggle("active", b.dataset.diff === diff);
   });
 
   initMinesweeper();
+}
+
+function msSetDifficultyButtonsEnabled(enabled) {
+  document.querySelectorAll("#win-minesweeper .ms-diff-btn").forEach((b) => { b.disabled = !enabled; });
 }
 
 /**
@@ -82,6 +87,8 @@ function initMinesweeper() {
   msGameOver = false;
   msFirstClick = true;
   msRevealedCount = 0;
+  msPaid = false;
+  msRoundToken = null;
 
   document.getElementById("ms-face").innerText = "🙂";
   updateMsCounters();
@@ -133,20 +140,28 @@ function initMinesweeper() {
   }
 
   refreshGameZoom("win-minesweeper");
+
+  msSetDifficultyButtonsEnabled(true);
+  const boardContainer = document.querySelector("#win-minesweeper .ms-board-container");
+  arcadeInsertCoin(boardContainer, "minesweeper", currentMsDifficulty).then((result) => {
+    if (!result.started) return;
+    msPaid = true;
+    msRoundToken = result.roundToken;
+    msSetDifficultyButtonsEnabled(false);
+  });
 }
 
 /**
  * Lida com clique esquerdo
  */
 function handleMsClick(r, c) {
-  if (msGameOver || msBoard[r][c].isRevealed || msBoard[r][c].isFlagged) return;
+  if (!msPaid || msGameOver || msBoard[r][c].isRevealed || msBoard[r][c].isFlagged) return;
 
   if (msFirstClick) {
     msFirstClick = false;
     placeMsMines(r, c);
     calculateMsNeighbors();
     startMsTimer();
-    msRoundTokenPromise = startGameRound("minesweeper", currentMsDifficulty);
   }
 
   const cell = msBoard[r][c];
@@ -162,7 +177,7 @@ function handleMsClick(r, c) {
  * Lida com clique direito (bandeira)
  */
 function handleMsRightClick(r, c) {
-  if (msGameOver || msBoard[r][c].isRevealed) return;
+  if (!msPaid || msGameOver || msBoard[r][c].isRevealed) return;
   const cell = msBoard[r][c];
   cell.isFlagged = !cell.isFlagged;
   cell.element.innerText = cell.isFlagged ? "🚩" : "";
@@ -246,6 +261,7 @@ function checkMsWin() {
 function triggerMsGameOver(won, killerRow = -1, killerCol = -1) {
   msGameOver = true;
   stopMsTimer();
+  msSetDifficultyButtonsEnabled(true);
 
   const faceBtn = document.getElementById("ms-face");
 
@@ -262,11 +278,9 @@ function triggerMsGameOver(won, killerRow = -1, killerCol = -1) {
     }
     // Score for minesweeper = inverse of time (faster = more points, max 9999)
     const winScore = Math.max(1, 9999 - msTimer);
-    msRoundTokenPromise.then((roundToken) => {
-      submitGameScore("minesweeper", currentMsDifficulty, winScore, function(coinsEarned) {
-        if (coinsEarned > 0) showGameCoinsToast(coinsEarned);
-      }, undefined, { roundToken });
-    });
+    submitGameScore("minesweeper", currentMsDifficulty, winScore, function(coinsEarned) {
+      showGameCoinsToast(coinsEarned - ARCADE_ENTRY_FEE_DISPLAY);
+    }, undefined, { roundToken: msRoundToken });
   } else {
     faceBtn.innerText = "😵";
     for (let r = 0; r < MS_ROWS; r++) {
@@ -282,6 +296,10 @@ function triggerMsGameOver(won, killerRow = -1, killerCol = -1) {
           cell.element.innerText = "❌";
         }
       }
+    }
+    if (msPaid) {
+      forfeitGameRound(msRoundToken);
+      showGameCoinsToast(-ARCADE_ENTRY_FEE_DISPLAY);
     }
   }
 }

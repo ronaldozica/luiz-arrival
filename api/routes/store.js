@@ -8,6 +8,23 @@ const { getUsers } = require("../lib/users");
 const { userKey, parseRedisArray } = require("../lib/utils");
 const { STORE_ITEMS, EXCLUSIVE_COLORS, getExclusiveColorIds, calcBalance } = require("../lib/store-items");
 
+// GET /api/balance — requer sessão válida. Versão leve de /api/store, sem a
+// lista de itens: usada pelo portão de moeda dos minigames (arcade-coin.js)
+// pra mostrar o saldo antes de cobrar a ficha, sem puxar a vitrine inteira.
+router.get("/balance", requireAuth, async (req, res) => {
+  try {
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
+    res.json({ balance: Math.max(0, earnedCoins - spentCoins) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/store — requer sessão válida
 router.get("/store", requireAuth, async (req, res) => {
   try {

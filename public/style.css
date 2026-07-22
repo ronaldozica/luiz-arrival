@@ -736,6 +736,12 @@ body {
   transform: translateY(0);
 }
 
+.game-toast.loss {
+  background: rgba(220, 53, 53, 0.95);
+  color: #fff;
+  border-color: #8a1f1f;
+}
+
 .guess-loading {
   background: #ffffe1;
   color: var(--win-dark);
@@ -1118,6 +1124,54 @@ body.cursor-wait * {
 
 .ctx-wallpaper-item.checked {
   font-weight: bold;
+}
+
+/* ─── PORTÃO DE MOEDA DO FLIPERAMA ─────────── */
+.arcade-coin-gate {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.arcade-coin-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  background: var(--win-gray);
+  box-shadow: var(--shadow-out);
+  border: 1px solid var(--win-darker);
+}
+
+.arcade-coin {
+  font-size: 40px;
+  line-height: 1;
+  animation: arcade-coin-spin 2.2s linear infinite;
+}
+
+@keyframes arcade-coin-spin {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(0.15); }
+}
+
+.arcade-coin-gate.inserting .arcade-coin {
+  animation: arcade-coin-drop 0.35s ease-in forwards;
+}
+
+@keyframes arcade-coin-drop {
+  0% { transform: translateY(0) scaleX(1); opacity: 1; }
+  100% { transform: translateY(24px) scaleX(0.15); opacity: 0; }
+}
+
+.arcade-coin-balance {
+  font-size: 11px;
+  color: #fff;
+  text-align: center;
 }
 
 /* ─── SNAKE 95 ────────────────────────────── */
@@ -1703,6 +1757,15 @@ body.cursor-wait * {
 
 .ms-diff-btn:hover {
   background: #d4d0c8;
+}
+
+.ms-diff-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ms-diff-btn:disabled:hover {
+  background: var(--win-gray);
 }
 
 /* ─── AIM TRAINER SENSITIVITY BAR ─────────── */

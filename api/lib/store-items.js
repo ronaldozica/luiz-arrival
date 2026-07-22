@@ -4,10 +4,11 @@ const { getDayData } = require("./days");
 
 // ─── Loja de Prêmios ─────────────────────────────────────────────────────────
 // Preços calibrados pra ~6 LuizCoins/dia (jogador engajado apostando todo dia
-// útil, sem contar minigame — ver GAME_COINS_DAILY_CAP em routes/game-rank.js
-// pro teto que mantém esse canal na mesma ordem de grandeza). Alvos: gifs em
-// poucos dias; esmeralda em até ~4 dias; rubi em menos de 2 semanas; dourado
-// em menos de 1 mês; diamante (2,5x o dourado) em menos de 2 meses.
+// útil, sem contar minigame). Minigames viraram fliperama (paga ficha pra
+// jogar, ver ARCADE_ENTRY_FEE em lib/games.js) — sem teto diário, autolimitado
+// pelo custo de entrada. Alvos: gifs em poucos dias; esmeralda em até ~4 dias;
+// rubi em menos de 2 semanas; dourado em menos de 1 mês; diamante (2,5x o
+// dourado) em menos de 2 meses.
 const STORE_ITEMS = [
   { id: "wp_luizbeatle", price: 50, type: "wallpaper", src: "/assets/wallpapers/luizBeatle.jpg", title: "LuizBeatle", wpKey: "luizbeatle" },
   { id: "wp_luizbliss",  price: 50, type: "wallpaper", src: "/assets/wallpapers/luizBliss.jpg",  title: "LuizBliss",  wpKey: "luizbliss"  },
@@ -257,6 +258,9 @@ async function calcBalance(kv, user, users) {
 
   const bjLost = parseRedisNumber(await kv.get(`bjlost:${userKey(user.name)}`));
   spentCoins += bjLost;
+
+  const gameSpent = parseRedisNumber(await kv.get(`gamespent:${userKey(user.name)}`));
+  spentCoins += gameSpent;
 
   return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned, fontOwned, rawFontOwned };
 }

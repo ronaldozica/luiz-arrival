@@ -51,7 +51,11 @@ function snakeKeyHandler(event) {
   changeDirection(event);
 }
 
-function startSnakeGame() {
+async function startSnakeGame() {
+  const container = snakeCanvas.closest(".canvas-container");
+  const result = await arcadeInsertCoin(container, "snake", null);
+  if (!result.started) return;
+
   if (isPlaying) {
     // Restart
     isPlaying = false;
@@ -69,7 +73,7 @@ function startSnakeGame() {
   dy = 0;
   changingDirection = false;
   isPlaying = true;
-  snakeRoundTokenPromise = startGameRound("snake", null);
+  snakeRoundTokenPromise = Promise.resolve(result.roundToken);
 
   updateSnakeDisplays();
 
@@ -106,22 +110,21 @@ function gameLoop() {
     // Submit score
     snakeRoundTokenPromise.then((roundToken) => {
       submitGameScore("snake", null, score, function(coinsEarned) {
-        if (coinsEarned > 0) {
-          showGameCoinsToast(coinsEarned);
-          // Redraw to add coins message
-          setTimeout(() => {
-            clearCanvas();
-            snakeCtx.fillStyle = "red";
-            snakeCtx.font = "20px 'Courier New', monospace";
-            snakeCtx.textAlign = "center";
-            snakeCtx.textBaseline = "middle";
-            snakeCtx.fillText("GAME OVER", CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 30);
-            snakeCtx.fillStyle = "white";
-            snakeCtx.fillText(`Pontos: ${score}`, CANVAS_SIZE / 2, CANVAS_SIZE / 2);
-            snakeCtx.fillStyle = "gold";
-            snakeCtx.fillText(`🎉 +${coinsEarned} LuizCoins™`, CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 40);
-          }, 100);
-        }
+        const net = coinsEarned - ARCADE_ENTRY_FEE_DISPLAY;
+        showGameCoinsToast(net);
+        // Redraw to add o resultado da ficha
+        setTimeout(() => {
+          clearCanvas();
+          snakeCtx.fillStyle = "red";
+          snakeCtx.font = "20px 'Courier New', monospace";
+          snakeCtx.textAlign = "center";
+          snakeCtx.textBaseline = "middle";
+          snakeCtx.fillText("GAME OVER", CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 30);
+          snakeCtx.fillStyle = "white";
+          snakeCtx.fillText(`Pontos: ${score}`, CANVAS_SIZE / 2, CANVAS_SIZE / 2);
+          snakeCtx.fillStyle = net >= 0 ? "gold" : "#ff6666";
+          snakeCtx.fillText(`${net >= 0 ? "🎉 +" : "−"}${Math.abs(net)} LuizCoins™`, CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 40);
+        }, 100);
       }, undefined, { roundToken });
     });
     return;

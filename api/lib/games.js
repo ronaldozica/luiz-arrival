@@ -10,6 +10,11 @@ const GAMES = {
   spider: { label: "Paciência Spider", icon: "🕷️", difficulties: ["easy", "medium", "hard"] },
 };
 
+// ─── Mecânica de fliperama ─────────────────────────────────────────────────
+// Cada partida custa uma ficha; o troco (POST /api/game-rank) depende do
+// desempenho — ver computeArcadePayout em routes/game-rank.js.
+const ARCADE_ENTRY_FEE = 10;
+
 const DIFFICULTY_LABELS = {
   beginner: "Iniciante",
   intermediate: "Intermediário",
@@ -67,4 +72,4 @@ function minPlausibleSeconds(game, difficulty, score) {
   }
 }
 
-module.exports = { GAMES, DIFFICULTY_LABELS, minPlausibleSeconds };
+module.exports = { GAMES, DIFFICULTY_LABELS, minPlausibleSeconds, ARCADE_ENTRY_FEE };

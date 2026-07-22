@@ -43,7 +43,8 @@ let spCardEls = {}; // id da carta -> elemento DOM persistente (permite animaç�
 let spHintsUsed = 0; // sem limite máximo — só conta pra decidir a conquista no final
 let spUndoUsed = false; // true assim que o desfazer for usado pelo menos 1x na partida
 let spUndoSnapshot = null; // estado anterior à última ação (só 1 nível de desfazer)
-let spRoundTokenPromise = null;
+let spPaid = false;
+let spRoundToken = null;
 
 /**
  * Abre a janela do Spider, inicializa o tabuleiro e valida a sessão.
@@ -89,6 +90,10 @@ function setSpDifficulty(diff) {
     btn.classList.toggle("active", btn.dataset.diff === diff);
   });
   initSpider();
+}
+
+function spSetDifficultyButtonsEnabled(enabled) {
+  document.querySelectorAll(".sp-diff-btn").forEach((b) => { b.disabled = !enabled; });
 }
 
 // ─── GAME SETUP ─────────────────────────────
@@ -146,6 +151,8 @@ function initSpider() {
   spUndoUsed = false;
   spUndoSnapshot = null;
   spCardEls = {};
+  spPaid = false;
+  spRoundToken = null;
   const tableau = document.getElementById("sp-tableau");
   if (tableau) tableau.innerHTML = "";
 
@@ -154,9 +161,17 @@ function initSpider() {
   updateSpHintButton();
   updateSpUndoButton();
   renderSpBoard();
-  startSpTimer();
-  spRoundTokenPromise = startGameRound("spider", currentSpDifficulty);
+  spSetDifficultyButtonsEnabled(true);
   refreshGameZoom("win-spider");
+
+  const boardContainer = document.querySelector("#win-spider .sp-board-container");
+  arcadeInsertCoin(boardContainer, "spider", currentSpDifficulty).then((result) => {
+    if (!result.started) return;
+    spPaid = true;
+    spRoundToken = result.roundToken;
+    spSetDifficultyButtonsEnabled(false);
+    startSpTimer();
+  });
 }
 
 // ─── RENDERING ───────────────────────────────
@@ -401,7 +416,7 @@ function flashSpHintElement(el) {
 }
 
 function useSpHint() {
-  if (spGameOver) return;
+  if (!spPaid || spGameOver) return;
 
   const hint = findSpHint();
   if (!hint) return;
@@ -442,7 +457,7 @@ function updateSpUndoButton() {
 }
 
 function undoSpMove() {
-  if (spGameOver || !spUndoSnapshot) return;
+  if (!spPaid || spGameOver || !spUndoSnapshot) return;
 
   spTableau = spUndoSnapshot.tableau;
   spStock = spUndoSnapshot.stock;
@@ -459,7 +474,7 @@ function undoSpMove() {
 // ─── INPUT HANDLING ──────────────────────────
 
 function handleSpCardClick(col, index) {
-  if (spGameOver) return;
+  if (!spPaid || spGameOver) return;
 
   if (spSelected && spSelected.col === col && spSelected.index === index) {
     spSelected = null;
@@ -490,7 +505,7 @@ function handleSpCardClick(col, index) {
 }
 
 function handleSpColumnClick(col) {
-  if (spGameOver || !spSelected) return;
+  if (!spPaid || spGameOver || !spSelected) return;
   const snapshot = cloneSpState();
   if (trySpMove(spSelected, col)) {
     spUndoSnapshot = snapshot;
@@ -505,7 +520,7 @@ function handleSpColumnClick(col) {
 }
 
 function dealSpStock() {
-  if (spGameOver) return;
+  if (!spPaid || spGameOver) return;
   if (spStock.length === 0) return;
 
   spUndoSnapshot = cloneSpState();
@@ -574,24 +589,27 @@ function triggerSpGameOver(won) {
   stopSpTimer();
   updateSpHintButton();
   updateSpUndoButton();
+  spSetDifficultyButtonsEnabled(true);
   const faceBtn = document.getElementById("sp-face");
   if (won) {
     faceBtn.innerText = "😎";
     const winScore = Math.max(1, 9999 - spTimer);
-    spRoundTokenPromise.then((roundToken) => {
-      submitGameScore(
-        "spider",
-        currentSpDifficulty,
-        winScore,
-        function (coinsEarned) {
-          if (coinsEarned > 0) showGameCoinsToast(coinsEarned);
-        },
-        undefined,
-        { roundToken, hintsUsed: spHintsUsed > 0, undoUsed: spUndoUsed },
-      );
-    });
+    submitGameScore(
+      "spider",
+      currentSpDifficulty,
+      winScore,
+      function (coinsEarned) {
+        showGameCoinsToast(coinsEarned - ARCADE_ENTRY_FEE_DISPLAY);
+      },
+      undefined,
+      { roundToken: spRoundToken, hintsUsed: spHintsUsed > 0, undoUsed: spUndoUsed },
+    );
   } else {
     faceBtn.innerText = "😵";
+    if (spPaid) {
+      forfeitGameRound(spRoundToken);
+      showGameCoinsToast(-ARCADE_ENTRY_FEE_DISPLAY);
+    }
   }
 }
 

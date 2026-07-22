@@ -142,7 +142,10 @@ function setAtDifficulty(diff) {
   updateAtDisplays();
 }
 
-function startAimTrainerGame() {
+async function startAimTrainerGame() {
+  const result = await arcadeInsertCoin(atCanvasWrap, "aimtrainer", currentAtDifficulty);
+  if (!result.started) return;
+
   if (atRafId) cancelAnimationFrame(atRafId);
 
   atResizeCanvas();
@@ -159,7 +162,7 @@ function startAimTrainerGame() {
   atCrosshair.x = atCanvas.width / 2;
   atCrosshair.y = atCanvas.height / 2;
   atRoundEndTime = Date.now() + AT_ROUND_DURATION;
-  atRoundTokenPromise = startGameRound("aimtrainer", currentAtDifficulty);
+  atRoundTokenPromise = Promise.resolve(result.roundToken);
 
   const startBtn = document.getElementById("at-start-btn");
   if (startBtn) startBtn.innerText = "⏹ Reiniciar";
@@ -439,13 +442,12 @@ function atEndRound() {
   const atPlatform = atGetPlatform();
   atRoundTokenPromise.then((roundToken) => {
     submitGameScore("aimtrainer", currentAtDifficulty, atScore, function (coinsEarned) {
-      if (coinsEarned > 0) {
-        showGameCoinsToast(coinsEarned);
-        setTimeout(() => {
-          atCtx.fillStyle = "gold";
-          atCtx.fillText(`🎉 +${coinsEarned} LuizCoins™`, atCanvas.width / 2, atCanvas.height / 2 + 60);
-        }, 100);
-      }
+      const net = coinsEarned - ARCADE_ENTRY_FEE_DISPLAY;
+      showGameCoinsToast(net);
+      setTimeout(() => {
+        atCtx.fillStyle = net >= 0 ? "gold" : "#ff6666";
+        atCtx.fillText(`${net >= 0 ? "🎉 +" : "−"}${Math.abs(net)} LuizCoins™`, atCanvas.width / 2, atCanvas.height / 2 + 60);
+      }, 100);
     }, undefined, { roundToken, platform: atPlatform });
   });
 
