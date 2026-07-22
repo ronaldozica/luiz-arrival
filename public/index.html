@@ -90,6 +90,7 @@
       <button onclick="openWindow('win-admin'); closeStartMenu()">🔒 Admin</button>
       <button onclick="openFarmWindow(); closeStartMenu()">🌾 LuizFarm 95</button>
       <button onclick="openBlackjackWindow(); closeStartMenu()">🃏 Luiz21</button>
+      <button onclick="openRouletteWindow(); closeStartMenu()">🎡 Roleta</button>
       <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
       <button onclick="openWindow('win-aimtrainer'); initAimTrainerGame(); closeStartMenu()">🔫 Aim Trainer</button>
       <button onclick="openMinesweeperWindow(); closeStartMenu()">💣 Campo Minado</button>
@@ -154,6 +155,10 @@
     <div class="appgrid-icon" onclick="openBlackjackWindow()">
       <div class="icon-img">🃏</div>
       <div class="icon-label">Luiz21</div>
+    </div>
+    <div class="appgrid-icon" onclick="openRouletteWindow()">
+      <div class="icon-img">🎡</div>
+      <div class="icon-label">Roleta</div>
     </div>
     <div class="appgrid-icon" onclick="openWindow('win-snake'); initSnakeGame()">
       <div class="icon-img">🐍</div>
@@ -1013,6 +1018,8 @@
           onclick="loadGameRank('2048'); setGameRankTabActive('2048')">🧩 2048</button>
         <button class="rank-tab" data-tab="luizjack"
           onclick="loadGameRank('luizjack'); setGameRankTabActive('luizjack')">🃏 Luiz21</button>
+        <button class="rank-tab" data-tab="roulette"
+          onclick="loadGameRank('roulette'); setGameRankTabActive('roulette')">🎡 Roleta</button>
         <button class="rank-tab" data-tab="top1"
           onclick="loadGameRank('top1'); setGameRankTabActive('top1')">🏅 Top 1</button>
         <button class="rank-tab" data-tab="achievements"
@@ -1281,6 +1288,10 @@
           <div class="icon-img">🃏</div>
           <div class="icon-label">Luiz21</div>
         </div>
+        <div class="folder-icon" ondblclick="openRouletteWindow()">
+          <div class="icon-img">🎡</div>
+          <div class="icon-label">Roleta</div>
+        </div>
         <div class="folder-icon" ondblclick="openWindow('win-snake'); initSnakeGame()">
           <div class="icon-img">🐍</div>
           <div class="icon-label">Snake 95</div>
@@ -1390,6 +1401,20 @@
     </div>
   </div>
 
+  <!-- ══ WINDOW: ROLETA ══ -->
+  <div class="win95-window" id="win-roulette" style="left:180px;top:60px;width:480px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-roulette')">
+      <span class="win95-title">🎡 Roleta</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-roulette')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-roulette')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body" style="padding:0;overflow:hidden">
+      <div id="roulette-root" style="display:flex;flex-direction:column;min-height:460px"></div>
+    </div>
+  </div>
+
   <div class="win95-window" id="win-farm" style="left:100px;top:60px;width:560px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-farm')">
       <span class="win95-title">🌾 LuizFarm 95</span>
@@ -1461,6 +1486,7 @@
   <script src="js/2048.js"></script>
   <script src="js/farm.js"></script>
   <script src="js/blackjack.js"></script>
+  <script src="js/roulette.js"></script>
   <script src="js/requests.js"></script>
   <script src="js/notepad.js"></script>
   <script src="js/calculator.js"></script>

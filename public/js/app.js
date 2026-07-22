@@ -2404,6 +2404,10 @@ function renderGameRank() {
     container.innerHTML = buildBjRankTable(data["default"] || []);
     return;
   }
+  if (game === "roulette") {
+    container.innerHTML = buildRlRankTable(data["default"] || []);
+    return;
+  }
   const gameLabel = getGameLabel(game);
   const diffs = GAME_RANK_DIFFICULTIES[game];
   let html = "";
@@ -2445,6 +2449,12 @@ async function loadGameRank(game) {
   try {
     if (game === "luizjack") {
       const data = await cachedFetchJSON("bj_rank", `${API}/blackjack/rank`, 30 * 1000);
+      currentGameRankCache = { game, data: { default: data || [] } };
+      renderGameRank();
+      return;
+    }
+    if (game === "roulette") {
+      const data = await cachedFetchJSON("rl_rank", `${API}/roulette/rank`, 30 * 1000);
       currentGameRankCache = { game, data: { default: data || [] } };
       renderGameRank();
       return;
@@ -2618,7 +2628,7 @@ function getDifficultyLabel(diff) {
 }
 
 function getGameLabel(game) {
-  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider", luizjack: "🃏 Luiz21", "2048": "🧩 2048" }[game] || game);
+  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider", luizjack: "🃏 Luiz21", "2048": "🧩 2048", roulette: "🎡 Roleta" }[game] || game);
 }
 
 function buildBjRankTable(entries) {
@@ -2629,6 +2639,18 @@ function buildBjRankTable(entries) {
     </tr></thead><tbody>`;
   entries.forEach((e, i) => {
     html += `<tr class="${rankMedalClass(i)}"><td>${i + 1}º</td><td>${renderPlayerName(e.name, true)}</td><td><strong>${e.coinsWon} LC</strong></td><td>${e.handsPlayed}</td></tr>`;
+  });
+  return html + "</tbody></table>";
+}
+
+function buildRlRankTable(entries) {
+  if (entries.length === 0) return '<div class="no-data">Nenhum giro ainda. Seja o primeiro!</div>';
+  let html = `<div class="section-label">🎡 Roleta — Maiores Ganhadores</div>
+    <table class="win95-table"><thead><tr>
+      <th>#</th><th>Jogador</th><th>LC Ganhos</th><th>Giros</th>
+    </tr></thead><tbody>`;
+  entries.forEach((e, i) => {
+    html += `<tr class="${rankMedalClass(i)}"><td>${i + 1}º</td><td>${renderPlayerName(e.name, true)}</td><td><strong>${e.coinsWon} LC</strong></td><td>${e.spinsPlayed}</td></tr>`;
   });
   return html + "</tbody></table>";
 }
@@ -3674,9 +3696,22 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.14.0",
+    version: "2.15.0",
     date: "22/07/2026",
     isNew: true,
+    title: "Novo jogo de cassino: Roleta 🎡",
+    items: [
+      "🎡 Roleta europeia chegou! Aposte em número seco (paga 35x), vermelho/preto, ímpar/par, 1-18/19-36 ou dúzia, e veja a rodinha girar de verdade até parar no número sorteado.",
+      "🪙 Fichas de 5/15/30 LuizCoins, mesmo padrão do Luiz21.",
+      "🔒 Limite diário de ganhos de 250 LuizCoins, igual ao Luiz21 (pool separada).",
+      "🏆 5 conquistas novas: primeira vitória, número seco, apostador de peso, sequência quente e limite diário.",
+      "📜 Tira de histórico com os últimos 10 números sorteados na mesa, e ranking próprio na aba \"Roleta\" dentro de Rank Jogos.",
+    ],
+  },
+  {
+    version: "2.14.0",
+    date: "22/07/2026",
+    isNew: false,
     title: "Novo minigame: 2048 🧩",
     items: [
       "🧩 2048 chegou! Junte peças iguais com as setas, WASD ou arrastando o dedo (mobile) até chegar (ou passar) da peça 2048.",

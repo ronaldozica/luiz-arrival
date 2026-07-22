@@ -262,6 +262,12 @@ async function calcBalance(kv, user, users) {
   const gameSpent = parseRedisNumber(await kv.get(`gamespent:${userKey(user.name)}`));
   spentCoins += gameSpent;
 
+  const rouletteWon = parseRedisNumber(await kv.get(`roulettewon:${userKey(user.name)}`));
+  earnedCoins += rouletteWon;
+
+  const rouletteLost = parseRedisNumber(await kv.get(`roulettelost:${userKey(user.name)}`));
+  spentCoins += rouletteLost;
+
   return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned, fontOwned, rawFontOwned };
 }
 
