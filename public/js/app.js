@@ -3674,9 +3674,53 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.14.0",
+    date: "22/07/2026",
+    isNew: true,
+    title: "Novo minigame: 2048 🧩",
+    items: [
+      "🧩 2048 chegou! Junte peças iguais com as setas, WASD ou arrastando o dedo (mobile) até chegar (ou passar) da peça 2048.",
+      "🪙 Mesma mecânica de fliperama dos outros minigames: paga uma ficha de 10 LuizCoins pra jogar, o troco depende da pontuação.",
+      "🏆 2 conquistas novas: \"Chegou ao 2048\" e \"Além do 2048\" (peça 4096).",
+      "🎮 Ranking próprio na aba \"2048\" dentro de Rank Jogos.",
+    ],
+  },
+  {
+    version: "2.13.0",
+    date: "22/07/2026",
+    isNew: false,
+    title: "Rankings consolidados 🏆",
+    items: [
+      "🎮 \"Top 1 dos Jogos\" e \"Rank de Conquistas\" agora são abas dentro da janela Rank Jogos, junto dos jogos e do Luiz21 — eram 3 janelas quase iguais antes.",
+      "🗂️ Pasta \"Rankings\" removida da área de trabalho (ficou redundante depois da fusão) — Rank Jogos continua no Menu Iniciar e na grade de apps.",
+    ],
+  },
+  {
+    version: "2.12.0",
+    date: "22/07/2026",
+    isNew: false,
+    title: "Minigames viraram fliperama 🕹️",
+    items: [
+      "🪙 Snake, Aim Trainer, Campo Minado, Sudoku e Spider agora custam uma ficha de 10 LuizCoins por partida, como numa máquina de fliperama de verdade.",
+      "📈 O troco depende do desempenho: partida ruim fica no prejuízo, mediana recupera a ficha, boa dá lucro — quanto melhor, mais LuizCoins voltam.",
+      "🚫 Removido o limite diário de 20 LuizCoins por minigame — o custo da ficha já autolimita quanto dá pra ganhar jogando sem parar.",
+      "✨ Nova animação de \"inserir moeda\" ao começar cada partida.",
+    ],
+  },
+  {
+    version: "2.11.0",
+    date: "22/07/2026",
+    isNew: false,
+    title: "LuizFarm rebalanceado de novo + Blackjack 250 🌾🃏",
+    items: [
+      "⚖️ Lucro por hora da fazenda cortado bem mais que pela metade em todas as sementes — jogadores estavam acumulando LuizCoins rápido demais e comprando tudo da loja.",
+      "🃏 Limite diário de ganhos do Luiz21 (Blackjack) subiu de 100 para 250 LuizCoins.",
+    ],
+  },
+  {
     version: "2.10.1",
     date: "18/07/2026",
-    isNew: true,
+    isNew: false,
     title: "Destaque no botão de Todos os Aplicativos ✨",
     items: [
       "✨ O botão ▦ na taskbar (Todos os Aplicativos) agora pisca com um brilho dourado no desktop até você clicar nele pela primeira vez — depois disso some para sempre.",
