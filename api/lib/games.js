@@ -8,6 +8,7 @@ const GAMES = {
   sudoku: { label: "Sudoku", icon: "🔢", difficulties: ["easy", "medium", "hard"] },
   aimtrainer: { label: "Aim Trainer", icon: "🔫", difficulties: ["easy", "normal", "hard"] },
   spider: { label: "Paciência Spider", icon: "🕷️", difficulties: ["easy", "medium", "hard"] },
+  "2048": { label: "2048", icon: "🧩", difficulties: null },
 };
 
 // ─── Mecânica de fliperama ─────────────────────────────────────────────────
@@ -67,6 +68,12 @@ function minPlausibleSeconds(game, difficulty, score) {
       const apples = score / 10;
       return apples * (SNAKE_MIN_SPEED_MS / 1000);
     }
+    case "2048":
+      // Sem duração fixa nem "unidade" clara de jogada (score cresce em saltos
+      // desiguais a cada fusão) — estimativa generosa de 2000 pontos/s, uma
+      // cadência humanamente impossível de sustentar, só pra barrar envios
+      // forjados instantâneos sem incomodar quem joga rápido de verdade.
+      return score / 2000;
     default:
       return 0;
   }

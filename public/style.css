@@ -1174,6 +1174,70 @@ body.cursor-wait * {
   text-align: center;
 }
 
+/* ─── 2048 ─────────────────────────────────── */
+.canvas-container.g2048-board-container {
+  width: 312px;
+  height: 312px;
+  background: #a8998c;
+}
+
+.g2048-board {
+  position: relative;
+  width: 296px;
+  height: 296px;
+}
+
+.g2048-cell-bg {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.g2048-tile {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 22px;
+  color: #776e65;
+  background: #eee4da;
+  transition: left 0.15s ease, top 0.15s ease, opacity 0.15s ease;
+}
+
+.g2048-tile.new { animation: g2048-pop-in 0.18s ease; }
+.g2048-tile.merging { animation: g2048-pop 0.18s ease; }
+.g2048-tile.removing { opacity: 0; transform: scale(0.6); transition: opacity 0.18s ease, transform 0.18s ease; }
+
+@keyframes g2048-pop-in {
+  0% { transform: scale(0.3); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes g2048-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.g2048-tile[data-value="4"]    { background: #ede0c8; }
+.g2048-tile[data-value="8"]    { background: #f2b179; color: #fff; }
+.g2048-tile[data-value="16"]   { background: #f59563; color: #fff; }
+.g2048-tile[data-value="32"]   { background: #f67c5f; color: #fff; }
+.g2048-tile[data-value="64"]   { background: #f65e3b; color: #fff; }
+.g2048-tile[data-value="128"]  { background: #edcf72; color: #fff; font-size: 19px; }
+.g2048-tile[data-value="256"]  { background: #edcc61; color: #fff; font-size: 19px; }
+.g2048-tile[data-value="512"]  { background: #edc850; color: #fff; font-size: 19px; }
+.g2048-tile[data-value="1024"] { background: #edc53f; color: #fff; font-size: 16px; }
+.g2048-tile[data-value="2048"] { background: #edc22e; color: #fff; font-size: 16px; }
+.g2048-tile[data-value="super"] { background: #3c3a32; color: #f9f6f2; font-size: 15px; }
+
 /* ─── SNAKE 95 ────────────────────────────── */
 .canvas-container {
   display: flex;

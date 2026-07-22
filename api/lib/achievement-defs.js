@@ -19,6 +19,8 @@ const ACHIEVEMENT_DEFS = [
   { id: "spider_no_hints",         title: "Pura estratégia",         description: "Vença uma Paciência Spider sem usar nenhuma dica",                              icon: "♟️" },
   { id: "spider_with_hints",       title: "Com uma ajudinha",        description: "Vença uma Paciência Spider usando ao menos uma dica",                           icon: "💡" },
   { id: "spider_flawless",         title: "Vitória impecável",       description: "Vença uma Paciência Spider sem usar dicas nem desfazer jogadas",                icon: "💎" },
+  { id: "game2048_2048",           title: "Chegou ao 2048",          description: "Alcance a peça 2048 numa partida",                                              icon: "🎉" },
+  { id: "game2048_4096",           title: "Além do 2048",            description: "Alcance a peça 4096 numa partida",                                              icon: "🚀" },
   { id: "bj_first_win",            title: "Sorte de principiante",   description: "Vença sua primeira mão no LuizJack 21",                                        icon: "🎴" },
   { id: "bj_natural",              title: "Natural!",                description: "Consiga um Blackjack natural (21 nas 2 primeiras cartas)",                      icon: "🃏" },
   { id: "bj_high_roller",          title: "High Roller",             description: "Vença uma mão com aposta Alta (30 LC) no LuizJack",                            icon: "💰" },

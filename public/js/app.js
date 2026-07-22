@@ -2618,7 +2618,7 @@ function getDifficultyLabel(diff) {
 }
 
 function getGameLabel(game) {
-  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider", luizjack: "🃏 Luiz21" }[game] || game);
+  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider", luizjack: "🃏 Luiz21", "2048": "🧩 2048" }[game] || game);
 }
 
 function buildBjRankTable(entries) {

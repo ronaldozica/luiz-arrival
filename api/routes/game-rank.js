@@ -203,6 +203,12 @@ function computeArcadePayout(game, difficulty, { scoreNum, elapsedSeconds }) {
     if (difficulty === "hard") return tierByMax(elapsedSeconds, [[900, 32], [1800, 20], [Infinity, 12]]);
     return 10;
   }
+  if (game === "2048") {
+    // Sem dados históricos (jogo novo) — calibrado pelos marcos clássicos do
+    // jogo (score cresce com o valor das peças fundidas), mesmo espírito de
+    // "número de partida" do rebalanceamento da fazenda: ajustável depois.
+    return tierByMin(scoreNum, [[8000, 28], [3000, 18], [1000, 10], [300, 5]]);
+  }
   return 0;
 }
 
@@ -212,7 +218,7 @@ function computeArcadePayout(game, difficulty, { scoreNum, elapsedSeconds }) {
 // decorrido desde POST /api/game-rank/start (ver roundToken abaixo).
 router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"), async (req, res) => {
   try {
-    const { game, difficulty, score, hintsUsed, undoUsed, roundToken, platform } = req.body;
+    const { game, difficulty, score, hintsUsed, undoUsed, roundToken, platform, maxTile } = req.body;
     const playerName = req.sessionName; // Sempre do token de sessão, nunca do body
 
     if (!game || score === undefined) {
@@ -234,6 +240,7 @@ router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"),
       sudoku: 9999,           // Sudoku: score = 9999 - tempo(s), só enviado ao vencer
       aimtrainer: 25000,      // Aim Trainer: cap de sanidade pra 30s de partida no modo difícil
       spider: 9999,           // Spider: score = 9999 - tempo(s), só enviado ao vencer
+      "2048": 4000000,        // 2048: bem acima do máximo teórico de uma partida real
     };
 
     const maxScore = SCORE_LIMITS[game];
@@ -386,6 +393,18 @@ router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"),
       if (!hintsUsed && !undoUsed && !achUnlocked.includes("spider_flawless")) {
         achUnlocked.push("spider_flawless");
         newAchievements.push("spider_flawless");
+      }
+    }
+
+    if (game === "2048") {
+      const maxTileNum = Number(maxTile) || 0;
+      if (maxTileNum >= 2048 && !achUnlocked.includes("game2048_2048")) {
+        achUnlocked.push("game2048_2048");
+        newAchievements.push("game2048_2048");
+      }
+      if (maxTileNum >= 4096 && !achUnlocked.includes("game2048_4096")) {
+        achUnlocked.push("game2048_4096");
+        newAchievements.push("game2048_4096");
       }
     }
     if (newAchievements.length > 0) {

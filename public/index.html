@@ -94,6 +94,7 @@
       <button onclick="openWindow('win-aimtrainer'); initAimTrainerGame(); closeStartMenu()">🔫 Aim Trainer</button>
       <button onclick="openMinesweeperWindow(); closeStartMenu()">💣 Campo Minado</button>
       <button onclick="openSudokuWindow(); closeStartMenu()">🔢 Sudoku</button>
+      <button onclick="openWindow('win-2048'); init2048Game(); closeStartMenu()">🧩 2048</button>
       <button onclick="openWindow('win-gamerank'); loadGameRank('snake'); closeStartMenu()">🎮 Rank Jogos</button>
       <hr />
       <button onclick="openNotepadWindow(); closeStartMenu()">📝 Bloco de Notas</button>
@@ -173,6 +174,10 @@
     <div class="appgrid-icon" onclick="openSpiderWindow()">
       <div class="icon-img">🕷️</div>
       <div class="icon-label">Paciência Spider</div>
+    </div>
+    <div class="appgrid-icon" onclick="openWindow('win-2048'); init2048Game()">
+      <div class="icon-img">🧩</div>
+      <div class="icon-label">2048</div>
     </div>
     <div class="appgrid-icon" onclick="openWindow('win-gamerank'); loadGameRank('snake')">
       <div class="icon-img">🎮</div>
@@ -842,6 +847,35 @@
     </div>
   </div>
 
+  <!-- ══ WINDOW: 2048 ══ -->
+  <div class="win95-window" id="win-2048" style="left:170px;top:60px;width:340px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-2048')">
+      <span class="win95-title">🧩 2048</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-2048')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-2048'); stop2048Game()">✕</button>
+      </div>
+    </div>
+    <div class="win95-body">
+      <div class="game-zoom-target">
+        <div class="snake-header">
+          <span>Pontos: <span id="g2048-score" style="color:var(--win-blue-hi)">0</span></span>
+          <span>Recorde: <span id="g2048-best" style="color:#800000">0</span></span>
+        </div>
+        <div class="canvas-container g2048-board-container">
+          <div class="g2048-board" id="g2048-board"></div>
+        </div>
+        <div class="btn-row" style="justify-content: center; margin-top: 8px; gap: 8px;">
+          <button class="win95-action-btn" id="g2048-start-btn" onclick="start2048Game()">▶ Iniciar Novo Jogo</button>
+          <button class="win95-action-btn" onclick="openGameRank('2048')">🏆 Ranking</button>
+        </div>
+      </div>
+      <div class="info-box" style="font-size:11px;margin-top:4px">
+        Use as setas, WASD ou arraste o dedo pra juntar as peças de mesmo valor. Chegar em 2048 desbloqueia uma conquista!
+      </div>
+    </div>
+  </div>
+
   <!-- ══ WINDOW: BLOCO DE NOTAS ══ -->
   <div class="win95-window notepad-window" id="win-notepad" style="left:220px;top:70px;width:480px;height:420px;display:none">
     <!-- openWindow() força style.display="block" inline no elemento da janela
@@ -975,6 +1009,8 @@
           onclick="loadGameRank('aimtrainer'); setGameRankTabActive('aimtrainer')">🔫 Aim Trainer</button>
         <button class="rank-tab" data-tab="spider"
           onclick="loadGameRank('spider'); setGameRankTabActive('spider')">🕷️ Spider</button>
+        <button class="rank-tab" data-tab="2048"
+          onclick="loadGameRank('2048'); setGameRankTabActive('2048')">🧩 2048</button>
         <button class="rank-tab" data-tab="luizjack"
           onclick="loadGameRank('luizjack'); setGameRankTabActive('luizjack')">🃏 Luiz21</button>
         <button class="rank-tab" data-tab="top1"
@@ -1265,6 +1301,10 @@
           <div class="icon-img">🕷️</div>
           <div class="icon-label">Paciência Spider</div>
         </div>
+        <div class="folder-icon" ondblclick="openWindow('win-2048'); init2048Game()">
+          <div class="icon-img">🧩</div>
+          <div class="icon-label">2048</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1418,6 +1458,7 @@
   <script src="js/minesweeper.js"></script>
   <script src="js/sudoku.js"></script>
   <script src="js/spider.js"></script>
+  <script src="js/2048.js"></script>
   <script src="js/farm.js"></script>
   <script src="js/blackjack.js"></script>
   <script src="js/requests.js"></script>
