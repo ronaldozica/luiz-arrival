@@ -3696,9 +3696,21 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.15.0",
+    version: "2.16.0",
     date: "22/07/2026",
     isNew: true,
+    title: "Sudoku Diário 📅",
+    items: [
+      "📅 Desafio de Sudoku novo todo dia, dificuldade média, igual pra todo mundo — só 1 tentativa por dia, tipo os joguinhos diários do LinkedIn.",
+      "🏆 2 rankings novos dentro da janela: mais rápidos do dia e quem mais já ficou em 1º lugar (histórico).",
+      "🔒 Sem ficha nem prêmio em LuizCoins — é só pra disputa de bragging rights mesmo.",
+      "💾 Se você atualizar a página no meio do desafio, seu progresso continua de onde parou.",
+    ],
+  },
+  {
+    version: "2.15.0",
+    date: "22/07/2026",
+    isNew: false,
     title: "Novo jogo de cassino: Roleta 🎡",
     items: [
       "🎡 Roleta europeia chegou! Aposte em número seco (paga 35x), vermelho/preto, ímpar/par, 1-18/19-36 ou dúzia, e veja a rodinha girar de verdade até parar no número sorteado.",

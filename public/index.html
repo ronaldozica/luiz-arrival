@@ -95,6 +95,7 @@
       <button onclick="openWindow('win-aimtrainer'); initAimTrainerGame(); closeStartMenu()">🔫 Aim Trainer</button>
       <button onclick="openMinesweeperWindow(); closeStartMenu()">💣 Campo Minado</button>
       <button onclick="openSudokuWindow(); closeStartMenu()">🔢 Sudoku</button>
+      <button onclick="openSudokuDailyWindow(); closeStartMenu()">📅 Sudoku Diário</button>
       <button onclick="openWindow('win-2048'); init2048Game(); closeStartMenu()">🧩 2048</button>
       <button onclick="openWindow('win-gamerank'); loadGameRank('snake'); closeStartMenu()">🎮 Rank Jogos</button>
       <hr />
@@ -175,6 +176,10 @@
     <div class="appgrid-icon" onclick="openSudokuWindow()">
       <div class="icon-img">🔢</div>
       <div class="icon-label">Sudoku</div>
+    </div>
+    <div class="appgrid-icon" onclick="openSudokuDailyWindow()">
+      <div class="icon-img">📅</div>
+      <div class="icon-label">Sudoku Diário</div>
     </div>
     <div class="appgrid-icon" onclick="openSpiderWindow()">
       <div class="icon-img">🕷️</div>
@@ -797,6 +802,20 @@
     </div>
   </div>
 
+  <!-- ══ WINDOW: SUDOKU DIÁRIO ══ -->
+  <div class="win95-window" id="win-sudoku-daily" style="left:210px;top:70px;width:340px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-sudoku-daily')">
+      <span class="win95-title">📅 Sudoku Diário</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-sudoku-daily')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-sudoku-daily')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body" style="background: var(--win-gray); padding: 6px;">
+      <div id="sudoku-daily-content"></div>
+    </div>
+  </div>
+
   <!-- ══ WINDOW: SPIDER ══ -->
   <div class="win95-window" id="win-spider" style="left:160px;top:50px;width:560px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-spider')">
@@ -1308,6 +1327,10 @@
           <div class="icon-img">🔢</div>
           <div class="icon-label">Sudoku</div>
         </div>
+        <div class="folder-icon" ondblclick="openSudokuDailyWindow()">
+          <div class="icon-img">📅</div>
+          <div class="icon-label">Sudoku Diário</div>
+        </div>
         <div class="folder-icon" ondblclick="openSpiderWindow()">
           <div class="icon-img">🕷️</div>
           <div class="icon-label">Paciência Spider</div>
@@ -1482,6 +1505,7 @@
   <script src="js/aimtrainer.js"></script>
   <script src="js/minesweeper.js"></script>
   <script src="js/sudoku.js"></script>
+  <script src="js/sudoku-daily.js"></script>
   <script src="js/spider.js"></script>
   <script src="js/2048.js"></script>
   <script src="js/farm.js"></script>
