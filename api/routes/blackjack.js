@@ -340,3 +340,9 @@ router.get("/blackjack/rank", async (req, res) => {
 });
 
 module.exports = router;
+// Anexado ao router (não substitui o export default) só pra permitir teste
+// unitário direto — ver test/routes/blackjack.test.js.
+module.exports.makeDeck = makeDeck;
+module.exports.cardValue = cardValue;
+module.exports.handValue = handValue;
+module.exports.isNaturalBlackjack = isNaturalBlackjack;

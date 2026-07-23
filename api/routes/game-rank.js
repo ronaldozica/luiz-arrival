@@ -418,3 +418,9 @@ router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"),
 });
 
 module.exports = router;
+// Exportado à parte (anexado ao router, não substitui o export default) só
+// pra permitir teste unitário direto das tabelas de payout sem precisar
+// simular uma requisição HTTP inteira — ver test/routes/game-rank.test.js.
+module.exports.computeArcadePayout = computeArcadePayout;
+module.exports.tierByMin = tierByMin;
+module.exports.tierByMax = tierByMax;

@@ -203,3 +203,10 @@ router.get("/roulette/rank", async (req, res) => {
 });
 
 module.exports = router;
+// Anexado ao router (não substitui o export default) só pra permitir teste
+// unitário direto — ver test/routes/roulette.test.js.
+module.exports.numberColor = numberColor;
+module.exports.betWins = betWins;
+module.exports.EU_WHEEL_ORDER = EU_WHEEL_ORDER;
+module.exports.RED_NUMBERS = RED_NUMBERS;
+module.exports.PAYOUTS = PAYOUTS;
