@@ -26,19 +26,6 @@
       letter-spacing: 0.5px;
     }
     .bj-topbar strong { color: #ffe066; font-size: 13px; }
-    .bj-daily-bar {
-      height: 5px;
-      background: #1a3a10;
-      border-radius: 3px;
-      margin: 0 14px;
-      overflow: hidden;
-    }
-    .bj-daily-fill {
-      height: 100%;
-      background: linear-gradient(to right, #f5c518, #e07b00);
-      border-radius: 3px;
-      transition: width 0.4s;
-    }
     .bj-table {
       flex: 1;
       display: flex;
@@ -212,19 +199,6 @@
       color: #a8d8a8;
       min-height: 16px;
     }
-    .bj-blocked-msg {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #ffe066;
-      font-size: 14px;
-      text-align: center;
-      gap: 8px;
-      padding: 24px;
-    }
-    .bj-blocked-msg span { font-size: 36px; }
     .bj-login-msg {
       flex: 1;
       display: flex;
@@ -243,10 +217,8 @@
 })();
 
 // ─── State ────────────────────────────────────────────────────────────────────
-let bjState = "idle"; // idle | playing | result | blocked | loading | unauth
+let bjState = "idle"; // idle | playing | result | loading | unauth
 let bjBalance = 0;
-let bjDailyEarned = 0;
-const BJ_DAILY_CAP = 250;
 let bjSelectedBet = null;
 let bjGame = null;   // { playerHand, dealerHand?, dealerVisible, playerValue, dealerValue?, outcome?, ... }
 let bjBusy = false;
@@ -279,11 +251,8 @@ async function initBlackjack() {
     if (!res.ok) throw new Error(data.error || "Erro ao carregar.");
 
     bjBalance = data.balance;
-    bjDailyEarned = data.dailyEarned;
 
-    if (data.blocked) {
-      bjState = "blocked";
-    } else if (data.activeGame) {
+    if (data.activeGame) {
       bjGame = data.activeGame;
       bjState = "playing";
       bjSelectedBet = data.activeGame.betLevel || bjSelectedBet;
@@ -303,7 +272,7 @@ function selectBjBet(level) {
 }
 
 async function dealBlackjack() {
-  if (bjBusy || bjState === "playing" || bjState === "blocked" || !bjSelectedBet) return;
+  if (bjBusy || bjState === "playing" || !bjSelectedBet) return;
   bjBusy = true;
   bjState = "loading";
   renderBlackjack();
@@ -324,7 +293,6 @@ async function dealBlackjack() {
     }
 
     bjBalance = data.balance ?? bjBalance;
-    bjDailyEarned = data.dailyEarned ?? bjDailyEarned;
 
     if (data.status === "done") {
       // Natural blackjack resolved immediately
@@ -365,12 +333,11 @@ async function bjAction(action) {
     }
 
     bjBalance = data.balance ?? data.newBalance ?? bjBalance;
-    bjDailyEarned = data.dailyEarned ?? bjDailyEarned;
     bjGame = data;
 
     if (data.status === "done") {
       bjJustResolved = true;
-      bjState = data.blocked ? "blocked" : "result";
+      bjState = "result";
       if (data.coinsWon > 0) showGameCoinsToast(data.coinsWon);
       if (data.newAchievements && data.newAchievements.length > 0)
         setTimeout(() => showAchievementToast(data.newAchievements), 2000);
@@ -411,9 +378,6 @@ function resultHTML(outcome, coinsWon, coinsLost) {
     lose:      [`bj-result-lose`,       `❌ Derrota. -${coinsLost} LuizCoins™`],
     push:      [`bj-result-push`,       `🤝 Empate. Aposta devolvida.`],
   };
-  if (coinsWon === 0 && (outcome === "win" || outcome === "blackjack")) {
-    return `<div class="bj-result bj-result-push">⚠️ Limite diário atingido — ganhos desta mão não contam.</div>`;
-  }
   const [cls, msg] = map[outcome] || ["", ""];
   return `<div class="bj-result ${cls}">${msg}</div>`;
 }
@@ -440,22 +404,6 @@ function renderBlackjack() {
     return;
   }
 
-  if (bjState === "blocked") {
-    root.innerHTML = `
-      <div class="bj-topbar">
-        <span>💰 Saldo: <strong>${bjBalance}</strong> LC</span>
-        <span>Limite: ${bjDailyEarned}/${BJ_DAILY_CAP} LC</span>
-      </div>
-      <div class="bj-daily-bar"><div class="bj-daily-fill" style="width:100%"></div></div>
-      <div class="bj-blocked-msg">
-        <span>🎰</span>
-        <strong>Limite diário atingido!</strong>
-        Você já ganhou ${BJ_DAILY_CAP} LuizCoins™ hoje.<br>
-        <span style="font-size:11px;color:#a8d8a8;margin-top:4px">Volte amanhã para mais fichas!</span>
-      </div>`;
-    return;
-  }
-
   const isPlaying = bjState === "playing";
   const isDone    = bjState === "result";
   const isIdle    = bjState === "idle" || (!isPlaying && !isDone);
@@ -477,14 +425,10 @@ function renderBlackjack() {
   const playerCards = bjGame?.playerHand || [];
   const playerValue = bjGame?.playerValue ?? "";
 
-  const pct = Math.min(100, Math.round((bjDailyEarned / BJ_DAILY_CAP) * 100));
-
   root.innerHTML = `
     <div class="bj-topbar">
       <span>💰 Saldo: <strong>${bjBalance}</strong> LC</span>
-      <span style="font-size:11px">Hoje: ${bjDailyEarned}/${BJ_DAILY_CAP} LC</span>
     </div>
-    <div class="bj-daily-bar"><div class="bj-daily-fill" style="width:${pct}%"></div></div>
 
     <div class="bj-table">
       <div>

@@ -5,10 +5,8 @@ const { requireAuth } = require("../lib/auth-middleware");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisNumber } = require("../lib/utils");
 const { calcBalance } = require("../lib/store-items");
-const { todayKey } = require("../lib/datetime");
 const { unlockAchievement } = require("../lib/achievement-defs");
 
-const BJ_DAILY_CAP = 250;
 const BET_AMOUNTS = { low: 5, medium: 15, high: 30 };
 
 const SUITS = ["♠", "♥", "♦", "♣"];
@@ -98,9 +96,6 @@ router.get("/blackjack/status", requireAuth, async (req, res) => {
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
     const uKey = userKey(user.name);
-    const dKey = `bjdaily:${uKey}:${todayKey()}`;
-    const dailyEarned = parseRedisNumber(await kv.get(dKey));
-
     const gameRaw = await kv.get(`bj_game:${uKey}`);
     let activeGame = null;
     if (gameRaw) {
@@ -116,9 +111,6 @@ router.get("/blackjack/status", requireAuth, async (req, res) => {
 
     res.json({
       balance,
-      dailyEarned,
-      dailyCap: BJ_DAILY_CAP,
-      blocked: dailyEarned >= BJ_DAILY_CAP,
       activeGame,
     });
   } catch (e) {
@@ -144,11 +136,6 @@ router.post("/blackjack/start", requireAuth, async (req, res) => {
     const existingGame = await kv.get(`bj_game:${uKey}`);
     if (existingGame) return res.status(400).json({ error: "Você já tem uma partida em andamento." });
 
-    const dKey = `bjdaily:${uKey}:${todayKey()}`;
-    const dailyEarned = parseRedisNumber(await kv.get(dKey));
-    if (dailyEarned >= BJ_DAILY_CAP)
-      return res.status(400).json({ error: "Limite diário de ganhos atingido. Volte amanhã!" });
-
     if (balance < bet) return res.status(400).json({ error: "LuizCoins™ insuficientes." });
 
     const deck = makeDeck();
@@ -162,7 +149,7 @@ router.post("/blackjack/start", requireAuth, async (req, res) => {
 
     if (playerBJ || dealerBJ) {
       // Resolve immediately — no need to save game state
-      return await resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, playerBJ, dealerBJ, undefined, balance);
+      return await resolveHand(kv, user, uKey, game, res, playerBJ, dealerBJ, undefined, balance);
     }
 
     await kv.set(`bj_game:${uKey}`, JSON.stringify(game), { ex: 10 * 60 });
@@ -175,8 +162,6 @@ router.post("/blackjack/start", requireAuth, async (req, res) => {
       bet,
       betLevel,
       balance,
-      dailyEarned,
-      dailyCap: BJ_DAILY_CAP,
     });
   } finally {
     await releaseBjLock(kv, uKey);
@@ -202,9 +187,6 @@ router.post("/blackjack/action", requireAuth, async (req, res) => {
     const gameRaw = await kv.get(`bj_game:${uKey}`);
     if (!gameRaw) return res.status(400).json({ error: "Nenhuma partida ativa." });
     const game = typeof gameRaw === "string" ? JSON.parse(gameRaw) : gameRaw;
-
-    const dKey = `bjdaily:${uKey}:${todayKey()}`;
-    const dailyEarned = parseRedisNumber(await kv.get(dKey));
     const startBalance = game.startBalance ?? 0;
 
     if (action === "hit") {
@@ -212,10 +194,10 @@ router.post("/blackjack/action", requireAuth, async (req, res) => {
       const pv = handValue(game.playerHand);
 
       if (pv > 21) {
-        return await resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, false, false, "bust", startBalance);
+        return await resolveHand(kv, user, uKey, game, res, false, false, "bust", startBalance);
       }
       if (pv === 21) {
-        return await resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, false, false, "stand", startBalance);
+        return await resolveHand(kv, user, uKey, game, res, false, false, "stand", startBalance);
       }
 
       await kv.set(`bj_game:${uKey}`, JSON.stringify(game), { ex: 10 * 60 });
@@ -227,19 +209,17 @@ router.post("/blackjack/action", requireAuth, async (req, res) => {
         bet: game.bet,
         betLevel: game.betLevel,
         balance: startBalance,
-        dailyEarned,
-        dailyCap: BJ_DAILY_CAP,
       });
     }
 
     // stand
-    return await resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, false, false, "stand", startBalance);
+    return await resolveHand(kv, user, uKey, game, res, false, false, "stand", startBalance);
   } finally {
     await releaseBjLock(kv, uKey);
   }
 });
 
-async function resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, playerBJ, dealerBJ, trigger, startBalance = 0) {
+async function resolveHand(kv, user, uKey, game, res, playerBJ, dealerBJ, trigger, startBalance = 0) {
   const { playerHand, dealerHand, deck, bet } = game;
 
   // Dealer draws to 17+ (only when player didn't bust and no natural)
@@ -277,16 +257,10 @@ async function resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, playerB
     outcome = "push";
   }
 
-  // Apply daily cap
-  if (coinsWon > 0) {
-    coinsWon = Math.min(coinsWon, Math.max(0, BJ_DAILY_CAP - dailyEarned));
-  }
-
   if (coinsWon > 0) {
     const wonKey = `bjwon:${uKey}`;
     const newTotal = parseRedisNumber(await kv.get(wonKey)) + coinsWon;
     await kv.set(wonKey, newTotal);
-    await kv.set(dKey, dailyEarned + coinsWon, { ex: 2 * 24 * 60 * 60 });
 
     // Mantém gamerank:luizjack para o Top 1 de jogos (evita ler todos os bjwon:* no leaderboard)
     const bjRank = (await kv.get("gamerank:luizjack")) || [];
@@ -308,7 +282,6 @@ async function resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, playerB
   await kv.set(handsKey, newHands);
 
   // ─── Conquistas ───────────────────────────────────────────────────────────
-  const newDailyEarned = dailyEarned + coinsWon;
   const newAchievements = [];
   const streakKey = `bj_streak:${uKey}`;
 
@@ -324,10 +297,6 @@ async function resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, playerB
     await kv.del(streakKey);
   }
   // push: mantém a sequência sem alterar
-
-  if (newDailyEarned >= BJ_DAILY_CAP) {
-    if (await unlockAchievement(kv, user.name, "bj_daily_cap")) newAchievements.push("bj_daily_cap");
-  }
 
   await kv.del(`bj_game:${uKey}`);
 
@@ -346,9 +315,6 @@ async function resolveHand(kv, user, uKey, game, dKey, dailyEarned, res, playerB
     coinsWon,
     coinsLost,
     newBalance,
-    dailyEarned: newDailyEarned,
-    dailyCap: BJ_DAILY_CAP,
-    blocked: newDailyEarned >= BJ_DAILY_CAP,
     newAchievements,
   });
 }

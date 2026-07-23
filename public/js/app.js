@@ -3696,9 +3696,18 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.17.0",
+    date: "23/07/2026",
+    isNew: true,
+    title: "Sem limite diário no Luiz21 e na Roleta 🎰",
+    items: [
+      "🔓 Removido o limite de 250 LuizCoins™ de ganho diário no Luiz21 e na Roleta — pode jogar (e ganhar) à vontade.",
+    ],
+  },
+  {
     version: "2.16.0",
     date: "22/07/2026",
-    isNew: true,
+    isNew: false,
     title: "Sudoku Diário 📅",
     items: [
       "📅 Desafio de Sudoku novo todo dia, dificuldade média, igual pra todo mundo — só 1 tentativa por dia, tipo os joguinhos diários do LinkedIn.",

@@ -5,10 +5,8 @@ const { requireAuth } = require("../lib/auth-middleware");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisNumber, parseRedisArray } = require("../lib/utils");
 const { calcBalance } = require("../lib/store-items");
-const { todayKey } = require("../lib/datetime");
 const { unlockAchievement } = require("../lib/achievement-defs");
 
-const ROULETTE_DAILY_CAP = 250;
 const BET_AMOUNTS = { low: 5, medium: 15, high: 30 };
 
 // Ordem física real da roda europeia (zero único) — usada tanto pra resolver
@@ -79,21 +77,11 @@ router.get("/roulette/status", requireAuth, async (req, res) => {
     const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
-    const uKey = userKey(user.name);
     const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
     const balance = Math.max(0, earnedCoins - spentCoins);
-
-    const dKey = `rlday:${uKey}:${todayKey()}`;
-    const dailyEarned = parseRedisNumber(await kv.get(dKey));
     const history = await getRlHistory(kv);
 
-    res.json({
-      balance,
-      dailyEarned,
-      dailyCap: ROULETTE_DAILY_CAP,
-      blocked: dailyEarned >= ROULETTE_DAILY_CAP,
-      history,
-    });
+    res.json({ balance, history });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -121,11 +109,6 @@ router.post("/roulette/spin", requireAuth, async (req, res) => {
     const user = users.find((u) => userKey(u.name) === uKey);
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
-    const dKey = `rlday:${uKey}:${todayKey()}`;
-    const dailyEarned = parseRedisNumber(await kv.get(dKey));
-    if (dailyEarned >= ROULETTE_DAILY_CAP)
-      return res.status(400).json({ error: "Limite diário de ganhos atingido. Volte amanhã!" });
-
     const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
     const balance = Math.max(0, earnedCoins - spentCoins);
     if (balance < stake) return res.status(400).json({ error: "LuizCoins™ insuficientes." });
@@ -138,7 +121,6 @@ router.post("/roulette/spin", requireAuth, async (req, res) => {
     let coinsLost = 0;
     if (won) {
       coinsWon = stake * PAYOUTS[betType];
-      coinsWon = Math.min(coinsWon, Math.max(0, ROULETTE_DAILY_CAP - dailyEarned));
     } else {
       coinsLost = stake;
     }
@@ -147,7 +129,6 @@ router.post("/roulette/spin", requireAuth, async (req, res) => {
       const wonKey = `roulettewon:${uKey}`;
       const newTotal = parseRedisNumber(await kv.get(wonKey)) + coinsWon;
       await kv.set(wonKey, newTotal);
-      await kv.set(dKey, dailyEarned + coinsWon, { ex: 2 * 24 * 60 * 60 });
 
       const rlRank = (await kv.get("gamerank:roulette")) || [];
       const existingIdx = rlRank.findIndex((s) => userKey(s.name) === uKey);
@@ -166,7 +147,6 @@ router.post("/roulette/spin", requireAuth, async (req, res) => {
     await kv.set(spinsKey, parseRedisNumber(await kv.get(spinsKey)) + 1);
 
     // ─── Conquistas ─────────────────────────────────────────────────────────
-    const newDailyEarned = dailyEarned + coinsWon;
     const newAchievements = [];
     const streakKey = `rl_streak:${uKey}`;
 
@@ -182,10 +162,6 @@ router.post("/roulette/spin", requireAuth, async (req, res) => {
       await kv.del(streakKey);
     }
 
-    if (newDailyEarned >= ROULETTE_DAILY_CAP) {
-      if (await unlockAchievement(kv, user.name, "rl_daily_cap")) newAchievements.push("rl_daily_cap");
-    }
-
     const history = await pushRlHistory(kv, { number: winningNumber, color });
     const newBalance = Math.max(0, balance + coinsWon - coinsLost);
 
@@ -196,9 +172,6 @@ router.post("/roulette/spin", requireAuth, async (req, res) => {
       coinsWon,
       coinsLost,
       balance: newBalance,
-      dailyEarned: newDailyEarned,
-      dailyCap: ROULETTE_DAILY_CAP,
-      blocked: newDailyEarned >= ROULETTE_DAILY_CAP,
       history,
       newAchievements,
     });

@@ -26,9 +26,6 @@
       letter-spacing: 0.5px;
     }
     .rl-topbar strong { color: #ffe066; font-size: 13px; }
-    .rl-daily-bar { height: 5px; background: #1a3a10; border-radius: 3px; margin: 0 14px; overflow: hidden; }
-    .rl-daily-fill { height: 100%; background: linear-gradient(to right, #f5c518, #e07b00); border-radius: 3px; transition: width 0.4s; }
-
     .rl-wheel-area { display: flex; flex-direction: column; align-items: center; padding: 14px 10px 6px; gap: 8px; }
     .rl-wheel-wrap { position: relative; width: 220px; height: 220px; }
     .rl-wheel {
@@ -118,8 +115,6 @@
     .rl-spinner { width: 12px; height: 12px; border: 2px solid rgba(168,216,168,0.2); border-top-color: #a8d8a8; border-radius: 50%; animation: rl-spin 0.65s linear infinite; }
     @keyframes rl-spin { to { transform: rotate(360deg); } }
 
-    .rl-blocked-msg { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #ffe066; font-size: 14px; text-align: center; gap: 8px; padding: 24px; }
-    .rl-blocked-msg span { font-size: 36px; }
     .rl-login-msg { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #a8d8a8; text-align: center; font-size: 13px; gap: 10px; padding: 24px; }
     .rl-login-msg span { font-size: 32px; }
   `;
@@ -132,7 +127,6 @@ const EU_WHEEL_ORDER = [
   24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26,
 ];
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
-const RL_DAILY_CAP = 250;
 const RL_STAKE_LABELS = { low: "5", medium: "15", high: "30" };
 const RL_PAYOUTS = { straight: 35, red: 1, black: 1, odd: 1, even: 1, low: 1, high: 1, dozen1: 2, dozen2: 2, dozen3: 2 };
 const RL_BET_LABELS = {
@@ -149,9 +143,8 @@ function numberColor(n) {
 }
 
 // ─── State ──────────────────────────────────────────────────────────────────
-let rlState = "idle"; // idle | spinning | result | blocked | loading | unauth
+let rlState = "idle"; // idle | spinning | result | loading | unauth
 let rlBalance = 0;
-let rlDailyEarned = 0;
 let rlSelectedStake = null;
 let rlSelectedBetType = null;
 let rlSelectedNumber = null;
@@ -183,9 +176,8 @@ async function initRoulette() {
     if (!res.ok) throw new Error(data.error || "Erro ao carregar.");
 
     rlBalance = data.balance;
-    rlDailyEarned = data.dailyEarned;
     rlHistory = data.history || [];
-    rlState = data.blocked ? "blocked" : "idle";
+    rlState = "idle";
   } catch {
     rlState = "idle";
   }
@@ -213,7 +205,7 @@ function selectRlNumber(n) {
 }
 
 async function spinRoulette() {
-  if (rlBusy || rlState === "spinning" || rlState === "blocked") return;
+  if (rlBusy || rlState === "spinning") return;
   if (!rlSelectedStake || !rlSelectedBetType) return;
   if (rlSelectedBetType === "straight" && rlSelectedNumber === null) return;
 
@@ -244,13 +236,12 @@ async function spinRoulette() {
 
     setTimeout(() => {
       rlBalance = data.balance ?? rlBalance;
-      rlDailyEarned = data.dailyEarned ?? rlDailyEarned;
       rlHistory = data.history || rlHistory;
       rlLastResult = {
         outcome: data.outcome, coinsWon: data.coinsWon, coinsLost: data.coinsLost,
         winningNumber: data.winningNumber, color: data.color,
       };
-      rlState = data.blocked ? "blocked" : "result";
+      rlState = "result";
       rlBusy = false;
 
       if (data.coinsWon > 0) showGameCoinsToast(data.coinsWon);
@@ -293,7 +284,6 @@ function ensureRouletteSkeleton() {
   if (!root || root.querySelector(".rl-wheel")) return;
   root.innerHTML = `
     <div class="rl-topbar" id="rl-topbar"></div>
-    <div class="rl-daily-bar"><div class="rl-daily-fill" id="rl-daily-fill"></div></div>
     <div class="rl-wheel-area">
       <div class="rl-wheel-wrap">
         <div class="rl-pointer">▼</div>
@@ -413,29 +403,10 @@ function renderRoulette() {
     return;
   }
 
-  if (rlState === "blocked") {
-    root.innerHTML = `
-      <div class="rl-topbar">
-        <span>💰 Saldo: <strong>${rlBalance}</strong> LC</span>
-        <span>Limite: ${rlDailyEarned}/${RL_DAILY_CAP} LC</span>
-      </div>
-      <div class="rl-daily-bar"><div class="rl-daily-fill" style="width:100%"></div></div>
-      <div class="rl-blocked-msg">
-        <span>🎰</span>
-        <strong>Limite diário atingido!</strong>
-        Você já ganhou ${RL_DAILY_CAP} LuizCoins™ hoje.<br>
-        <span style="font-size:11px;color:#a8d8a8;margin-top:4px">Volte amanhã para mais fichas!</span>
-      </div>`;
-    return;
-  }
-
   ensureRouletteSkeleton();
 
   const topbar = document.getElementById("rl-topbar");
-  if (topbar) topbar.innerHTML = `<span>💰 Saldo: <strong>${rlBalance}</strong> LC</span><span style="font-size:11px">Hoje: ${rlDailyEarned}/${RL_DAILY_CAP} LC</span>`;
-
-  const fill = document.getElementById("rl-daily-fill");
-  if (fill) fill.style.width = `${Math.min(100, Math.round((rlDailyEarned / RL_DAILY_CAP) * 100))}%`;
+  if (topbar) topbar.innerHTML = `<span>💰 Saldo: <strong>${rlBalance}</strong> LC</span>`;
 
   const historyEl = document.getElementById("rl-history");
   if (historyEl) {
