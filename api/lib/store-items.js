@@ -1,6 +1,5 @@
 const { userKey, parseRedisNumber, parseRedisArray } = require("./utils");
 const { isWeekday } = require("./datetime");
-const { getDayData } = require("./days");
 
 // ─── Loja de Prêmios ─────────────────────────────────────────────────────────
 // Preços calibrados pra ~6 LuizCoins/dia (jogador engajado apostando todo dia
@@ -234,22 +233,40 @@ function coinsForGuess(rankingEntry) {
   return rankingEntry.placa ? coins * 2 : coins;
 }
 
+// Nomes das ~14 chaves individuais que compõem o "extrato" de um jogador —
+// centralizado aqui pra manter WALLET_KEYS (ordem dos kv.mget) e o
+// destructuring abaixo sincronizados num só lugar.
+const WALLET_FIELDS = [
+  "gamecoins", "farmcoins", "bjwon", "purchases", "emoji_owned", "font_owned",
+  "farmspent", "bjlost", "gamespent", "roulettewon", "roulettelost",
+  "slotwon", "slotlost", "title_owned",
+];
+
+// Cada chamada de calcBalance rodava ~40 comandos Redis (1 GET por dia de
+// apostas no histórico inteiro + 1 GET por campo da carteira) — o maior
+// consumidor de comandos do app, chamado em ~18 rotas diferentes. MGET busca
+// várias chaves num único comando (confirmado na doc da Upstash: MGET conta
+// como 1, diferente de pipeline/multi-exec que contam 1 por comando), então
+// agrupar essas leituras aqui derruba isso pra ~3 comandos por chamada, sem
+// mudar nenhuma lógica — só troca N GETs sequenciais por 1 MGET.
 async function calcBalance(kv, user, users) {
+  const uKey = userKey(user.name);
   const hcmNames = new Set(
     users.filter((u) => u.isHCM).map((u) => userKey(u.name)),
   );
-  const isUserHCM = hcmNames.has(userKey(user.name));
+  const isUserHCM = hcmNames.has(uKey);
 
-  let index = (await kv.get("days_index")) || [];
+  const index = (await kv.get("days_index")) || [];
+  const weekdayKeys = index.filter(isWeekday);
+  const days = weekdayKeys.length > 0
+    ? await kv.mget(weekdayKeys.map((dateKey) => `day:${dateKey}`))
+    : [];
+
   let earnedCoins = 0;
-
-  for (const dateKey of index) {
-    if (!isWeekday(dateKey)) continue;
-    const day = await getDayData(kv, dateKey);
-    if (!day.arrival || !day.rankings) continue;
-    const userRank = day.rankings.find(
-      (r) => userKey(r.name) === userKey(user.name),
-    );
+  for (let i = 0; i < weekdayKeys.length; i++) {
+    const day = days[i];
+    if (!day || !day.arrival || !day.rankings) continue;
+    const userRank = day.rankings.find((r) => userKey(r.name) === uKey);
     if (userRank) earnedCoins += coinsForGuess(userRank);
 
     if (isUserHCM) {
@@ -259,61 +276,62 @@ async function calcBalance(kv, user, users) {
       if (hcmRanks.length > 0) {
         const topHcmPos = hcmRanks[0].position;
         const isTopHcm = hcmRanks.some(
-          (r) =>
-            r.position === topHcmPos &&
-            userKey(r.name) === userKey(user.name),
+          (r) => r.position === topHcmPos && userKey(r.name) === uKey,
         );
         if (isTopHcm && userRank) earnedCoins += 5;
       }
     }
   }
 
-  const gameCoinsKey = `gamecoins:${userKey(user.name)}`;
-  const gameCoins = parseRedisNumber(await kv.get(gameCoinsKey));
+  const [
+    gameCoinsRaw, farmCoinsRaw, bjWonRaw, purchasesRaw, emojiOwnedRaw, fontOwnedRaw,
+    farmSpentRaw, bjLostRaw, gameSpentRaw, rouletteWonRaw, rouletteLostRaw,
+    slotWonRaw, slotLostRaw, titleOwnedRaw,
+  ] = await kv.mget(WALLET_FIELDS.map((field) => `${field}:${uKey}`));
+
+  const gameCoins = parseRedisNumber(gameCoinsRaw);
   earnedCoins += gameCoins;
 
-  const farmCoins = parseRedisNumber(await kv.get(`farmcoins:${userKey(user.name)}`));
+  const farmCoins = parseRedisNumber(farmCoinsRaw);
   earnedCoins += farmCoins;
 
-  const bjWon = parseRedisNumber(await kv.get(`bjwon:${userKey(user.name)}`));
+  const bjWon = parseRedisNumber(bjWonRaw);
   earnedCoins += bjWon;
 
-  const purchasesKey = `purchases:${userKey(user.name)}`;
-  const rawPurchases = parseRedisArray(await kv.get(purchasesKey));
+  const rawPurchases = parseRedisArray(purchasesRaw);
   const purchases = purchaseIds(rawPurchases);
   let spentCoins = purchaseSpent(rawPurchases);
 
-  const emojiOwnedKey = `emoji_owned:${userKey(user.name)}`;
-  const rawEmojiOwned = parseRedisArray(await kv.get(emojiOwnedKey));
+  const rawEmojiOwned = parseRedisArray(emojiOwnedRaw);
   const emojiOwned = emojiList(rawEmojiOwned);
   spentCoins += emojiSpent(rawEmojiOwned);
 
-  const rawFontOwned = parseRedisArray(await kv.get(`font_owned:${userKey(user.name)}`));
+  const rawFontOwned = parseRedisArray(fontOwnedRaw);
   const fontOwned = fontList(rawFontOwned);
   spentCoins += fontSpent(rawFontOwned);
 
-  const farmSpent = parseRedisNumber(await kv.get(`farmspent:${userKey(user.name)}`));
+  const farmSpent = parseRedisNumber(farmSpentRaw);
   spentCoins += farmSpent;
 
-  const bjLost = parseRedisNumber(await kv.get(`bjlost:${userKey(user.name)}`));
+  const bjLost = parseRedisNumber(bjLostRaw);
   spentCoins += bjLost;
 
-  const gameSpent = parseRedisNumber(await kv.get(`gamespent:${userKey(user.name)}`));
+  const gameSpent = parseRedisNumber(gameSpentRaw);
   spentCoins += gameSpent;
 
-  const rouletteWon = parseRedisNumber(await kv.get(`roulettewon:${userKey(user.name)}`));
+  const rouletteWon = parseRedisNumber(rouletteWonRaw);
   earnedCoins += rouletteWon;
 
-  const rouletteLost = parseRedisNumber(await kv.get(`roulettelost:${userKey(user.name)}`));
+  const rouletteLost = parseRedisNumber(rouletteLostRaw);
   spentCoins += rouletteLost;
 
-  const slotWon = parseRedisNumber(await kv.get(`slotwon:${userKey(user.name)}`));
+  const slotWon = parseRedisNumber(slotWonRaw);
   earnedCoins += slotWon;
 
-  const slotLost = parseRedisNumber(await kv.get(`slotlost:${userKey(user.name)}`));
+  const slotLost = parseRedisNumber(slotLostRaw);
   spentCoins += slotLost;
 
-  const rawTitleOwned = parseRedisArray(await kv.get(`title_owned:${userKey(user.name)}`));
+  const rawTitleOwned = parseRedisArray(titleOwnedRaw);
   const titleOwned = titleList(rawTitleOwned);
   spentCoins += titleSpent(rawTitleOwned);
 
