@@ -7,7 +7,14 @@
 // validação de erro aqui é por conflito de regra (linha/coluna/quadrante),
 // não por comparação com uma solução local. A vitória só é confirmada de
 // verdade pelo servidor em POST /api/sudoku-daily/submit.
+//
+// Grade 6x6 (caixas de 2 linhas x 3 colunas) — mesmo tamanho do "Mini Sudoku"
+// diário do LinkedIn. Espelha GRID_SIZE/BOX_ROWS/BOX_COLS de
+// api/lib/sudoku-daily.js; mudar lá exige mudar aqui também.
 
+const SDD_SIZE = 6;
+const SDD_BOX_ROWS = 2;
+const SDD_BOX_COLS = 3;
 const SDD_MAX_MISTAKES = 3;
 
 let sddDate = null;
@@ -28,6 +35,47 @@ let sddErrorMsg = null;
 function openSudokuDailyWindow() {
   openWindow("win-sudoku-daily");
   initSudokuDaily();
+}
+
+// ─── Bolinha de "ainda não fez hoje" ─────────────────────────────────────────
+// Só lê localStorage — nunca dispara uma requisição só pra decidir se mostra
+// a bolinha. O estado real só é confirmado quando o jogador de fato abre a
+// janela (GET /api/sudoku-daily/status), momento em que gravamos o resultado
+// aqui pra próxima vez que a página carregar já saber sem perguntar de novo.
+function sddTodayKeyLocal() {
+  // Mesma lógica de getBrasiliaDate()+todayKey() em api/lib/datetime.js —
+  // mudar lá exige mudar aqui também.
+  const now = new Date();
+  const offset = -3 * 60;
+  const local = new Date(now.getTime() + (offset + now.getTimezoneOffset()) * 60000);
+  const yyyy = local.getFullYear();
+  const mm = String(local.getMonth() + 1).padStart(2, "0");
+  const dd = String(local.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function sddDoneKey(date) {
+  return `luizos_sudoku_daily_done_${date}`;
+}
+
+function sddHasDoneToday() {
+  try {
+    return localStorage.getItem(sddDoneKey(sddTodayKeyLocal())) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function sddMarkDoneToday(date) {
+  try { localStorage.setItem(sddDoneKey(date || sddTodayKeyLocal()), "1"); } catch {}
+  sddUpdateBadge();
+}
+
+function sddUpdateBadge() {
+  const show = !sddHasDoneToday();
+  document.querySelectorAll(".sdd-badge-dot, .sdd-badge-corner").forEach((el) => {
+    el.classList.toggle("show", show);
+  });
 }
 
 function sddProgressKey(date) {
@@ -83,6 +131,7 @@ async function initSudokuDaily() {
     sddGameOver = data.alreadyPlayed;
 
     if (data.alreadyPlayed) {
+      sddMarkDoneToday(sddDate);
       renderSudokuDaily();
       return;
     }
@@ -117,13 +166,13 @@ function sddSetView(view) {
 
 // ─── Validação por conflito de regra (sem solução local) ────────────────────
 function sddHasConflict(board, r, c, n) {
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < SDD_SIZE; i++) {
     if (i !== c && board[r][i] === n) return true;
     if (i !== r && board[i][c] === n) return true;
   }
-  const br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
-  for (let i = br; i < br + 3; i++) {
-    for (let j = bc; j < bc + 3; j++) {
+  const br = Math.floor(r / SDD_BOX_ROWS) * SDD_BOX_ROWS, bc = Math.floor(c / SDD_BOX_COLS) * SDD_BOX_COLS;
+  for (let i = br; i < br + SDD_BOX_ROWS; i++) {
+    for (let j = bc; j < bc + SDD_BOX_COLS; j++) {
       if ((i !== r || j !== c) && board[i][j] === n) return true;
     }
   }
@@ -132,8 +181,8 @@ function sddHasConflict(board, r, c, n) {
 
 function sddComputeWrongCells() {
   const wrong = new Set();
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
+  for (let r = 0; r < SDD_SIZE; r++) {
+    for (let c = 0; c < SDD_SIZE; c++) {
       const n = sddBoard[r][c];
       if (n && sddHasConflict(sddBoard, r, c, n)) wrong.add(`${r},${c}`);
     }
@@ -142,8 +191,8 @@ function sddComputeWrongCells() {
 }
 
 function sddIsBoardComplete() {
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
+  for (let r = 0; r < SDD_SIZE; r++) {
+    for (let c = 0; c < SDD_SIZE; c++) {
       if (!sddBoard[r][c]) return false;
     }
   }
@@ -190,7 +239,7 @@ function eraseSddCell() {
 document.addEventListener("keydown", (e) => {
   const win = document.getElementById("win-sudoku-daily");
   if (!win || win.style.display === "none" || sddGameOver) return;
-  if (e.key >= "1" && e.key <= "9") inputSddNumber(Number(e.key));
+  if (e.key >= "1" && e.key <= "6") inputSddNumber(Number(e.key));
   else if (e.key === "Backspace" || e.key === "Delete" || e.key === "0") eraseSddCell();
 });
 
@@ -212,6 +261,7 @@ async function triggerSddGameOver(won) {
     sddAlreadyPlayed = true;
     sddResult = { won: data.won, timeSeconds: data.timeSeconds, mistakes: sddMistakes };
     sddTodayRank = data.todayRank || sddTodayRank;
+    sddMarkDoneToday(sddDate);
   } catch (e) {
     sddErrorMsg = e.message || "Erro ao enviar resultado.";
   }
@@ -228,14 +278,14 @@ function sddFormatTime(seconds) {
 function buildSddGridHTML() {
   const wrongCells = sddComputeWrongCells();
   let html = "";
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
+  for (let r = 0; r < SDD_SIZE; r++) {
+    for (let c = 0; c < SDD_SIZE; c++) {
       const classes = ["sd-cell"];
       if (sddGivenMask[r][c]) classes.push("given");
-      if (c % 3 === 0) classes.push("sd-border-left");
-      if (r % 3 === 0) classes.push("sd-border-top");
-      if (c === 8) classes.push("sd-border-right");
-      if (r === 8) classes.push("sd-border-bottom");
+      if (c % SDD_BOX_COLS === 0) classes.push("sd-border-left");
+      if (r % SDD_BOX_ROWS === 0) classes.push("sd-border-top");
+      if (c === SDD_SIZE - 1) classes.push("sd-border-right");
+      if (r === SDD_SIZE - 1) classes.push("sd-border-bottom");
       if (sddSelected && sddSelected.r === r && sddSelected.c === c) classes.push("selected");
       if (wrongCells.has(`${r},${c}`)) classes.push("wrong");
       const val = sddBoard[r][c] || "";
@@ -311,14 +361,18 @@ function renderSudokuDaily() {
       <div class="ms-counter" style="visibility:hidden">000</div>
     </div>
     <div class="ms-board-container">
-      <div class="sd-grid">${buildSddGridHTML()}</div>
+      <div class="sdd-grid">${buildSddGridHTML()}</div>
     </div>
-    <div class="sd-numpad">
-      ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button class="win95-action-btn" onclick="inputSddNumber(${n})">${n}</button>`).join("")}
+    <div class="sdd-numpad">
+      ${[1, 2, 3, 4, 5, 6].map((n) => `<button class="win95-action-btn" onclick="inputSddNumber(${n})">${n}</button>`).join("")}
       <button class="win95-action-btn" onclick="eraseSddCell()">⌫</button>
     </div>
     <div class="info-box" style="font-size:10px;margin-top:4px">
-      Puzzle de hoje — mesmo pra todo mundo. Clique numa célula e digite 1-9. 3 erros encerram a tentativa, e só dá pra tentar 1 vez por dia.
+      Puzzle de hoje (6x6) — mesmo pra todo mundo. Clique numa célula e digite 1-6. 3 erros encerram a tentativa, e só dá pra tentar 1 vez por dia.
     </div>
   `;
 }
+
+// Atualiza a bolinha assim que o script carrega (sem esperar a janela abrir),
+// só lendo localStorage — nenhuma requisição disparada aqui.
+sddUpdateBadge();

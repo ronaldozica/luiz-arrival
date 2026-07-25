@@ -10,7 +10,7 @@ const { generateDailyPuzzle, boardMatchesSolution } = require("../lib/sudoku-dai
 
 const ROUND_TOKEN_TTL_SECONDS = 2 * 60 * 60;
 const ROUND_TOKEN_TOLERANCE_SECONDS = 2;
-const MIN_SECONDS = 15; // mesmo piso do Sudoku médio normal (ver api/lib/games.js)
+const MIN_SECONDS = 8; // grade 6x6 (16 dadas) resolve bem mais rápido que o Sudoku 9x9 normal
 const RANK_SIZE = 50;
 
 function yesterdayKey() {

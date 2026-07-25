@@ -3696,9 +3696,20 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.18.0",
+    date: "24/07/2026",
+    isNew: true,
+    title: "Sudoku Diário no tamanho do LinkedIn + aviso de pendente 🔴",
+    items: [
+      "🔢 Sudoku Diário agora é 6x6 (caixas 2x3), igual ao Mini Sudoku diário do LinkedIn — mais rápido de jogar.",
+      "🔴 Bolinha vermelha no Menu Iniciar, na grade de apps e na pasta \"Jogos\" quando você ainda não fez o desafio de hoje — some assim que você joga.",
+      "⚡ A bolinha só olha o que já está salvo no seu navegador, sem gastar requisição extra pra decidir se mostra.",
+    ],
+  },
+  {
     version: "2.17.0",
     date: "23/07/2026",
-    isNew: true,
+    isNew: false,
     title: "Sem limite diário no Luiz21 e na Roleta 🎰",
     items: [
       "🔓 Removido o limite de 250 LuizCoins™ de ganho diário no Luiz21 e na Roleta — pode jogar (e ganhar) à vontade.",

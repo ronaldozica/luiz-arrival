@@ -1,10 +1,16 @@
 // ─── Geração determinística do Sudoku do dia ─────────────────────────────────
-// Mesma lógica de geração de public/js/sudoku.js (sdShuffle/sdIsValid/
-// sdFillBoard/buildSdPuzzle), mas usando um PRNG seedado pela data em vez de
-// Math.random(), pra o puzzle do dia ser sempre o mesmo pra todo mundo e
-// reproduzível caso precise ser regenerado.
+// Grade 6x6 (caixas 2x3), mesmo tamanho do "Mini Sudoku" diário do LinkedIn —
+// menor e mais rápido de resolver que o Sudoku 9x9 normal do app. Mesma
+// lógica de geração de public/js/sudoku.js (sdShuffle/sdIsValid/sdFillBoard/
+// buildSdPuzzle), adaptada pro tamanho 6x6 e usando um PRNG seedado pela data
+// em vez de Math.random(), pra o puzzle do dia ser sempre o mesmo pra todo
+// mundo e reproduzível caso precise ser regenerado.
 
-const DAILY_REMOVE = 45; // dificuldade média — mesma faixa do Sudoku normal
+const GRID_SIZE = 6;
+const BOX_ROWS = 2; // caixas de 2 linhas x 3 colunas
+const BOX_COLS = 3;
+const DIGITS = [1, 2, 3, 4, 5, 6];
+const DAILY_REMOVE = 20; // 36 células - 20 = 16 dadas (dificuldade média pro tamanho 6x6)
 
 function hashStringToSeed(str) {
   let h = 0;
@@ -36,12 +42,12 @@ function shuffle(arr, rng) {
 }
 
 function isValid(board, r, c, n) {
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < GRID_SIZE; i++) {
     if (board[r][i] === n || board[i][c] === n) return false;
   }
-  const br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
-  for (let i = br; i < br + 3; i++) {
-    for (let j = bc; j < bc + 3; j++) {
+  const br = Math.floor(r / BOX_ROWS) * BOX_ROWS, bc = Math.floor(c / BOX_COLS) * BOX_COLS;
+  for (let i = br; i < br + BOX_ROWS; i++) {
+    for (let j = bc; j < bc + BOX_COLS; j++) {
       if (board[i][j] === n) return false;
     }
   }
@@ -49,10 +55,10 @@ function isValid(board, r, c, n) {
 }
 
 function fillBoard(board, rng) {
-  for (let i = 0; i < 81; i++) {
-    const r = Math.floor(i / 9), c = i % 9;
+  for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+    const r = Math.floor(i / GRID_SIZE), c = i % GRID_SIZE;
     if (board[r][c] !== 0) continue;
-    for (const n of shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9], rng)) {
+    for (const n of shuffle(DIGITS, rng)) {
       if (isValid(board, r, c, n)) {
         board[r][c] = n;
         if (fillBoard(board, rng)) return true;
@@ -65,7 +71,7 @@ function fillBoard(board, rng) {
 }
 
 function generateSolution(rng) {
-  const board = Array.from({ length: 9 }, () => Array(9).fill(0));
+  const board = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
   fillBoard(board, rng);
   return board;
 }
@@ -73,11 +79,11 @@ function generateSolution(rng) {
 function buildPuzzle(solution, removeCount, rng) {
   const puzzle = solution.map((row) => row.slice());
   const positions = shuffle(
-    Array.from({ length: 81 }, (_, i) => i),
+    Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => i),
     rng,
   ).slice(0, removeCount);
   positions.forEach((pos) => {
-    const r = Math.floor(pos / 9), c = pos % 9;
+    const r = Math.floor(pos / GRID_SIZE), c = pos % GRID_SIZE;
     puzzle[r][c] = 0;
   });
   return puzzle;
@@ -93,14 +99,14 @@ function generateDailyPuzzle(dateKey) {
 
 // Compara uma grade preenchida pelo cliente com a solução guardada no servidor.
 function boardMatchesSolution(board, solution) {
-  if (!Array.isArray(board) || board.length !== 9) return false;
-  for (let r = 0; r < 9; r++) {
-    if (!Array.isArray(board[r]) || board[r].length !== 9) return false;
-    for (let c = 0; c < 9; c++) {
+  if (!Array.isArray(board) || board.length !== GRID_SIZE) return false;
+  for (let r = 0; r < GRID_SIZE; r++) {
+    if (!Array.isArray(board[r]) || board[r].length !== GRID_SIZE) return false;
+    for (let c = 0; c < GRID_SIZE; c++) {
       if (Number(board[r][c]) !== solution[r][c]) return false;
     }
   }
   return true;
 }
 
-module.exports = { generateDailyPuzzle, boardMatchesSolution, DAILY_REMOVE };
+module.exports = { generateDailyPuzzle, boardMatchesSolution, DAILY_REMOVE, GRID_SIZE, BOX_ROWS, BOX_COLS };

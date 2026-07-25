@@ -1475,6 +1475,61 @@ body.cursor-wait * {
   min-width: 0;
 }
 
+/* ─── SUDOKU DIÁRIO (grade 6x6, estilo "Mini Sudoku") ─────── */
+.sdd-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 38px);
+  grid-template-rows: repeat(6, 38px);
+  background: var(--win-gray);
+}
+
+.sdd-grid .sd-cell {
+  width: 38px;
+  height: 38px;
+  font-size: 19px;
+}
+
+.sdd-numpad {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.sdd-numpad .win95-action-btn {
+  padding: 4px 0;
+  font-size: 13px;
+  min-width: 0;
+}
+
+/* ─── Bolinha "ainda não fez o desafio de hoje" ───────────── */
+.sdd-badge-dot {
+  display: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e53935;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.sdd-badge-dot.show { display: inline-block; }
+
+.appgrid-icon, .folder-icon { position: relative; }
+
+.sdd-badge-corner {
+  display: none;
+  position: absolute;
+  top: 2px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e53935;
+  border: 1px solid #fff;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+}
+.sdd-badge-corner.show { display: block; }
+
 /* Calculadora: .win95-action-btn tem min-width:90px por padrão (pensado pra
    botões isolados), o que não cabe em 4 colunas numa janela pequena — sem
    isso, a 4ª coluna (÷, ×, −, +, =) fica cortada pela borda da janela. */

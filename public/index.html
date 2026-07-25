@@ -95,7 +95,7 @@
       <button onclick="openWindow('win-aimtrainer'); initAimTrainerGame(); closeStartMenu()">🔫 Aim Trainer</button>
       <button onclick="openMinesweeperWindow(); closeStartMenu()">💣 Campo Minado</button>
       <button onclick="openSudokuWindow(); closeStartMenu()">🔢 Sudoku</button>
-      <button onclick="openSudokuDailyWindow(); closeStartMenu()">📅 Sudoku Diário</button>
+      <button onclick="openSudokuDailyWindow(); closeStartMenu()">📅 Sudoku Diário<span class="sdd-badge-dot"></span></button>
       <button onclick="openWindow('win-2048'); init2048Game(); closeStartMenu()">🧩 2048</button>
       <button onclick="openWindow('win-gamerank'); loadGameRank('snake'); closeStartMenu()">🎮 Rank Jogos</button>
       <hr />
@@ -179,6 +179,7 @@
     </div>
     <div class="appgrid-icon" onclick="openSudokuDailyWindow()">
       <div class="icon-img">📅</div>
+      <span class="sdd-badge-corner"></span>
       <div class="icon-label">Sudoku Diário</div>
     </div>
     <div class="appgrid-icon" onclick="openSpiderWindow()">
@@ -1329,6 +1330,7 @@
         </div>
         <div class="folder-icon" ondblclick="openSudokuDailyWindow()">
           <div class="icon-img">📅</div>
+          <span class="sdd-badge-corner"></span>
           <div class="icon-label">Sudoku Diário</div>
         </div>
         <div class="folder-icon" ondblclick="openSpiderWindow()">
