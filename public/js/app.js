@@ -994,10 +994,16 @@ function applyCustomColor() {
   applyWallpaper("custom");
 }
 
-// Atualiza os botões de wallpapers comprados no menu de contexto e na aba de perfil
-function updatePurchasedWallpapers(purchases, wpItems) {
-  const owned = wpItems.filter((i) => purchases.includes(i.id));
+// Chave de cache por usuário (evita vazar wallpapers de uma conta pra outra
+// num navegador compartilhado — ver loadOwnedWallpapersFromCache abaixo).
+function ownedWallpapersCacheKey() {
+  const name = currentUser && currentUser.name ? currentUser.name.toLowerCase() : null;
+  return name ? `luizos_owned_wallpapers:${name}` : null;
+}
 
+// Só o innerHTML — usado tanto pela atualização "de verdade" (após consultar
+// o servidor) quanto pelo carregamento a partir do cache local no F5.
+function renderPurchasedWallpapers(owned) {
   const ctxContainer = document.getElementById("ctx-wallpapers-purchased");
   if (ctxContainer) {
     ctxContainer.innerHTML = owned
@@ -1011,6 +1017,35 @@ function updatePurchasedWallpapers(purchases, wpItems) {
       .map((i) => `<button class="win95-action-btn" data-wp="${i.wpKey}" onclick="applyWallpaper('${i.wpKey}')">${escHtml(i.title)}</button>`)
       .join("");
   }
+}
+
+// Atualiza os botões de wallpapers comprados no menu de contexto e na aba de
+// perfil — e guarda em localStorage pra já aparecer no próximo F5 sem
+// precisar esperar a Loja/Perfil confirmarem com o servidor de novo.
+function updatePurchasedWallpapers(purchases, wpItems) {
+  const owned = wpItems
+    .filter((i) => purchases.includes(i.id))
+    .map((i) => ({ wpKey: i.wpKey, title: i.title }));
+  renderPurchasedWallpapers(owned);
+  const cacheKey = ownedWallpapersCacheKey();
+  if (cacheKey) {
+    try { localStorage.setItem(cacheKey, JSON.stringify(owned)); } catch { /* localStorage indisponível */ }
+  }
+}
+
+// Mostra os wallpapers comprados imediatamente ao carregar a página, direto
+// do que foi salvo na última vez que a Loja/Perfil confirmaram com o
+// servidor — sem isso, o menu de contexto ficava vazio até o jogador abrir a
+// Loja ou o Perfil, mesmo já tendo comprado o wallpaper.
+function loadOwnedWallpapersFromCache() {
+  const cacheKey = ownedWallpapersCacheKey();
+  if (!cacheKey) return;
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    if (!raw) return;
+    const owned = JSON.parse(raw);
+    if (Array.isArray(owned)) renderPurchasedWallpapers(owned);
+  } catch { /* cache corrompido — ignora, fica vazio até abrir a Loja/Perfil */ }
 }
 
 async function loadProfileWallpaper() {
@@ -2944,6 +2979,7 @@ loadUsers().then(() => {
     sessionToken = saved.token;
     currentUser = saved.user;
     updateUserDisplay();
+    loadOwnedWallpapersFromCache();
     refreshTodayStatus();
   } else {
     updateUserDisplay();
@@ -4057,9 +4093,19 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.21.0",
+    version: "2.22.0",
     date: "25/07/2026",
     isNew: true,
+    title: "Correção: wallpapers comprados sumiam ao atualizar a página 🖼️",
+    items: [
+      "🐛 Wallpapers já comprados (LuizBeatle, LuizBliss) agora aparecem no menu de fundo direto ao carregar a página — antes só apareciam depois de abrir a Loja ou o Perfil uma vez.",
+      "⚡ Guardados em localStorage por conta, sem gastar uma requisição extra só pra mostrar o menu.",
+    ],
+  },
+  {
+    version: "2.21.0",
+    date: "25/07/2026",
+    isNew: false,
     title: "Som na Roleta/Slot, Sudoku Diário mais claro e Loja com cara nova 🔊🛒",
     items: [
       "🔊 Roleta e Luiz Slot ganharam som de verdade — a rodinha girando e a alavanca do caça-níquel.",
