@@ -4047,9 +4047,22 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.23.0",
+    version: "2.24.0",
     date: "25/07/2026",
     isNew: true,
+    title: "Novo desafio diário: Termo 🟩",
+    items: [
+      "🟩 Termo Diário chegou! Wordle em português — a mesma palavra de 5 letras pra todo mundo, com 6 tentativas por dia.",
+      "🎨 Grid com animação de virada e teclado virtual colorido (verde/amarelo/cinza), igual ao jogo original.",
+      "🔴 Bolinha de \"ainda não fez hoje\" no Menu Iniciar, na grade de apps e na pasta \"Jogos\", mesmo esquema do Sudoku Diário.",
+      "🏆 2 rankings: quem venceu em menos tentativas hoje, e quem mais venceu no total.",
+      "🔒 Sem ficha nem prêmio em LuizCoins — só bragging rights, como o Sudoku Diário.",
+    ],
+  },
+  {
+    version: "2.23.0",
+    date: "25/07/2026",
+    isNew: false,
     title: "Som do Luiz Slot sincronizado + novo clique de mouse 🔊🖱️",
     items: [
       "🎰 Som do Luiz Slot agora começa exatamente quando os rolos começam a girar (antes tocava assim que puxava a alavanca, antes da resposta do servidor voltar) e termina junto com a animação parando.",

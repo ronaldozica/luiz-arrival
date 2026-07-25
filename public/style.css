@@ -1540,6 +1540,135 @@ body.cursor-wait * {
 }
 .sdd-badge-corner.show { display: block; }
 
+/* ─── Termo Diário ──────────────────────────────────────────────────────── */
+.tdd-board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px 4px;
+}
+
+.tdd-row {
+  display: flex;
+  gap: 6px;
+}
+
+.tdd-row.tdd-shake { animation: tdd-shake 0.42s ease-in-out; }
+@keyframes tdd-shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-7px); }
+  40%, 60% { transform: translateX(7px); }
+}
+
+.tdd-cell {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: bold;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: #1a1a1a;
+  background: #fff;
+  border: 2px solid #b8b8b8;
+  border-radius: 3px;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.tdd-cell.tdd-filled {
+  border-color: #6b6b6b;
+  transform: scale(1.04);
+}
+
+.tdd-cell.tdd-correct { background: #6aaa64; border-color: #588a53; color: #fff; }
+.tdd-cell.tdd-present { background: #c9b458; border-color: #a89547; color: #fff; }
+.tdd-cell.tdd-absent  { background: #787c7e; border-color: #62666a; color: #fff; }
+
+/* Flip 3D: a cor só "aparece" na metade da rotação, junto do jogo de verdade. */
+.tdd-cell.tdd-flip {
+  animation: tdd-flip 0.55s ease forwards;
+}
+@keyframes tdd-flip {
+  0%   { transform: rotateX(0deg); }
+  49%  { transform: rotateX(90deg); }
+  50%  { transform: rotateX(90deg); }
+  100% { transform: rotateX(0deg); }
+}
+
+.tdd-keyboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.tdd-key-row {
+  display: flex;
+  gap: 4px;
+}
+
+.tdd-key {
+  min-width: 26px;
+  height: 36px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: #1a1a1a;
+  background: linear-gradient(180deg, #f4f4f4, #d4d4d4);
+  border: 1px solid #999;
+  border-radius: 3px;
+  cursor: pointer;
+  user-select: none;
+  transition: filter 0.1s, transform 0.05s;
+}
+.tdd-key:hover { filter: brightness(1.08); }
+.tdd-key:active { transform: scale(0.94); }
+.tdd-key-wide { min-width: 44px; font-size: 10px; }
+
+.tdd-key-correct { background: #6aaa64; border-color: #588a53; color: #fff; }
+.tdd-key-present { background: #c9b458; border-color: #a89547; color: #fff; }
+.tdd-key-absent  { background: #62666a; border-color: #4d5053; color: #ddd; }
+
+.tdd-result { margin-top: 8px; }
+.tdd-result-win  { border-color: #6aaa64 !important; background: #eef7ec; }
+.tdd-result-lose { border-color: #b5182b !important; background: #fbeaea; }
+
+/* Bolinha "ainda não fez o Termo de hoje" — idêntica à do Sudoku Diário. */
+.tdd-badge-dot {
+  display: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e53935;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.tdd-badge-dot.show { display: inline-block; }
+
+.tdd-badge-corner {
+  display: none;
+  position: absolute;
+  top: 2px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e53935;
+  border: 1px solid #fff;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+}
+.tdd-badge-corner.show { display: block; }
+
 /* Calculadora: .win95-action-btn tem min-width:90px por padrão (pensado pra
    botões isolados), o que não cabe em 4 colunas numa janela pequena — sem
    isso, a 4ª coluna (÷, ×, −, +, =) fica cortada pela borda da janela. */

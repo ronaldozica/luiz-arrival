@@ -22,6 +22,7 @@ app.use("/api", require("./routes/blackjack"));
 app.use("/api", require("./routes/roulette"));
 app.use("/api", require("./routes/slot"));
 app.use("/api", require("./routes/sudoku-daily"));
+app.use("/api", require("./routes/termo-daily"));
 app.use("/api", require("./routes/requests").router);
 
 // ─── Migração única: Lenda da mira rebaixada de 10000→3000 ──────────────────
