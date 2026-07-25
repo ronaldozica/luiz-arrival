@@ -2489,6 +2489,10 @@ function renderGameRank() {
     container.innerHTML = buildRlRankTable(data["default"] || []);
     return;
   }
+  if (game === "slot") {
+    container.innerHTML = buildSlRankTable(data["default"] || []);
+    return;
+  }
   const gameLabel = getGameLabel(game);
   const diffs = GAME_RANK_DIFFICULTIES[game];
   let html = "";
@@ -2536,6 +2540,12 @@ async function loadGameRank(game) {
     }
     if (game === "roulette") {
       const data = await cachedFetchJSON("rl_rank", `${API}/roulette/rank`, 30 * 1000);
+      currentGameRankCache = { game, data: { default: data || [] } };
+      renderGameRank();
+      return;
+    }
+    if (game === "slot") {
+      const data = await cachedFetchJSON("sl_rank", `${API}/slot/rank`, 30 * 1000);
       currentGameRankCache = { game, data: { default: data || [] } };
       renderGameRank();
       return;
@@ -2709,7 +2719,7 @@ function getDifficultyLabel(diff) {
 }
 
 function getGameLabel(game) {
-  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider", luizjack: "🃏 Luiz21", "2048": "🧩 2048", roulette: "🎡 Roleta" }[game] || game);
+  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider", luizjack: "🃏 Luiz21", "2048": "🧩 2048", roulette: "🎡 Roleta", slot: "🎰 Luiz Slot" }[game] || game);
 }
 
 function buildBjRankTable(entries) {
@@ -2727,6 +2737,18 @@ function buildBjRankTable(entries) {
 function buildRlRankTable(entries) {
   if (entries.length === 0) return '<div class="no-data">Nenhum giro ainda. Seja o primeiro!</div>';
   let html = `<div class="section-label">🎡 Roleta — Maiores Ganhadores</div>
+    <table class="win95-table"><thead><tr>
+      <th>#</th><th>Jogador</th><th>LC Ganhos</th><th>Giros</th>
+    </tr></thead><tbody>`;
+  entries.forEach((e, i) => {
+    html += `<tr class="${rankMedalClass(i)}"><td>${i + 1}º</td><td>${renderPlayerName(e.name, true)}</td><td><strong>${e.coinsWon} LC</strong></td><td>${e.spinsPlayed}</td></tr>`;
+  });
+  return html + "</tbody></table>";
+}
+
+function buildSlRankTable(entries) {
+  if (entries.length === 0) return '<div class="no-data">Nenhum giro ainda. Seja o primeiro!</div>';
+  let html = `<div class="section-label">🎰 Luiz Slot — Maiores Ganhadores</div>
     <table class="win95-table"><thead><tr>
       <th>#</th><th>Jogador</th><th>LC Ganhos</th><th>Giros</th>
     </tr></thead><tbody>`;
@@ -3998,9 +4020,21 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.19.0",
+    version: "2.20.0",
     date: "25/07/2026",
     isNew: true,
+    title: "Novo jogo de cassino: Luiz Slot 🎰",
+    items: [
+      "🎰 Caça-níquel de 3 rolos chegou! Puxe a alavanca, escolha a ficha (5/15/30 LC) e alinhe 3 símbolos iguais na linha de pagamento.",
+      "💎 6 símbolos com prêmios diferentes: 🍒 3x, 🍋 4x, 🍇 6x, 🔔 10x, 💎 20x e o raríssimo 🕐 (jackpot) pagando 75x — com confete e brilho dourado na tela quando sai.",
+      "🥈 2 símbolos iguais devolvem metade da ficha; nenhum igual perde a ficha inteira.",
+      "🏆 4 conquistas novas e ranking próprio na aba \"Luiz Slot\" dentro de Rank Jogos.",
+    ],
+  },
+  {
+    version: "2.19.0",
+    date: "25/07/2026",
+    isNew: false,
     title: "Loja: cores de prestígio, molduras, títulos e cursores 🛒",
     items: [
       "🌈 4 nomes de prestígio novos: Arco-Íris e Neon (1000 LC) com efeito animado, Gelo e Cósmico (750 LC).",

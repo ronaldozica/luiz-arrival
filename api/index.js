@@ -20,6 +20,7 @@ app.use("/api", require("./routes/leaderboards"));
 app.use("/api", require("./routes/farm"));
 app.use("/api", require("./routes/blackjack"));
 app.use("/api", require("./routes/roulette"));
+app.use("/api", require("./routes/slot"));
 app.use("/api", require("./routes/sudoku-daily"));
 app.use("/api", require("./routes/requests").router);
 
