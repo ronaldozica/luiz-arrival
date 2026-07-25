@@ -894,6 +894,8 @@ const WALLPAPERS = {
   luiz:        { label: "Luiz",         type: "image", value: "/wallpapers/luiz.png" },
   luizbeatle:  { label: "LuizBeatle",   type: "image", value: "/assets/wallpapers/luizBeatle.jpg" },
   luizbliss:   { label: "LuizBliss",    type: "image", value: "/assets/wallpapers/luizBliss.jpg" },
+  luizscream:  { label: "LuizScream",   type: "image", value: "/assets/wallpapers/luizScream.jpg" },
+  luizradio:   { label: "LuizRadio",    type: "image", value: "/assets/wallpapers/luizRadio.png" },
   custom:      { label: "Personalizado", type: "color", value: "#008080" },
 };
 
@@ -4047,9 +4049,18 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.24.0",
+    version: "2.25.0",
     date: "25/07/2026",
     isNew: true,
+    title: "2 wallpapers novos na loja 🖼️",
+    items: [
+      "🖼️ LuizScream e LuizRadio chegaram na Loja, na seção \"Planos de fundo\" — 50 LuizCoins cada, igual aos outros dois.",
+    ],
+  },
+  {
+    version: "2.24.0",
+    date: "25/07/2026",
+    isNew: false,
     title: "Novo desafio diário: Termo 🟩",
     items: [
       "🟩 Termo Diário chegou! Wordle em português — a mesma palavra de 5 letras pra todo mundo, com 6 tentativas por dia.",

@@ -12,6 +12,8 @@ const { getCachedOrCompute } = require("./cache");
 const STORE_ITEMS = [
   { id: "wp_luizbeatle", price: 50, type: "wallpaper", src: "/assets/wallpapers/luizBeatle.jpg", title: "LuizBeatle", wpKey: "luizbeatle" },
   { id: "wp_luizbliss",  price: 50, type: "wallpaper", src: "/assets/wallpapers/luizBliss.jpg",  title: "LuizBliss",  wpKey: "luizbliss"  },
+  { id: "wp_luizscream", price: 50, type: "wallpaper", src: "/assets/wallpapers/luizScream.jpg", title: "LuizScream", wpKey: "luizscream" },
+  { id: "wp_luizradio",  price: 50, type: "wallpaper", src: "/assets/wallpapers/luizRadio.png",  title: "LuizRadio",  wpKey: "luizradio"  },
   { id: "palinha", price: 15, src: "/photos/palinha.gif", title: "Luiz dando uma palinha" },
   { id: "baixista", price: 15, src: "/photos/baixista.gif", title: "Luiz Fernando baixista" },
   { id: "confusp", price: 20, src: "/photos/confuso.gif", title: "Luiz confuso" },
