@@ -32,7 +32,13 @@ let tddView = "play"; // play | rank
 let tddErrorMsg = null;
 let tddSubmitting = false;
 let tddShake = false;
-let tddFlipRow = -1; // índice da linha que acabou de ser confirmada (anima só essa)
+// Linhas cuja animação de virada já foi disparada — o grid inteiro é
+// reconstruído via innerHTML a cada render (inclusive a cada tecla digitada
+// na linha atual), então uma linha já submetida ganharia elementos NOVOS do
+// DOM em todo re-render e a animação replicaria de novo a cada letra digitada
+// depois dela. Uma vez na lista, a linha nunca mais recebe a classe de
+// animação — só o resultado final (cor), sem re-tocar o efeito.
+let tddAnimatedRows = new Set();
 
 function openTermoDailyWindow() {
   openWindow("win-termo-daily");
@@ -95,7 +101,7 @@ async function initTermoDaily() {
   tddErrorMsg = null;
   tddCurrentGuess = "";
   tddSubmitting = false;
-  tddFlipRow = -1;
+  tddAnimatedRows = new Set();
   renderTermoDaily();
 
   if (!sessionToken) {
@@ -111,6 +117,10 @@ async function initTermoDaily() {
 
     tddDate = data.date;
     tddGuesses = data.guesses || [];
+    // Palpites que já existiam antes desta carga (ex.: reabriu a janela no
+    // meio do jogo) não devem tocar a animação de novo — só os que forem
+    // submetidos a partir de agora entram no fluxo normal de tddSubmitGuess.
+    tddGuesses.forEach((_, i) => tddAnimatedRows.add(i));
     tddWon = data.won;
     tddDone = data.done;
     tddWord = data.word;
@@ -171,7 +181,6 @@ async function tddSubmitGuess() {
     if (!res.ok) throw new Error(data.error || "Erro ao enviar palpite.");
 
     tddGuesses.push({ word: tddCurrentGuess, statuses: data.statuses });
-    tddFlipRow = tddGuesses.length - 1;
     tddKeyboardStatus = tddComputeKeyboardStatus(tddGuesses);
     tddCurrentGuess = "";
     tddWon = data.won;
@@ -196,6 +205,12 @@ function tddBuildGridHTML() {
     const rowClasses = ["tdd-row"];
     if (isCurrentRow && tddShake) rowClasses.push("tdd-shake");
 
+    // Uma linha só ganha a classe de animação UMA vez — depois disso fica
+    // marcada em tddAnimatedRows e nunca mais recebe "tdd-flip", mesmo sendo
+    // reconstruída via innerHTML a cada tecla digitada na linha seguinte.
+    const shouldAnimate = submitted && !tddAnimatedRows.has(r);
+    if (shouldAnimate) tddAnimatedRows.add(r);
+
     let cellsHtml = "";
     for (let c = 0; c < TDD_WORD_LENGTH; c++) {
       const letter = rowLetters[c] || "";
@@ -203,7 +218,7 @@ function tddBuildGridHTML() {
       const cellClasses = ["tdd-cell"];
       if (status) cellClasses.push(`tdd-${status}`);
       else if (letter) cellClasses.push("tdd-filled");
-      if (submitted && r === tddFlipRow) {
+      if (shouldAnimate) {
         cellClasses.push("tdd-flip");
         cellsHtml += `<div class="${cellClasses.join(" ")}" style="animation-delay:${c * 120}ms">${letter}</div>`;
       } else {
