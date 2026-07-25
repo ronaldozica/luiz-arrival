@@ -1,5 +1,6 @@
 const { userKey, parseRedisNumber, parseRedisArray } = require("./utils");
 const { isWeekday } = require("./datetime");
+const { getCachedOrCompute } = require("./cache");
 
 // ─── Loja de Prêmios ─────────────────────────────────────────────────────────
 // Preços calibrados pra ~6 LuizCoins/dia (jogador engajado apostando todo dia
@@ -338,6 +339,19 @@ async function calcBalance(kv, user, users) {
   return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned, fontOwned, rawFontOwned, titleOwned, rawTitleOwned };
 }
 
+// Cache por usuário do resultado de calcBalance (chave `balance:<uKey>`,
+// mesmo getCachedOrCompute/TTL de segurança já usado por cache:profiles
+// etc.) — pensado só pra leituras que checam saldo ANTES de fazer sua
+// própria escrita (comprar, apostar). Rotas que leem o saldo DEPOIS de já
+// terem escrito no mesmo request (ex.: farm/harvest reportando o total após
+// colher) devem continuar chamando calcBalance() direto — uma leitura única
+// por request não ganha nada com cache, e usar a versão cacheada ali correria
+// o risco de devolver o valor de ANTES da própria escrita (cache só é
+// invalidado no fim do request, via invalidatesUserBalance em lib/cache.js).
+async function getCachedBalance(kv, user, users) {
+  return getCachedOrCompute(kv, `balance:${userKey(user.name)}`, () => calcBalance(kv, user, users));
+}
+
 module.exports = {
   STORE_ITEMS,
   EXCLUSIVE_COLORS,
@@ -366,4 +380,5 @@ module.exports = {
   purchaseIds,
   emojiList,
   calcBalance,
+  getCachedBalance,
 };

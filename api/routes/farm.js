@@ -2,9 +2,10 @@ const express = require("express");
 const router = express.Router();
 const { getKV } = require("../lib/redis");
 const { requireAuth } = require("../lib/auth-middleware");
+const { invalidatesUserBalance } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisNumber } = require("../lib/utils");
-const { calcBalance } = require("../lib/store-items");
+const { calcBalance, getCachedBalance } = require("../lib/store-items");
 const { todayKey } = require("../lib/datetime");
 
 // Balanceamento por lucro/hora (reward - cost, dividido pelo tempo de
@@ -86,7 +87,7 @@ router.get("/farm", requireAuth, async (req, res) => {
     if (!user) return res.status(401).json({ error: "Acesso negado." });
     const uKey = userKey(user.name);
     const plots = await getFarmPlots(kv, uKey);
-    const { earnedCoins, spentCoins, purchases } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins, purchases } = await getCachedBalance(kv, user, users);
     const balance = Math.max(0, earnedCoins - spentCoins);
     const ownedSeeds = Object.keys(FARM_SEEDS).filter(
       (key) => FARM_SEEDS[key].premium && purchases.includes(`farmseed_${key}`)
@@ -99,7 +100,7 @@ router.get("/farm", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/farm/plant", requireAuth, async (req, res) => {
+router.post("/farm/plant", requireAuth, invalidatesUserBalance(), async (req, res) => {
   const { plotId, seedType } = req.body;
   const seed = FARM_SEEDS[seedType];
   if (!seed) return res.status(400).json({ error: "Semente inválida." });
@@ -122,7 +123,7 @@ router.post("/farm/plant", requireAuth, async (req, res) => {
     if (plot && plot.locked) return res.status(400).json({ error: "Parcela bloqueada." });
     if (plot && plot.seedType) return res.status(400).json({ error: "Já tem uma planta aqui." });
 
-    const { earnedCoins, spentCoins, purchases } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins, purchases } = await getCachedBalance(kv, user, users);
     const balance = Math.max(0, earnedCoins - spentCoins);
     if (balance < seed.cost) return res.status(400).json({ error: "LuizCoins™ insuficientes." });
     if (seed.premium && !purchases.includes(`farmseed_${seedType}`))
@@ -164,7 +165,7 @@ router.post("/farm/plant", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/farm/harvest", requireAuth, async (req, res) => {
+router.post("/farm/harvest", requireAuth, invalidatesUserBalance(), async (req, res) => {
   const { plotId } = req.body;
   if (typeof plotId !== "number" || plotId < 0 || plotId >= TOTAL_PLOTS)
     return res.status(400).json({ error: "Parcela inválida." });
@@ -212,7 +213,7 @@ router.post("/farm/harvest", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/farm/unlock", requireAuth, async (req, res) => {
+router.post("/farm/unlock", requireAuth, invalidatesUserBalance(), async (req, res) => {
   const { plotId } = req.body;
   if (typeof plotId !== "number" || plotId < 0 || plotId >= TOTAL_PLOTS)
     return res.status(400).json({ error: "Parcela inválida." });
@@ -253,7 +254,7 @@ router.post("/farm/unlock", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/farm/plant-all", requireAuth, async (req, res) => {
+router.post("/farm/plant-all", requireAuth, invalidatesUserBalance(), async (req, res) => {
   const { seedType } = req.body;
   const seed = FARM_SEEDS[seedType];
   if (!seed) return res.status(400).json({ error: "Semente inválida." });
@@ -269,7 +270,7 @@ router.post("/farm/plant-all", requireAuth, async (req, res) => {
 
   try {
     const plots = await getFarmPlots(kv, uKey);
-    const { earnedCoins, spentCoins, purchases } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins, purchases } = await getCachedBalance(kv, user, users);
     let balance = Math.max(0, earnedCoins - spentCoins);
 
     if (seed.premium && !purchases.includes(`farmseed_${seedType}`))
@@ -325,7 +326,7 @@ router.post("/farm/plant-all", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/farm/harvest-all", requireAuth, async (req, res) => {
+router.post("/farm/harvest-all", requireAuth, invalidatesUserBalance(), async (req, res) => {
   const kv = getKV();
   const users = await getUsers(kv);
   const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));

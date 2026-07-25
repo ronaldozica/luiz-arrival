@@ -7,13 +7,14 @@ const { getKV } = require("../lib/redis");
 const { ADMIN_PASSWORD_HASH } = require("../lib/config");
 const { setAdminSession } = require("../lib/session");
 const { requireAdminAuth } = require("../lib/auth-middleware");
+const { invalidateCache } = require("../lib/cache");
 const { getUsers, saveUsers } = require("../lib/users");
 const { getDayData, setDayData } = require("../lib/days");
 const { todayKey, timeStrToMinutes, brasiliaWallTimeToInstant, getWeekKey } = require("../lib/datetime");
 const { userKey, absDiff, parseRedisNumber } = require("../lib/utils");
 const { unlockAchievement } = require("../lib/achievement-defs");
 const { countPlayedDaysBefore, computeWeekRanking, MIN_DAYS_FOR_OVERALL_RANK } = require("../lib/rankings");
-const { calcBalance } = require("../lib/store-items");
+const { getCachedBalance } = require("../lib/store-items");
 
 // Apostas feitas a menos de 15 min do horário real de chegada são suspeitas de
 // "sniping". Isso cobre dois casos: quem apostou logo antes de Luiz chegar
@@ -95,6 +96,13 @@ router.post("/admin/arrival", requireAdminAuth, async (req, res) => {
 
     await setDayData(kv, key, day);
 
+    // Resolver a chegada muda o earnedCoins de todo mundo que apostou hoje —
+    // invalida o saldo cacheado de todos de uma vez (1 único comando DEL com
+    // N chaves, evento raro — só quando o admin registra/corrige a chegada,
+    // não a cada aposta). Ver getCachedBalance em lib/store-items.js.
+    const allUsers = await getUsers(kv);
+    await invalidateCache(kv, ...allUsers.map((u) => `balance:${userKey(u.name)}`));
+
     // Conquistas ligadas ao resultado do dia
     if (day.rankings && day.rankings.length > 0) {
       const valid = day.rankings.filter((r) => r.position != null);
@@ -123,7 +131,7 @@ router.post("/admin/arrival", requireAdminAuth, async (req, res) => {
     const [y, m, d] = key.split("-").map(Number);
     const isFriday = new Date(y, m - 1, d).getDay() === 5;
     if (isFriday) {
-      const users = await getUsers(kv);
+      const users = allUsers;
       const weekKey = getWeekKey(key);
       const { ranking } = await computeWeekRanking(kv, users, weekKey);
       for (let i = 0; i < Math.min(3, ranking.length); i++) {
@@ -189,7 +197,7 @@ router.get("/admin/coins/all", requireAdminAuth, async (req, res) => {
     const users = await getUsers(kv);
     const balances = [];
     for (const user of users) {
-      const { earnedCoins, spentCoins, gameCoins } = await calcBalance(kv, user, users);
+      const { earnedCoins, spentCoins, gameCoins } = await getCachedBalance(kv, user, users);
       balances.push({
         name: user.name,
         balance: Math.max(0, earnedCoins - spentCoins),
@@ -224,6 +232,10 @@ router.post("/admin/coins/adjust", requireAdminAuth, async (req, res) => {
     const currentCoins = parseRedisNumber(await kv.get(coinsKey));
     const newCoins = Math.max(0, currentCoins + amountNum);
     await kv.set(coinsKey, String(newCoins));
+    // Ajusta o saldo de OUTRO usuário (não quem está autenticado como admin),
+    // então precisa invalidar manualmente — invalidatesUserBalance() só
+    // funciona pra req.sessionName.
+    await invalidateCache(kv, `balance:${userKey(user.name)}`);
 
     res.json({ success: true, gameCoins: newCoins });
   } catch (e) {
@@ -320,6 +332,11 @@ router.post("/admin/invalidate-bets", requireAdminAuth, async (req, res) => {
 
     day.rankings = [...valid, ...invalidated];
     await setDayData(kv, key, day);
+
+    // Reaplicar a invalidação de sniping também pode mudar quem ganhou coins
+    // hoje — mesma invalidação em massa de POST /admin/arrival.
+    const allUsers = await getUsers(kv);
+    await invalidateCache(kv, ...allUsers.map((u) => `balance:${userKey(u.name)}`));
 
     res.json({ success: true, arrival: time, rankings: day.rankings });
   } catch (e) {

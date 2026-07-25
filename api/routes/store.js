@@ -3,10 +3,10 @@ const router = express.Router();
 
 const { getKV } = require("../lib/redis");
 const { requireAuth } = require("../lib/auth-middleware");
-const { invalidatesCache } = require("../lib/cache");
+const { invalidatesCache, invalidatesUserBalance } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisArray } = require("../lib/utils");
-const { STORE_ITEMS, EXCLUSIVE_COLORS, getExclusiveColorIds, calcBalance } = require("../lib/store-items");
+const { STORE_ITEMS, EXCLUSIVE_COLORS, getExclusiveColorIds, getCachedBalance } = require("../lib/store-items");
 
 // GET /api/balance — requer sessão válida. Versão leve de /api/store, sem a
 // lista de itens: usada pelo portão de moeda dos minigames (arcade-coin.js)
@@ -18,7 +18,7 @@ router.get("/balance", requireAuth, async (req, res) => {
     const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
-    const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins } = await getCachedBalance(kv, user, users);
     res.json({ balance: Math.max(0, earnedCoins - spentCoins) });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -33,7 +33,7 @@ router.get("/store", requireAuth, async (req, res) => {
     const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
-    const { earnedCoins, spentCoins, purchases, gameCoins } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins, purchases, gameCoins } = await getCachedBalance(kv, user, users);
 
     const responseItems = STORE_ITEMS.map((item) => {
       const isUnlocked = purchases.includes(item.id);
@@ -80,7 +80,7 @@ router.get("/store", requireAuth, async (req, res) => {
 });
 
 // POST /api/store/buy — requer sessão válida
-router.post("/store/buy", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
+router.post("/store/buy", requireAuth, invalidatesCache("cache:profiles"), invalidatesUserBalance(), async (req, res) => {
   try {
     const { itemId } = req.body;
     const kv = getKV();
@@ -91,7 +91,7 @@ router.post("/store/buy", requireAuth, invalidatesCache("cache:profiles"), async
     const item = STORE_ITEMS.find((i) => i.id === itemId);
     if (!item) return res.status(404).json({ error: "Item não encontrado." });
 
-    const { earnedCoins, spentCoins, purchases } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins, purchases } = await getCachedBalance(kv, user, users);
 
     if (purchases.includes(itemId))
       return res.status(400).json({ error: "Você já possui este item." });
@@ -106,8 +106,6 @@ router.post("/store/buy", requireAuth, invalidatesCache("cache:profiles"), async
     const rawPurchases = parseRedisArray(await kv.get(purchasesKey));
     rawPurchases.push({ id: itemId, pricePaid: item.price });
     await kv.set(purchasesKey, JSON.stringify(rawPurchases));
-    // Invalida cache de saldo do blackjack (compra altera o saldo real)
-    await kv.del(`bjbal:${userKey(user.name)}`);
 
     res.json({ success: true, newBalance: balance - item.price });
   } catch (e) {

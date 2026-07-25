@@ -2,9 +2,10 @@ const express = require("express");
 const router = express.Router();
 const { getKV } = require("../lib/redis");
 const { requireAuth } = require("../lib/auth-middleware");
+const { invalidatesUserBalance } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisNumber, parseRedisArray } = require("../lib/utils");
-const { calcBalance } = require("../lib/store-items");
+const { getCachedBalance } = require("../lib/store-items");
 const { unlockAchievement } = require("../lib/achievement-defs");
 
 const BET_AMOUNTS = { low: 5, medium: 15, high: 30 };
@@ -80,7 +81,7 @@ router.get("/slot/status", requireAuth, async (req, res) => {
     const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
-    const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins } = await getCachedBalance(kv, user, users);
     const balance = Math.max(0, earnedCoins - spentCoins);
     const history = await getSlHistory(kv);
 
@@ -91,7 +92,7 @@ router.get("/slot/status", requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/slot/spin ────────────────────────────────────────────────────
-router.post("/slot/spin", requireAuth, async (req, res) => {
+router.post("/slot/spin", requireAuth, invalidatesUserBalance(), async (req, res) => {
   const { betAmount } = req.body;
   const stake = BET_AMOUNTS[betAmount];
   if (!stake) return res.status(400).json({ error: "Ficha de aposta inválida." });
@@ -106,7 +107,7 @@ router.post("/slot/spin", requireAuth, async (req, res) => {
     const user = users.find((u) => userKey(u.name) === uKey);
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
-    const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins } = await getCachedBalance(kv, user, users);
     const balance = Math.max(0, earnedCoins - spentCoins);
     if (balance < stake) return res.status(400).json({ error: "LuizCoins™ insuficientes." });
 

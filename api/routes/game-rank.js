@@ -4,10 +4,10 @@ const crypto = require("crypto");
 
 const { getKV } = require("../lib/redis");
 const { requireAuth } = require("../lib/auth-middleware");
-const { invalidatesCache } = require("../lib/cache");
+const { invalidatesCache, invalidatesUserBalance } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisArray, parseRedisNumber } = require("../lib/utils");
-const { calcBalance } = require("../lib/store-items");
+const { getCachedBalance } = require("../lib/store-items");
 const { GAMES, minPlausibleSeconds, ARCADE_ENTRY_FEE } = require("../lib/games");
 
 // TTL generoso pra dar tempo de partidas longas (Sudoku/Spider difícil).
@@ -68,7 +68,7 @@ router.get("/game-rank", async (req, res) => {
 // enviado é fisicamente plausível pro tempo decorrido (anti-trapaça: impede
 // tanto forjar a requisição sem jogar quanto editar a variável de score no
 // console e enviar na hora) — e agora também pra calcular o troco da ficha.
-router.post("/game-rank/start", requireAuth, async (req, res) => {
+router.post("/game-rank/start", requireAuth, invalidatesUserBalance(), async (req, res) => {
   const { game, difficulty } = req.body;
   const playerName = req.sessionName;
 
@@ -90,7 +90,7 @@ router.post("/game-rank/start", requireAuth, async (req, res) => {
     const user = users.find((u) => userKey(u.name) === uKey);
     if (!user) return res.status(401).json({ error: "Acesso negado." });
 
-    const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins } = await getCachedBalance(kv, user, users);
     const balance = Math.max(0, earnedCoins - spentCoins);
     if (balance < ARCADE_ENTRY_FEE) {
       return res.status(400).json({ error: "LuizCoins™ insuficientes." });
@@ -140,7 +140,7 @@ router.post("/game-rank/forfeit", requireAuth, async (req, res) => {
     const users = await getUsers(kv);
     const user = users.find((u) => userKey(u.name) === userKey(playerName));
     if (!user) return res.status(401).json({ error: "Acesso negado." });
-    const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins } = await getCachedBalance(kv, user, users);
     const balance = Math.max(0, earnedCoins - spentCoins);
 
     res.json({ success: true, balance });
@@ -216,7 +216,7 @@ function computeArcadePayout(game, difficulty, { scoreNum, elapsedSeconds }) {
 // Proteção contra burla: o servidor ignora qualquer playerName enviado pelo cliente.
 // O score é validado contra limites razoáveis por jogo, e contra o tempo real
 // decorrido desde POST /api/game-rank/start (ver roundToken abaixo).
-router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"), async (req, res) => {
+router.post("/game-rank", requireAuth, invalidatesCache("cache:top1_all_games"), invalidatesUserBalance(), async (req, res) => {
   try {
     const { game, difficulty, score, hintsUsed, undoUsed, roundToken, platform, maxTile } = req.body;
     const playerName = req.sessionName; // Sempre do token de sessão, nunca do body

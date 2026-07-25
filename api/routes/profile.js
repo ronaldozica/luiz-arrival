@@ -3,11 +3,11 @@ const router = express.Router();
 
 const { getKV } = require("../lib/redis");
 const { requireAuth } = require("../lib/auth-middleware");
-const { invalidatesCache, getCachedOrCompute } = require("../lib/cache");
+const { invalidatesCache, invalidatesUserBalance, getCachedOrCompute } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisArray } = require("../lib/utils");
 const {
-  emojiPriceForCount, EMOJI_REGEX, calcBalance, purchaseIds, emojiList,
+  emojiPriceForCount, EMOJI_REGEX, getCachedBalance, purchaseIds, emojiList,
   getExclusiveColorIds, findNameColorItem, findEmojiFrameItem,
   FONTS, FONT_IDS, fontPriceForCount, fontList,
   TITLES, TITLE_IDS, titlePriceForCount, titleList,
@@ -85,7 +85,7 @@ router.get("/profile/emoji", requireAuth, async (req, res) => {
 });
 
 // POST /api/profile/emoji/buy — compra um emoji novo (qualquer emoji válido)
-router.post("/profile/emoji/buy", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
+router.post("/profile/emoji/buy", requireAuth, invalidatesCache("cache:profiles"), invalidatesUserBalance(), async (req, res) => {
   try {
     const { emoji } = req.body;
     if (!emoji || typeof emoji !== "string" || !EMOJI_REGEX.test(emoji)) {
@@ -99,7 +99,7 @@ router.post("/profile/emoji/buy", requireAuth, invalidatesCache("cache:profiles"
 
     const uk = userKey(user.name);
     const ownedKey = `emoji_owned:${uk}`;
-    const { earnedCoins, spentCoins, emojiOwned } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins, emojiOwned } = await getCachedBalance(kv, user, users);
 
     if (emojiOwned.includes(emoji))
       return res.status(400).json({ error: "Você já possui este emoji." });
@@ -252,7 +252,7 @@ router.get("/profile/font", requireAuth, async (req, res) => {
 });
 
 // POST /api/profile/font/buy — compra uma fonte do catálogo
-router.post("/profile/font/buy", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
+router.post("/profile/font/buy", requireAuth, invalidatesCache("cache:profiles"), invalidatesUserBalance(), async (req, res) => {
   try {
     const { fontId } = req.body;
     if (!fontId || !FONT_IDS.has(fontId))
@@ -267,7 +267,7 @@ router.post("/profile/font/buy", requireAuth, invalidatesCache("cache:profiles")
     const ownedKey = `font_owned:${uk}`;
     // rawFontOwned vem do mesmo calcBalance que calculou o saldo —
     // evita TOCTOU de ler font_owned duas vezes com operações async no meio.
-    const { earnedCoins, spentCoins, fontOwned, rawFontOwned } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins, fontOwned, rawFontOwned } = await getCachedBalance(kv, user, users);
 
     if (fontOwned.includes(fontId))
       return res.status(400).json({ error: "Você já possui esta fonte." });
@@ -335,7 +335,7 @@ router.get("/profile/title", requireAuth, async (req, res) => {
 });
 
 // POST /api/profile/title/buy — compra um título do catálogo
-router.post("/profile/title/buy", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
+router.post("/profile/title/buy", requireAuth, invalidatesCache("cache:profiles"), invalidatesUserBalance(), async (req, res) => {
   try {
     const { titleId } = req.body;
     if (!titleId || !TITLE_IDS.has(titleId))
@@ -350,7 +350,7 @@ router.post("/profile/title/buy", requireAuth, invalidatesCache("cache:profiles"
     const ownedKey = `title_owned:${uk}`;
     // rawTitleOwned vem do mesmo calcBalance que calculou o saldo —
     // evita TOCTOU de ler title_owned duas vezes com operações async no meio.
-    const { earnedCoins, spentCoins, titleOwned, rawTitleOwned } = await calcBalance(kv, user, users);
+    const { earnedCoins, spentCoins, titleOwned, rawTitleOwned } = await getCachedBalance(kv, user, users);
 
     if (titleOwned.includes(titleId))
       return res.status(400).json({ error: "Você já possui este título." });

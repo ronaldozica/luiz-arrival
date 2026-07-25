@@ -2,9 +2,10 @@ const express = require("express");
 const router = express.Router();
 const { getKV } = require("../lib/redis");
 const { requireAuth } = require("../lib/auth-middleware");
+const { invalidatesUserBalance } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisNumber } = require("../lib/utils");
-const { calcBalance } = require("../lib/store-items");
+const { getCachedBalance } = require("../lib/store-items");
 const { unlockAchievement } = require("../lib/achievement-defs");
 
 const BET_AMOUNTS = { low: 5, medium: 15, high: 30 };
@@ -49,28 +50,18 @@ function isNaturalBlackjack(hand) {
   return hand.length === 2 && handValue(hand) === 21;
 }
 
-// ─── Balance cache ────────────────────────────────────────────────────────────
-// Evita chamar calcBalance (100+ leituras Redis) a cada ação do blackjack.
-// Atualizado ao resolver uma mão; invalidado em compras na loja (store.js).
-const BAL_TTL = 5 * 60;
-async function getCachedBalance(kv, uKey) {
-  const v = await kv.get(`bjbal:${uKey}`);
-  return v !== null ? parseRedisNumber(v) : null;
-}
-async function setCachedBalance(kv, uKey, balance) {
-  await kv.set(`bjbal:${uKey}`, String(balance), { ex: BAL_TTL });
-}
-
+// ─── Saldo ────────────────────────────────────────────────────────────────────
+// getCachedBalance (lib/store-items.js) evita recomputar calcBalance a cada
+// ação do blackjack; invalidado via invalidatesUserBalance() nas rotas que
+// resolvem uma mão (e em qualquer outra escrita que afete o saldo, ver
+// lib/cache.js) — chave compartilhada com todas as outras rotas de jogo/loja,
+// não mais um cache bjbal isolado.
 async function getUserAndBalance(kv, sessionName) {
   const users = await getUsers(kv);
   const user = users.find((u) => userKey(u.name) === userKey(sessionName));
   if (!user) return { user: null, balance: 0 };
-  const uKey = userKey(user.name);
-  const cached = await getCachedBalance(kv, uKey);
-  if (cached !== null) return { user, balance: cached };
-  const { earnedCoins, spentCoins } = await calcBalance(kv, user, users);
+  const { earnedCoins, spentCoins } = await getCachedBalance(kv, user, users);
   const balance = Math.max(0, earnedCoins - spentCoins);
-  await setCachedBalance(kv, uKey, balance);
   return { user, balance };
 }
 
@@ -119,7 +110,7 @@ router.get("/blackjack/status", requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/blackjack/start ────────────────────────────────────────────────
-router.post("/blackjack/start", requireAuth, async (req, res) => {
+router.post("/blackjack/start", requireAuth, invalidatesUserBalance(), async (req, res) => {
   const { betLevel } = req.body;
   const bet = BET_AMOUNTS[betLevel];
   if (!bet) return res.status(400).json({ error: "Nível de aposta inválido." });
@@ -169,7 +160,7 @@ router.post("/blackjack/start", requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/blackjack/action ───────────────────────────────────────────────
-router.post("/blackjack/action", requireAuth, async (req, res) => {
+router.post("/blackjack/action", requireAuth, invalidatesUserBalance(), async (req, res) => {
   const { action } = req.body;
   if (!["hit", "stand"].includes(action))
     return res.status(400).json({ error: "Ação inválida." });
@@ -302,8 +293,6 @@ async function resolveHand(kv, user, uKey, game, res, playerBJ, dealerBJ, trigge
 
   // newBalance derivado aritmeticamente — evita chamar calcBalance (scan pesado do histórico)
   const newBalance = Math.max(0, startBalance + coinsWon - coinsLost);
-  // Atualiza o cache de saldo para que "Nova mão" não precise recomputar calcBalance
-  await setCachedBalance(kv, uKey, newBalance);
 
   res.json({
     status: "done",
