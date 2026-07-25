@@ -250,7 +250,6 @@ async function spinSlot() {
   document.querySelectorAll(".sl-reel").forEach((r) => r.classList.remove("sl-win"));
   document.getElementById("sl-cabinet")?.classList.remove("sl-jackpot");
   renderSlot();
-  slSpinAudio = playAudioSfx("/assets/sounds/slotmachine.mp3", { volume: 0.5 });
 
   try {
     const res = await fetch("/api/slot/spin", {
@@ -260,7 +259,6 @@ async function spinSlot() {
     });
     const data = await res.json();
     if (!res.ok) {
-      fadeOutAndStop(slSpinAudio);
       slBusy = false;
       slState = "idle";
       renderSlot();
@@ -268,11 +266,18 @@ async function spinSlot() {
       return;
     }
 
+    // Som só começa aqui, junto com o giro visual (não na hora do clique) —
+    // senão toca antes da resposta do servidor voltar, fora de sincronia.
+    slSpinAudio = playAudioSfx("/assets/sounds/slotmachine.mp3", { volume: 0.5 });
     spinReelsTo(data.reels);
     const totalDuration = Math.max(...SL_REEL_DURATIONS.map((d, i) => d + SL_REEL_DELAYS[i]));
 
+    // Termina o som exatamente quando os rolos param de girar — o fade
+    // começa um pouco antes pra não cortar seco, mas acaba no instante certo.
+    const AUDIO_FADE_MS = 250;
+    setTimeout(() => fadeOutAndStop(slSpinAudio, AUDIO_FADE_MS), Math.max(0, totalDuration - AUDIO_FADE_MS));
+
     setTimeout(() => {
-      fadeOutAndStop(slSpinAudio);
       slBalance = data.balance ?? slBalance;
       slHistory = data.history || slHistory;
       slLastResult = {

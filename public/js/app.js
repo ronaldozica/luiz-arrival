@@ -243,61 +243,15 @@ function hideLoading() {
   document.body.classList.remove("cursor-wait");
 }
 
-// ─── Sound effects (sintetizados, sem assets externos) ────────────────────────
-// "Clack" mecânico: um transiente de ruído filtrado (o "click" agudo) somado
-// a um thud grave curto (o "corpo" do clique) — soa como um mouse/teclado
-// antigo, em vez de um bipe eletrônico. `variant` ajusta o timbre conforme
-// a ação: "open" (mais agudo/brilhante), "close" (mais grave/surdo) ou
-// "menu" (intermediário).
-let audioCtx = null;
+// ─── Sound effects (clique de janela/menu) ────────────────────────────────────
+// Clique de mouse real (arquivo enviado pelo usuário), em vez do "clack"
+// sintetizado via Web Audio que existia antes. `variant` varia o
+// playbackRate pra manter a mesma ideia de antes — "open" mais agudo/rápido,
+// "close" mais grave/lento, "menu" no meio — usando a mesma amostra de áudio.
 function playClick(variant) {
-  try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") audioCtx.resume();
-    const now = audioCtx.currentTime;
-
-    const tone = { open: 2600, menu: 2000, close: 1100 }[variant] || 1800;
-    const thudFreq = { open: 150, menu: 130, close: 100 }[variant] || 120;
-
-    // Transiente de ruído filtrado — o "click"
-    const duration = 0.045;
-    const bufferSize = Math.floor(audioCtx.sampleRate * duration);
-    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2.5);
-    }
-    const noise = audioCtx.createBufferSource();
-    noise.buffer = buffer;
-
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.setValueAtTime(tone, now);
-    filter.frequency.exponentialRampToValueAtTime(tone * 0.5, now + duration);
-    filter.Q.value = 1.1;
-
-    const noiseGain = audioCtx.createGain();
-    noiseGain.gain.setValueAtTime(0.4, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-
-    noise.connect(filter);
-    filter.connect(noiseGain);
-    noiseGain.connect(audioCtx.destination);
-    noise.start(now);
-    noise.stop(now + duration);
-
-    // Thud grave — dá corpo/peso ao clique
-    const thud = audioCtx.createOscillator();
-    const thudGain = audioCtx.createGain();
-    thud.type = "sine";
-    thud.frequency.value = thudFreq;
-    thudGain.gain.setValueAtTime(0.22, now);
-    thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
-    thud.connect(thudGain);
-    thudGain.connect(audioCtx.destination);
-    thud.start(now);
-    thud.stop(now + 0.03);
-  } catch { /* AudioContext indisponível — falha silenciosa */ }
+  const rate = { open: 1.15, menu: 1.0, close: 0.85 }[variant] || 1.0;
+  const audio = playAudioSfx("/assets/sounds/matthewvakaliuk73627-mouse-click-290204.mp3", { volume: 0.5 });
+  if (audio) audio.playbackRate = rate;
 }
 
 // ─── Efeitos sonoros (arquivo real, ex.: roleta/slot) ─────────────────────────
@@ -4093,9 +4047,19 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.22.0",
+    version: "2.23.0",
     date: "25/07/2026",
     isNew: true,
+    title: "Som do Luiz Slot sincronizado + novo clique de mouse 🔊🖱️",
+    items: [
+      "🎰 Som do Luiz Slot agora começa exatamente quando os rolos começam a girar (antes tocava assim que puxava a alavanca, antes da resposta do servidor voltar) e termina junto com a animação parando.",
+      "🖱️ Clique de janelas/menus trocado por um som de mouse de verdade, no lugar do \"clack\" sintetizado.",
+    ],
+  },
+  {
+    version: "2.22.0",
+    date: "25/07/2026",
+    isNew: false,
     title: "Correção: wallpapers comprados sumiam ao atualizar a página 🖼️",
     items: [
       "🐛 Wallpapers já comprados (LuizBeatle, LuizBliss) agora aparecem no menu de fundo direto ao carregar a página — antes só apareciam depois de abrir a Loja ou o Perfil uma vez.",
