@@ -27,6 +27,16 @@ const STORE_ITEMS = [
   { id: "color_agua",    price: 500, type: "namecolor", color: "#0288d1", title: "Água" },
   { id: "color_terra",   price: 500, type: "namecolor", color: "#6d4c41", title: "Terra" },
   { id: "color_ar",      price: 500, type: "namecolor", color: "#80deea", title: "Ar" },
+  { id: "color_gelo",    price: 750, type: "namecolor", color: "#b3e5fc", title: "Gelo" },
+  { id: "color_cosmico", price: 750, type: "namecolor", color: "#8e24aa", title: "Cósmico" },
+  { id: "color_rainbow", price: 1000, type: "namecolor", color: "#ff5252", title: "Arco-Íris" },
+  { id: "color_neon",    price: 1000, type: "namecolor", color: "#0fffc1", title: "Neon" },
+  { id: "frame_gold", price: 150, type: "emojiframe", frameClass: "emoji-frame-gold", title: "Moldura Dourada" },
+  { id: "frame_neon", price: 250, type: "emojiframe", frameClass: "emoji-frame-neon", title: "Moldura Neon" },
+  { id: "frame_fire", price: 350, type: "emojiframe", frameClass: "emoji-frame-fire", title: "Moldura de Fogo" },
+  { id: "cursor_target", price: 80,  type: "cursor", emoji: "🎯", title: "Cursor Mira" },
+  { id: "cursor_coin",   price: 80,  type: "cursor", emoji: "🪙", title: "Cursor Moeda" },
+  { id: "cursor_crown",  price: 120, type: "cursor", emoji: "👑", title: "Cursor Coroa" },
   { id: "farmseed_strawberry", price: 60,  type: "farmseed", seedKey: "strawberry", icon: "🍓", title: "Semente de Morango",  desc: "Plante morangos na fazenda (1h · +10🪙 · limite diário = parcelas desbloqueadas)" },
   { id: "farmseed_orange",     price: 120, type: "farmseed", seedKey: "orange",     icon: "🍊", title: "Semente de Laranja",  desc: "Plante laranjas na fazenda (12h · +60🪙 · limite diário = parcelas desbloqueadas)" },
   { id: "farmseed_pineapple",  price: 300, type: "farmseed", seedKey: "pineapple",  icon: "🍍", title: "Semente de Abacaxi", desc: "Plante abacaxis na fazenda (3 dias · +324🪙 · limite diário = parcelas desbloqueadas)" },
@@ -53,6 +63,35 @@ function findNameColorItem(id) {
     STORE_ITEMS.find((i) => i.id === id && i.type === "namecolor") ||
     EXCLUSIVE_COLORS.find((i) => i.id === id)
   );
+}
+
+function findEmojiFrameItem(id) {
+  return STORE_ITEMS.find((i) => i.id === id && i.type === "emojiframe");
+}
+
+// ─── Títulos ao lado do nome (lista curada, compra escalona igual fonte/emoji) ─
+const TITLES = [
+  { id: "title_lenda",      label: "Lenda" },
+  { id: "title_rei",        label: "Rei dos Jogos" },
+  { id: "title_sortudo",    label: "Sortudo" },
+  { id: "title_imbativel",  label: "Imbatível" },
+  { id: "title_highroller", label: "High Roller" },
+  { id: "title_mestre",     label: "Mestre dos Baralhos" },
+  { id: "title_maquina",    label: "Máquina de LuizCoins" },
+  { id: "title_vidente",    label: "Vidente do Luiz" },
+];
+const TITLE_IDS = new Set(TITLES.map((t) => t.id));
+const TITLE_BASE_PRICE = 100;
+const TITLE_PRICE_STEP = 100;
+function titlePriceForCount(ownedCount) {
+  return TITLE_BASE_PRICE + TITLE_PRICE_STEP * ownedCount;
+}
+// Títulos: formato `{ titleId, pricePaid }` — sem legado (feature nova).
+function titleList(rawOwned) {
+  return rawOwned.map((t) => t.titleId);
+}
+function titleSpent(rawOwned) {
+  return rawOwned.reduce((sum, t) => sum + (t.pricePaid || 0), 0);
 }
 
 // ─── Emoji de ranking (compra livre, não é um item fixo da loja) ────────────
@@ -268,7 +307,11 @@ async function calcBalance(kv, user, users) {
   const rouletteLost = parseRedisNumber(await kv.get(`roulettelost:${userKey(user.name)}`));
   spentCoins += rouletteLost;
 
-  return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned, fontOwned, rawFontOwned };
+  const rawTitleOwned = parseRedisArray(await kv.get(`title_owned:${userKey(user.name)}`));
+  const titleOwned = titleList(rawTitleOwned);
+  spentCoins += titleSpent(rawTitleOwned);
+
+  return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned, fontOwned, rawFontOwned, titleOwned, rawTitleOwned };
 }
 
 module.exports = {
@@ -276,6 +319,13 @@ module.exports = {
   EXCLUSIVE_COLORS,
   getExclusiveColorIds,
   findNameColorItem,
+  findEmojiFrameItem,
+  TITLES,
+  TITLE_IDS,
+  TITLE_BASE_PRICE,
+  TITLE_PRICE_STEP,
+  titlePriceForCount,
+  titleList,
   EMOJI_BASE_PRICE,
   EMOJI_PRICE_STEP,
   emojiPriceForCount,

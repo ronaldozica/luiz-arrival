@@ -12,6 +12,14 @@ const {
   EMOJI_REGEX,
   purchaseIds,
   emojiList,
+  STORE_ITEMS,
+  findEmojiFrameItem,
+  TITLES,
+  TITLE_IDS,
+  TITLE_BASE_PRICE,
+  TITLE_PRICE_STEP,
+  titlePriceForCount,
+  titleList,
 } = require("../../api/lib/store-items");
 
 describe("coinsForGuess", () => {
@@ -94,5 +102,68 @@ describe("purchaseIds / emojiList (compatibilidade formato antigo/novo)", () => 
 
   test("emojiList extrai emojis de strings soltas e de objetos {emoji, pricePaid}", () => {
     assert.deepEqual(emojiList(["🔥", { emoji: "🪙", pricePaid: 25 }]), ["🔥", "🪙"]);
+  });
+});
+
+describe("cores de prestígio (rainbow/neon/gelo/cósmico)", () => {
+  test("as 4 cores novas existem em STORE_ITEMS como namecolor", () => {
+    const ids = ["color_rainbow", "color_neon", "color_gelo", "color_cosmico"];
+    for (const id of ids) {
+      const item = STORE_ITEMS.find((i) => i.id === id);
+      assert.ok(item, `${id} deveria existir em STORE_ITEMS`);
+      assert.equal(item.type, "namecolor");
+    }
+  });
+
+  test("rainbow e neon custam 1000, gelo e cósmico custam 750", () => {
+    assert.equal(STORE_ITEMS.find((i) => i.id === "color_rainbow").price, 1000);
+    assert.equal(STORE_ITEMS.find((i) => i.id === "color_neon").price, 1000);
+    assert.equal(STORE_ITEMS.find((i) => i.id === "color_gelo").price, 750);
+    assert.equal(STORE_ITEMS.find((i) => i.id === "color_cosmico").price, 750);
+  });
+});
+
+describe("molduras de emoji (findEmojiFrameItem)", () => {
+  test("encontra as 3 molduras cadastradas", () => {
+    assert.equal(findEmojiFrameItem("frame_gold").frameClass, "emoji-frame-gold");
+    assert.equal(findEmojiFrameItem("frame_neon").frameClass, "emoji-frame-neon");
+    assert.equal(findEmojiFrameItem("frame_fire").frameClass, "emoji-frame-fire");
+  });
+
+  test("retorna undefined pra id inexistente ou de outro tipo", () => {
+    assert.equal(findEmojiFrameItem("color_rubi"), undefined);
+    assert.equal(findEmojiFrameItem("frame_inexistente"), undefined);
+  });
+});
+
+describe("cursores (STORE_ITEMS type cursor)", () => {
+  test("os 3 cursores existem com emoji e preço esperados", () => {
+    assert.equal(STORE_ITEMS.find((i) => i.id === "cursor_target").emoji, "🎯");
+    assert.equal(STORE_ITEMS.find((i) => i.id === "cursor_coin").emoji, "🪙");
+    assert.equal(STORE_ITEMS.find((i) => i.id === "cursor_crown").emoji, "👑");
+    assert.equal(STORE_ITEMS.find((i) => i.id === "cursor_target").price, 80);
+    assert.equal(STORE_ITEMS.find((i) => i.id === "cursor_coin").price, 80);
+    assert.equal(STORE_ITEMS.find((i) => i.id === "cursor_crown").price, 120);
+  });
+});
+
+describe("títulos curados (TITLES / titlePriceForCount / titleList)", () => {
+  test("TITLE_IDS contém todos os ids de TITLES, sem duplicados", () => {
+    assert.equal(TITLE_IDS.size, TITLES.length);
+    for (const t of TITLES) assert.ok(TITLE_IDS.has(t.id));
+  });
+
+  test("titlePriceForCount cresce TITLE_PRICE_STEP a cada compra, a partir de TITLE_BASE_PRICE", () => {
+    assert.equal(titlePriceForCount(0), TITLE_BASE_PRICE);
+    assert.equal(titlePriceForCount(1), TITLE_BASE_PRICE + TITLE_PRICE_STEP);
+    assert.equal(titlePriceForCount(3), TITLE_BASE_PRICE + 3 * TITLE_PRICE_STEP);
+  });
+
+  test("titleList extrai titleId de cada entrada comprada", () => {
+    assert.deepEqual(
+      titleList([{ titleId: "title_lenda", pricePaid: 100 }, { titleId: "title_rei", pricePaid: 200 }]),
+      ["title_lenda", "title_rei"],
+    );
+    assert.deepEqual(titleList([]), []);
   });
 });

@@ -6,7 +6,12 @@ const { requireAuth } = require("../lib/auth-middleware");
 const { invalidatesCache, getCachedOrCompute } = require("../lib/cache");
 const { getUsers } = require("../lib/users");
 const { userKey, parseRedisArray } = require("../lib/utils");
-const { emojiPriceForCount, EMOJI_REGEX, calcBalance, purchaseIds, emojiList, getExclusiveColorIds, findNameColorItem, FONTS, FONT_IDS, fontPriceForCount, fontList } = require("../lib/store-items");
+const {
+  emojiPriceForCount, EMOJI_REGEX, calcBalance, purchaseIds, emojiList,
+  getExclusiveColorIds, findNameColorItem, findEmojiFrameItem,
+  FONTS, FONT_IDS, fontPriceForCount, fontList,
+  TITLES, TITLE_IDS, titlePriceForCount, titleList,
+} = require("../lib/store-items");
 const { ACHIEVEMENT_DEFS } = require("../lib/achievement-defs");
 
 // POST /api/profile/color — define qual cor de nome (já comprada) é exibida no ranking
@@ -29,6 +34,33 @@ router.post("/profile/color", requireAuth, invalidatesCache("cache:profiles"), a
       if (!item || !ownedColorIds.includes(colorId))
         return res.status(400).json({ error: "Você não possui essa cor." });
       await kv.set(activeKey, colorId);
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/profile/frame — define qual moldura de emoji (já comprada) é exibida no ranking
+router.post("/profile/frame", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
+  try {
+    const { frameId } = req.body;
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const activeKey = `frame_active:${userKey(user.name)}`;
+    if (!frameId) {
+      await kv.del(activeKey);
+    } else {
+      const purchasesKey = `purchases:${userKey(user.name)}`;
+      const purchases = purchaseIds(parseRedisArray(await kv.get(purchasesKey)));
+      const item = findEmojiFrameItem(frameId);
+      if (!item || !purchases.includes(frameId))
+        return res.status(400).json({ error: "Você não possui essa moldura." });
+      await kv.set(activeKey, frameId);
     }
 
     res.json({ success: true });
@@ -144,7 +176,10 @@ router.get("/profiles", async (req, res) => {
         if (!activeColor) {
           // Sem escolha explícita: usa a cor de maior prestígio que o jogador possui.
           // "Coração" é exclusiva e fica acima até do Diamante.
-          const colorPriority = ["color_coracao", "color_diamante", "color_dourado", "color_rubi", "color_esmeralda"];
+          const colorPriority = [
+            "color_coracao", "color_rainbow", "color_neon", "color_gelo", "color_cosmico",
+            "color_diamante", "color_dourado", "color_rubi", "color_esmeralda",
+          ];
           for (const cid of colorPriority) {
             if (ownedColorIds.includes(cid)) {
               const item = findNameColorItem(cid);
@@ -168,7 +203,27 @@ router.get("/profiles", async (req, res) => {
         const activeEmoji = (await kv.get(`emoji_active:${uk}`)) || null;
         const activeFont = (await kv.get(`font_active:${uk}`)) || null;
 
-        computed[u.name] = { nameColor: activeColor, achievement: activeAchievement, emoji: activeEmoji, font: activeFont };
+        let activeFrame = null;
+        const chosenFrameId = await kv.get(`frame_active:${uk}`);
+        if (chosenFrameId && purchases.includes(chosenFrameId)) {
+          const frameItem = findEmojiFrameItem(chosenFrameId);
+          if (frameItem) activeFrame = { id: chosenFrameId, frameClass: frameItem.frameClass };
+        }
+
+        let activeTitle = null;
+        const chosenTitleId = await kv.get(`title_active:${uk}`);
+        if (chosenTitleId) {
+          const titleDef = TITLES.find((t) => t.id === chosenTitleId);
+          const ownedTitles = titleList(parseRedisArray(await kv.get(`title_owned:${uk}`)));
+          if (titleDef && ownedTitles.includes(chosenTitleId)) {
+            activeTitle = { id: titleDef.id, label: titleDef.label };
+          }
+        }
+
+        computed[u.name] = {
+          nameColor: activeColor, achievement: activeAchievement, emoji: activeEmoji,
+          font: activeFont, emojiFrame: activeFrame, title: activeTitle,
+        };
       }
 
       return computed;
@@ -255,6 +310,89 @@ router.post("/profile/font/set-active", requireAuth, invalidatesCache("cache:pro
       if (!owned.includes(fontId))
         return res.status(400).json({ error: "Você não possui esta fonte." });
       await kv.set(activeKey, fontId);
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Títulos ao lado do nome ──────────────────────────────────────────────────
+
+// GET /api/profile/title — títulos comprados, título ativo, próximo preço e catálogo
+router.get("/profile/title", requireAuth, async (req, res) => {
+  try {
+    const kv = getKV();
+    const uk = userKey(req.sessionName);
+    const rawOwned = parseRedisArray(await kv.get(`title_owned:${uk}`));
+    const owned = titleList(rawOwned);
+    const active = (await kv.get(`title_active:${uk}`)) || null;
+    res.json({ owned, active, nextPrice: titlePriceForCount(owned.length), catalog: TITLES });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/profile/title/buy — compra um título do catálogo
+router.post("/profile/title/buy", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
+  try {
+    const { titleId } = req.body;
+    if (!titleId || !TITLE_IDS.has(titleId))
+      return res.status(400).json({ error: "Título inválido." });
+
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const uk = userKey(user.name);
+    const ownedKey = `title_owned:${uk}`;
+    // rawTitleOwned vem do mesmo calcBalance que calculou o saldo —
+    // evita TOCTOU de ler title_owned duas vezes com operações async no meio.
+    const { earnedCoins, spentCoins, titleOwned, rawTitleOwned } = await calcBalance(kv, user, users);
+
+    if (titleOwned.includes(titleId))
+      return res.status(400).json({ error: "Você já possui este título." });
+
+    const balance = earnedCoins - spentCoins;
+    const price = titlePriceForCount(titleOwned.length);
+    if (balance < price)
+      return res.status(400).json({ error: "LuizCoins™ insuficientes." });
+
+    const rawOwned = [...rawTitleOwned, { titleId, pricePaid: price }];
+    await kv.set(ownedKey, JSON.stringify(rawOwned));
+    if (rawOwned.length === 1) {
+      await kv.set(`title_active:${uk}`, titleId);
+    }
+
+    res.json({
+      success: true,
+      owned: titleList(rawOwned),
+      newBalance: balance - price,
+      pricePaid: price,
+      nextPrice: titlePriceForCount(rawOwned.length),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/profile/title/set-active — define qual título possuído é exibido no ranking
+router.post("/profile/title/set-active", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
+  try {
+    const { titleId } = req.body;
+    const kv = getKV();
+    const uk = userKey(req.sessionName);
+    const activeKey = `title_active:${uk}`;
+
+    if (!titleId) {
+      await kv.del(activeKey);
+    } else {
+      const owned = titleList(parseRedisArray(await kv.get(`title_owned:${uk}`)));
+      if (!owned.includes(titleId))
+        return res.status(400).json({ error: "Você não possui este título." });
+      await kv.set(activeKey, titleId);
     }
 
     res.json({ success: true });

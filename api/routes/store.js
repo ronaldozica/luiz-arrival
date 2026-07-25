@@ -44,10 +44,17 @@ router.get("/store", requireAuth, async (req, res) => {
       if (item.type === "farmseed") {
         return { ...base, icon: item.icon, seedKey: item.seedKey, desc: item.desc };
       }
+      if (item.type === "emojiframe") {
+        return { ...base, frameClass: item.frameClass };
+      }
+      if (item.type === "cursor") {
+        return { ...base, emoji: item.emoji };
+      }
       return { ...base, src: isUnlocked ? item.src : null, ...(item.wpKey ? { wpKey: item.wpKey } : {}) };
     });
 
     const activeColorId = (await kv.get(`color_active:${userKey(user.name)}`)) || null;
+    const activeFrameId = (await kv.get(`frame_active:${userKey(user.name)}`)) || null;
 
     // Cores exclusivas (ex.: "Coração") não entram em STORE_ITEMS — não são
     // compráveis e não devem aparecer na vitrine da loja. Mas se o jogador
@@ -65,6 +72,7 @@ router.get("/store", requireAuth, async (req, res) => {
       items: responseItems,
       exclusiveColors,
       activeColorId,
+      activeFrameId,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

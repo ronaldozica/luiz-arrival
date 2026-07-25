@@ -1093,6 +1093,9 @@
         <button class="rank-tab" data-profile-tab="achievement" onclick="setProfileTab('achievement')">🏅 Conquista</button>
         <button class="rank-tab" data-profile-tab="emoji" onclick="setProfileTab('emoji')">🙂 Emoji</button>
         <button class="rank-tab" data-profile-tab="font" onclick="setProfileTab('font')">🔤 Fonte</button>
+        <button class="rank-tab" data-profile-tab="frame" onclick="setProfileTab('frame')">🖼️ Moldura</button>
+        <button class="rank-tab" data-profile-tab="title" onclick="setProfileTab('title')">🏷️ Título</button>
+        <button class="rank-tab" data-profile-tab="cursor" onclick="setProfileTab('cursor')">🖱️ Cursor</button>
         <button class="rank-tab" data-profile-tab="wallpaper" onclick="setProfileTab('wallpaper')">🖼️ Papel de Parede</button>
       </div>
 
@@ -1129,6 +1132,30 @@
         <div class="info-box">O primeiro custa 25 LuizCoins e cada nova fonte custa 25 LuizCoins a mais que a anterior.</div>
         <div id="profile-font-result" style="margin-top:8px"></div>
         <div class="win95-msg" id="profile-font-msg"></div>
+      </div>
+
+      <div id="profile-tab-frame" style="display:none">
+        <p><strong>Moldura do emoji exibido ao lado do seu nome</strong></p>
+        <div class="info-box">Escolha entre as molduras que você já comprou na Loja (seção "🖼️ Molduras de emoji").</div>
+        <div id="profile-frame-result" style="margin-top:8px"></div>
+        <div class="win95-msg" id="profile-frame-msg"></div>
+      </div>
+
+      <div id="profile-tab-title" style="display:none">
+        <p><strong>Título exibido ao lado do seu nome</strong></p>
+        <div class="info-box">O primeiro custa 100 LuizCoins e cada novo título custa 100 LuizCoins a mais que o anterior.</div>
+        <div id="profile-title-result" style="margin-top:8px"></div>
+        <div class="win95-msg" id="profile-title-msg"></div>
+      </div>
+
+      <div id="profile-tab-cursor" style="display:none">
+        <p><strong>Cursor do mouse</strong></p>
+        <div class="info-box">Só você vê seu cursor — compre na Loja (seção "🖱️ Cursores") e ative aqui.</div>
+        <div class="btn-row" style="flex-wrap:wrap">
+          <button class="win95-action-btn" data-cursor="" onclick="applyCursor('')">Padrão</button>
+          <div id="profile-cursors-purchased" style="display:contents"></div>
+        </div>
+        <div class="win95-msg" id="profile-cursor-msg"></div>
       </div>
 
       <div id="profile-tab-wallpaper" style="display:none">

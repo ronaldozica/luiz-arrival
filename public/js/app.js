@@ -160,6 +160,19 @@ async function loadProfiles() {
   } catch {}
 }
 
+// Compartilhado por renderPlayerName/renderPlayerCell — a moldura do emoji
+// (comprada na Loja) e o badge de título (comprado no Perfil) têm a mesma
+// regra de exibição nos dois lugares, então ficam num helper só.
+function buildEmojiPrefixHTML(profile) {
+  if (!showDecorations || !profile.emoji) return "";
+  const frameClass = profile.emojiFrame ? profile.emojiFrame.frameClass : "";
+  return `<span class="profile-emoji-badge ${frameClass}">${profile.emoji}</span> `;
+}
+function buildTitleBadgeHTML(profile) {
+  if (!showDecorations || !profile.title) return "";
+  return ` <span class="name-title-badge">${escHtml(profile.title.label)}</span>`;
+}
+
 function renderPlayerName(name, includeAchievement) {
   const profile = userProfiles[name] || {};
   let inlineStyle = "";
@@ -180,8 +193,9 @@ function renderPlayerName(name, includeAchievement) {
     showDecorations && includeAchievement && profile.achievement
       ? `<span class="achievement-badge" title="${escHtml(profile.achievement.title)}">${profile.achievement.icon}</span>`
       : "";
-  const emojiPrefix = showDecorations && profile.emoji ? `<span class="profile-emoji-badge">${profile.emoji}</span> ` : "";
-  return `${emojiPrefix}<span class="${colorClass}" ${style}>${escHtml(name)}</span>${achievementBadge}`;
+  const emojiPrefix = buildEmojiPrefixHTML(profile);
+  const titleBadge = buildTitleBadgeHTML(profile);
+  return `${emojiPrefix}<span class="${colorClass}" ${style}>${escHtml(name)}</span>${achievementBadge}${titleBadge}`;
 }
 
 function getFontFamily(fontId) {
@@ -973,6 +987,68 @@ async function loadProfileWallpaper() {
   } catch { /* silent */ }
 }
 
+// ─── Cursor skin ──────────────────────────────────────────────────────────────
+// Preferência puramente local: o servidor só valida a posse na compra
+// (/store/buy); qual cursor está ativo nunca é enviado nem lido por outros
+// jogadores, então guardamos id+emoji juntos no localStorage.
+const CURSOR_KEY = "luizos_cursor";
+
+function emojiCursorUrl(emoji) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><text x="16" y="24" font-size="26" text-anchor="middle">${emoji}</text></svg>`;
+  return `url('data:image/svg+xml;utf8,${encodeURIComponent(svg)}') 16 16, auto`;
+}
+
+function applyCursor(id, emoji) {
+  if (!id) {
+    document.body.style.cursor = "";
+    localStorage.removeItem(CURSOR_KEY);
+  } else {
+    document.body.style.cursor = emojiCursorUrl(emoji);
+    localStorage.setItem(CURSOR_KEY, JSON.stringify({ id, emoji }));
+  }
+  document.querySelectorAll("#profile-tab-cursor [data-cursor]").forEach((el) => {
+    el.classList.toggle("active", el.dataset.cursor === id);
+  });
+}
+
+function loadCursorPref() {
+  try {
+    const raw = localStorage.getItem(CURSOR_KEY);
+    if (!raw) return;
+    const { emoji } = JSON.parse(raw);
+    if (emoji) document.body.style.cursor = emojiCursorUrl(emoji);
+  } catch { /* silent */ }
+}
+
+function updatePurchasedCursors(purchases, cursorItems) {
+  const owned = cursorItems.filter((i) => purchases.includes(i.id));
+  const container = document.getElementById("profile-cursors-purchased");
+  if (container) {
+    container.innerHTML = owned
+      .map((i) => `<button class="win95-action-btn" data-cursor="${i.id}" onclick="applyCursor('${i.id}', '${i.emoji}')">${i.emoji} ${escHtml(i.title)}</button>`)
+      .join("");
+  }
+  let activeId = "";
+  try {
+    const raw = localStorage.getItem(CURSOR_KEY);
+    if (raw) activeId = JSON.parse(raw).id || "";
+  } catch { /* silent */ }
+  document.querySelectorAll("#profile-tab-cursor [data-cursor]").forEach((el) => {
+    el.classList.toggle("active", el.dataset.cursor === activeId);
+  });
+}
+
+async function loadProfileCursor() {
+  if (!currentUser) return;
+  try {
+    const res = await fetch(`${API}/store`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) return;
+    const cursorItems = data.items.filter((i) => i.type === "cursor");
+    updatePurchasedCursors(data.purchases, cursorItems);
+  } catch { /* silent */ }
+}
+
 // ─── Start Menu ───────────────────────────────────────────────────────────────
 function toggleStartMenu() {
   const m = document.getElementById("start-menu");
@@ -1714,8 +1790,9 @@ function renderPlayerCell(r) {
     showDecorations && profile.achievement
       ? `<span class="achievement-badge" title="${escHtml(profile.achievement.title)}">${profile.achievement.icon}</span>`
       : "";
-  const emojiPrefix = showDecorations && profile.emoji ? `<span class="profile-emoji-badge">${profile.emoji}</span> ` : "";
-  return `${emojiPrefix}<span class="${nameColorClass}" ${nameStyle}>${escHtml(r.name)}</span>${hcmBadge}${achBadge}`;
+  const emojiPrefix = buildEmojiPrefixHTML(profile);
+  const titleBadge = buildTitleBadgeHTML(profile);
+  return `${emojiPrefix}<span class="${nameColorClass}" ${nameStyle}>${escHtml(r.name)}</span>${hcmBadge}${achBadge}${titleBadge}`;
 }
 
 // Renderiza uma lista de jogadores (já ordenada) numa tabela win95.
@@ -1835,6 +1912,10 @@ function getColorClass(colorId) {
     case "color_agua":     return "name-water-wave";
     case "color_terra":    return "name-earth-pulse";
     case "color_ar":       return "name-air-shimmer";
+    case "color_rainbow":  return "name-rainbow-slide";
+    case "color_neon":     return "name-neon-glow";
+    case "color_gelo":     return "name-frost-shimmer";
+    case "color_cosmico":  return "name-cosmic-drift";
     default: return "";
   }
 }
@@ -2814,6 +2895,7 @@ loadUsers().then(() => {
 updateTaskbar();
 loadIconPositions();
 loadWallpaper();
+loadCursorPref();
 initAppsView();
 
 // ─── Loja do Luiz ─────────────────────────────────────────────────────────────
@@ -2851,6 +2933,8 @@ async function loadStore() {
     const colorItems = data.items.filter((i) => i.type === "namecolor");
     const wpItems    = data.items.filter((i) => i.type === "wallpaper");
     const seedItems  = data.items.filter((i) => i.type === "farmseed");
+    const frameItems  = data.items.filter((i) => i.type === "emojiframe");
+    const cursorItems = data.items.filter((i) => i.type === "cursor");
 
     let html = "";
 
@@ -2945,6 +3029,46 @@ async function loadStore() {
       html += `</div>`;
     }
 
+    if (frameItems.length > 0) {
+      html += `<div class="section-label" style="margin:16px 0 8px">🖼️ Molduras de emoji</div>`;
+      html += `<div class="store-grid">`;
+      frameItems.forEach((item) => {
+        const isUnlocked = data.purchases.includes(item.id);
+        html += `
+          <div class="${isUnlocked ? "store-item unlocked" : "store-item locked"}">
+            <div class="store-item-title">${escHtml(item.title)}</div>
+            <div style="font-size:32px;text-align:center;padding:10px 0"><span class="profile-emoji-badge ${item.frameClass}">😀</span></div>
+            ${!isUnlocked
+              ? `<div class="store-item-price"><img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}</div>
+                 <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>`
+              : `<div class="store-item-price" style="color:#006400">✅ Desbloqueado</div>
+                 <div style="font-size:9px;color:#444;text-align:center">Ativa no Perfil → Moldura</div>`
+            }
+          </div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (cursorItems.length > 0) {
+      html += `<div class="section-label" style="margin:16px 0 8px">🖱️ Cursores</div>`;
+      html += `<div class="store-grid">`;
+      cursorItems.forEach((item) => {
+        const isUnlocked = data.purchases.includes(item.id);
+        html += `
+          <div class="${isUnlocked ? "store-item unlocked" : "store-item locked"}">
+            <div class="store-item-title">${escHtml(item.title)}</div>
+            <div style="font-size:32px;text-align:center;padding:10px 0">${item.emoji}</div>
+            ${!isUnlocked
+              ? `<div class="store-item-price"><img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}</div>
+                 <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>`
+              : `<div class="store-item-price" style="color:#006400">✅ Desbloqueado</div>
+                 <div style="font-size:9px;color:#444;text-align:center">Ativa no Perfil → Cursor</div>`
+            }
+          </div>`;
+      });
+      html += `</div>`;
+    }
+
     grid.innerHTML = html;
   } catch (e) {
     grid.innerHTML = `<div class="win95-msg err">Erro ao carregar loja: ${e.message}</div>`;
@@ -2965,6 +3089,10 @@ function getStoreColorEffect(colorId, color) {
     case "color_agua":      return `background: linear-gradient(135deg, #001f3f, #002d5c); border: 1px solid ${color}; box-shadow: 0 0 16px #0288d155; border-radius:4px; padding:12px; text-align:center;`;
     case "color_terra":     return `background: linear-gradient(135deg, #1a1008, #2a1a0d); border: 1px solid ${color}; box-shadow: 0 0 16px #6d4c4155; border-radius:4px; padding:12px; text-align:center;`;
     case "color_ar":        return `background: linear-gradient(135deg, #001f26, #00303d); border: 1px solid ${color}; box-shadow: 0 0 16px #80deea55; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_gelo":      return `background: linear-gradient(135deg, #0a1f2e, #0d2a3d); border: 1px solid ${color}; box-shadow: 0 0 16px #b3e5fc66; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_cosmico":   return `background: linear-gradient(135deg, #1a0d2e, #0d1a2e); border: 1px solid ${color}; box-shadow: 0 0 16px #8e24aa66; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_rainbow":   return `background: linear-gradient(135deg, #1a0a0a, #0a1a0a); border: 1px solid ${color}; box-shadow: 0 0 16px #ff525266; border-radius:4px; padding:12px; text-align:center;`;
+    case "color_neon":      return `background: linear-gradient(135deg, #0a0a0a, #14001a); border: 1px solid ${color}; box-shadow: 0 0 16px #0fffc166; border-radius:4px; padding:12px; text-align:center;`;
     default: return `padding:12px; text-align:center;`;
   }
 }
@@ -3176,6 +3304,8 @@ let profileColorData = null;
 let profileAchievementData = null;
 let profileEmojiData = null;
 let profileFontData = null;
+let profileFrameData = null;
+let profileTitleData = null;
 
 async function openProfileWindow() {
   if (!currentUser) {
@@ -3192,7 +3322,7 @@ function setProfileTab(tab) {
   document.querySelectorAll("#win-profile .rank-tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.profileTab === tab);
   });
-  ["color", "achievement", "emoji", "font", "wallpaper"].forEach((t) => {
+  ["color", "achievement", "emoji", "font", "frame", "title", "cursor", "wallpaper"].forEach((t) => {
     document.getElementById(`profile-tab-${t}`).style.display = t === tab ? "block" : "none";
   });
   loadProfileTabData(tab);
@@ -3203,6 +3333,9 @@ function loadProfileTabData(tab) {
   else if (tab === "achievement") loadProfileAchievement();
   else if (tab === "emoji") loadProfileEmoji();
   else if (tab === "font") loadProfileFont();
+  else if (tab === "frame") loadProfileFrame();
+  else if (tab === "title") loadProfileTitle();
+  else if (tab === "cursor") loadProfileCursor();
   else if (tab === "wallpaper") loadProfileWallpaper();
 }
 
@@ -3261,6 +3394,10 @@ function getColorEffectPreview(colorId) {
     case "color_agua":      return "text-shadow:0 0 4px #0288d1; font-weight:bold;";
     case "color_terra":     return "text-shadow:0 0 4px #6d4c41; font-weight:bold;";
     case "color_ar":        return "text-shadow:0 0 4px #80deea; font-weight:bold;";
+    case "color_gelo":      return "font-weight:bold;";
+    case "color_cosmico":   return "font-weight:bold;";
+    case "color_rainbow":   return "font-weight:bold;";
+    case "color_neon":      return "font-weight:bold;";
     default: return "";
   }
 }
@@ -3279,6 +3416,68 @@ async function selectProfileColor(colorId) {
       profileColorData.activeColorId = colorId;
       renderProfileColor();
       showMsg(msg, "✅ Cor atualizada.", "ok");
+      invalidateProfileCache();
+      loadProfiles();
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+async function loadProfileFrame() {
+  const result = document.getElementById("profile-frame-result");
+  const msg = document.getElementById("profile-frame-msg");
+  result.innerHTML = '<div class="loading">⏳ Carregando...</div>';
+  try {
+    const res = await fetch(`${API}/store`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    profileFrameData = data;
+    renderProfileFrame();
+  } catch (e) {
+    showMsg(msg, `Erro: ${e.message}`, "err");
+  }
+}
+
+function renderProfileFrame() {
+  const result = document.getElementById("profile-frame-result");
+  if (!profileFrameData) return;
+  const ownedFrames = profileFrameData.items.filter(
+    (i) => i.type === "emojiframe" && profileFrameData.purchases.includes(i.id),
+  );
+  if (ownedFrames.length === 0) {
+    result.innerHTML = '<div class="no-data">Você ainda não comprou nenhuma moldura. Visite a Loja!</div>';
+    return;
+  }
+  const activeFrameId = profileFrameData.activeFrameId;
+  let html = `<div class="btn-row" style="flex-wrap:wrap">`;
+  html += `<button class="win95-action-btn${!activeFrameId ? " active" : ""}" onclick="selectProfileFrame(null)">Nenhuma</button>`;
+  ownedFrames.forEach((f) => {
+    html += `<button class="win95-action-btn${activeFrameId === f.id ? " active" : ""}" onclick="selectProfileFrame('${f.id}')">
+      <span class="profile-emoji-badge ${f.frameClass}">😀</span> ${escHtml(f.title)}</button>`;
+  });
+  html += `</div>`;
+  result.innerHTML = html;
+}
+
+async function selectProfileFrame(frameId) {
+  const msg = document.getElementById("profile-frame-msg");
+  showLoading("Atualizando moldura...");
+  try {
+    const res = await fetch(`${API}/profile/frame`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ frameId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      profileFrameData.activeFrameId = frameId;
+      renderProfileFrame();
+      showMsg(msg, "✅ Moldura atualizada.", "ok");
       invalidateProfileCache();
       loadProfiles();
     } else {
@@ -3528,6 +3727,109 @@ async function buyProfileFont(fontId) {
   }
 }
 
+async function loadProfileTitle() {
+  const result = document.getElementById("profile-title-result");
+  const msg = document.getElementById("profile-title-msg");
+  result.innerHTML = '<div class="loading">⏳ Carregando...</div>';
+  try {
+    const res = await fetch(`${API}/profile/title`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    profileTitleData = data;
+    renderProfileTitle();
+  } catch (e) {
+    showMsg(msg, `Erro: ${e.message}`, "err");
+  }
+}
+
+function renderProfileTitle() {
+  const result = document.getElementById("profile-title-result");
+  if (!profileTitleData) return;
+  const { owned, active, nextPrice, catalog } = profileTitleData;
+
+  let html = "";
+  if (owned.length > 0) {
+    html += `<div class="info-box" style="margin-bottom:8px">Títulos comprados: ${owned.length} — próximo custa <strong>${nextPrice} LuizCoins</strong></div>`;
+  }
+
+  html += `<div style="display:flex;flex-direction:column;gap:6px">`;
+
+  const nenhum = !active;
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border:1px solid #c0c0c0;background:${nenhum ? "#d4e8d4" : "#fff"}">
+    <span style="font-size:13px">Nenhum</span>
+    <button class="win95-action-btn" style="font-size:11px" onclick="selectProfileTitle(null)">${nenhum ? "✓ Ativo" : "Usar"}</button>
+  </div>`;
+
+  catalog.forEach((t) => {
+    const isOwned = owned.includes(t.id);
+    const isActive = active === t.id;
+    html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border:1px solid #c0c0c0;background:${isActive ? "#d4e8d4" : "#fff"}">
+      <span class="name-title-badge" style="margin-left:0">${escHtml(t.label)}</span>
+      ${isOwned
+        ? `<button class="win95-action-btn" style="font-size:11px" onclick="selectProfileTitle('${t.id}')">${isActive ? "✓ Ativo" : "Usar"}</button>`
+        : `<button class="win95-action-btn" style="font-size:11px" onclick="buyProfileTitle('${t.id}')">🛒 ${nextPrice} LC</button>`
+      }
+    </div>`;
+  });
+
+  html += `</div>`;
+  result.innerHTML = html;
+}
+
+async function selectProfileTitle(titleId) {
+  const msg = document.getElementById("profile-title-msg");
+  showLoading("Atualizando título...");
+  try {
+    const res = await fetch(`${API}/profile/title/set-active`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ titleId: titleId || null }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      profileTitleData.active = titleId || null;
+      renderProfileTitle();
+      showMsg(msg, "✅ Título atualizado.", "ok");
+      invalidateProfileCache();
+      loadProfiles();
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
+async function buyProfileTitle(titleId) {
+  const msg = document.getElementById("profile-title-msg");
+  showLoading("Comprando título...");
+  try {
+    const res = await fetch(`${API}/profile/title/buy`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ titleId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      profileTitleData.owned = data.owned;
+      profileTitleData.nextPrice = data.nextPrice;
+      profileTitleData.active = profileTitleData.active || titleId;
+      renderProfileTitle();
+      showMsg(msg, `✅ Título comprado por ${data.pricePaid} LuizCoins!`, "ok");
+      invalidateProfileCache();
+      loadProfiles();
+    } else {
+      showMsg(msg, `❌ ${data.error}`, "err");
+    }
+  } catch {
+    showMsg(msg, "Erro de conexão.", "err");
+  } finally {
+    hideLoading();
+  }
+}
+
 // ─── Seletor de emoji ─────────────────────────────────────────────────────────
 const EMOJI_CATEGORIES = {
   "😀 Carinhas": [
@@ -3696,9 +3998,21 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.19.0",
+    date: "25/07/2026",
+    isNew: true,
+    title: "Loja: cores de prestígio, molduras, títulos e cursores 🛒",
+    items: [
+      "🌈 4 nomes de prestígio novos: Arco-Íris e Neon (1000 LC) com efeito animado, Gelo e Cósmico (750 LC).",
+      "🖼️ Molduras pro emoji do seu perfil: Dourada (150), Neon (250) e de Fogo (350) — ativa no Perfil → Moldura.",
+      "🏷️ Títulos customizados ao lado do nome (lista curada, tipo \"Lenda\" e \"High Roller\") — primeiro por 100 LC, cada novo 100 a mais.",
+      "🖱️ Skins de cursor do mouse (Mira, Moeda, Coroa) — só você vê o seu, ativa no Perfil → Cursor.",
+    ],
+  },
+  {
     version: "2.18.0",
     date: "24/07/2026",
-    isNew: true,
+    isNew: false,
     title: "Sudoku Diário no tamanho do LinkedIn + aviso de pendente 🔴",
     items: [
       "🔢 Sudoku Diário agora é 6x6 (caixas 2x3), igual ao Mini Sudoku diário do LinkedIn — mais rápido de jogar.",

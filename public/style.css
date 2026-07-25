@@ -2103,6 +2103,51 @@ body.cursor-wait * {
   vertical-align: middle;
 }
 
+/* ─── Molduras de emoji (compráveis na Loja) ──────────────── */
+.emoji-frame-gold, .emoji-frame-neon, .emoji-frame-fire {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  padding: 1px;
+  line-height: 1;
+}
+.emoji-frame-gold {
+  border: 2px solid #ffd600;
+  box-shadow: 0 0 4px #ffd600aa;
+}
+.emoji-frame-neon {
+  border: 2px solid #0fffc1;
+  animation: emoji-frame-neon-pulse 1.4s ease-in-out infinite alternate;
+}
+@keyframes emoji-frame-neon-pulse {
+  from { box-shadow: 0 0 3px #0fffc1, 0 0 6px #ff00de; }
+  to   { box-shadow: 0 0 7px #0fffc1, 0 0 14px #ff00de; }
+}
+.emoji-frame-fire {
+  border: 2px solid #ff6d00;
+  animation: emoji-frame-fire-pulse 0.9s ease-in-out infinite;
+}
+@keyframes emoji-frame-fire-pulse {
+  0%, 100% { box-shadow: 0 0 4px #ff6d00, 0 0 8px #bf360c; }
+  50%       { box-shadow: 0 0 8px #ffca28, 0 0 16px #ff4500; }
+}
+
+/* ─── Badge de título (compráveis no Perfil) ──────────────── */
+.name-title-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: bold;
+  color: #fff;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+  box-shadow: var(--shadow-out);
+  white-space: nowrap;
+}
+
 /* Rank toggle button */
 .rank-controls {
   display: flex;
@@ -2416,6 +2461,79 @@ body.cursor-wait * {
   50% {
     filter: drop-shadow(0 0 8px #ff80ab) drop-shadow(0 0 18px #f50057);
   }
+}
+
+/* ─── RAINBOW NAME (espectro completo deslizando) — 1000 LC ─── */
+.name-rainbow-slide {
+  font-weight: bold;
+  background: linear-gradient(
+    90deg,
+    #ff0000, #ff9900, #ffee00, #33ff00, #00ffee, #0066ff, #cc00ff, #ff0000
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: rainbow-slide 4s linear infinite;
+}
+
+@keyframes rainbow-slide {
+  to { background-position: 300% 0; }
+}
+
+/* ─── NEON NAME (brilho ciano/magenta pulsante) — 1000 LC ─── */
+.name-neon-glow {
+  font-weight: bold;
+  color: #0fffc1;
+  animation: neon-glow 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes neon-glow {
+  from {
+    text-shadow: 0 0 4px #0fffc1, 0 0 10px #0fffc1, 0 0 20px #ff00de, 0 0 34px #ff00de;
+  }
+  to {
+    text-shadow: 0 0 8px #0fffc1, 0 0 18px #0fffc1, 0 0 34px #ff00de, 0 0 50px #ff00de;
+  }
+}
+
+/* ─── ICE NAME (brilho azul-gelo/branco deslizando) — 750 LC ─── */
+.name-frost-shimmer {
+  font-weight: bold;
+  background: linear-gradient(
+    100deg,
+    #7fd8ff 10%, #ffffff 40%, #b3e5fc 55%, #ffffff 70%, #7fd8ff 90%
+  );
+  background-size: 250% 100%;
+  background-position: -120% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 8px rgba(179, 229, 252, 0.6);
+  animation: frost-shimmer 2.6s linear infinite;
+}
+
+@keyframes frost-shimmer {
+  to { background-position: 220% 0; }
+}
+
+/* ─── COSMIC NAME (nebulosa roxo/rosa/azul à deriva) — 750 LC ─── */
+.name-cosmic-drift {
+  font-weight: bold;
+  background: linear-gradient(120deg, #6a11cb, #2575fc, #ff6ec4, #6a11cb);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: cosmic-drift 6s ease-in-out infinite;
+}
+
+@keyframes cosmic-drift {
+  0%, 100% { background-position: 0% 0; }
+  50%      { background-position: 100% 0; }
 }
 
 /* ─── ACHIEVEMENTS WINDOW ────────────────── */
