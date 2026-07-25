@@ -201,6 +201,7 @@ let slBusy = false;
 let slHistory = [];
 let slLastResult = null;
 let slReelBuilt = false;
+let slSpinAudio = null;
 
 function openSlotWindow() {
   openWindow("win-slot");
@@ -249,6 +250,7 @@ async function spinSlot() {
   document.querySelectorAll(".sl-reel").forEach((r) => r.classList.remove("sl-win"));
   document.getElementById("sl-cabinet")?.classList.remove("sl-jackpot");
   renderSlot();
+  slSpinAudio = playAudioSfx("/assets/sounds/slotmachine.mp3", { volume: 0.5 });
 
   try {
     const res = await fetch("/api/slot/spin", {
@@ -258,6 +260,7 @@ async function spinSlot() {
     });
     const data = await res.json();
     if (!res.ok) {
+      fadeOutAndStop(slSpinAudio);
       slBusy = false;
       slState = "idle";
       renderSlot();
@@ -269,6 +272,7 @@ async function spinSlot() {
     const totalDuration = Math.max(...SL_REEL_DURATIONS.map((d, i) => d + SL_REEL_DELAYS[i]));
 
     setTimeout(() => {
+      fadeOutAndStop(slSpinAudio);
       slBalance = data.balance ?? slBalance;
       slHistory = data.history || slHistory;
       slLastResult = {
@@ -294,6 +298,7 @@ async function spinSlot() {
       renderSlot();
     }, totalDuration + 150);
   } catch (e) {
+    fadeOutAndStop(slSpinAudio);
     slBusy = false;
     slState = "idle";
     renderSlot();

@@ -300,6 +300,43 @@ function playClick(variant) {
   } catch { /* AudioContext indisponível — falha silenciosa */ }
 }
 
+// ─── Efeitos sonoros (arquivo real, ex.: roleta/slot) ─────────────────────────
+// Diferente do playClick acima (sintetizado via Web Audio), estes são MP3
+// de verdade tocados via <audio> — usado pelos jogos de cassino, onde o som
+// precisa ter textura real (giro da roleta, alavanca do caça-níquel).
+function playAudioSfx(src, { volume = 0.5, loop = false } = {}) {
+  try {
+    const audio = new Audio(src);
+    audio.volume = volume;
+    audio.loop = loop;
+    // Navegador pode bloquear autoplay sem interação prévia do usuário —
+    // nesse ponto sempre há um clique recente (o jogador acabou de apostar),
+    // mas por segurança a falha é silenciosa.
+    audio.play().catch(() => {});
+    return audio;
+  } catch {
+    return null;
+  }
+}
+
+// Reduz o volume gradualmente até parar — evita um corte seco quando o som
+// ainda está tocando e a rodada/giro já terminou visualmente.
+function fadeOutAndStop(audio, ms = 300) {
+  if (!audio) return;
+  const steps = 10;
+  const stepMs = ms / steps;
+  const startVolume = audio.volume;
+  let i = 0;
+  const interval = setInterval(() => {
+    i++;
+    audio.volume = Math.max(0, startVolume * (1 - i / steps));
+    if (i >= steps) {
+      clearInterval(interval);
+      audio.pause();
+    }
+  }, stepMs);
+}
+
 // ─── Clock ────────────────────────────────────────────────────────────────────
 function updateClock() {
   const now = new Date();
@@ -4020,9 +4057,20 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.20.0",
+    version: "2.21.0",
     date: "25/07/2026",
     isNew: true,
+    title: "Som na Roleta/Slot, Sudoku Diário mais claro e Loja com cara nova 🔊🛒",
+    items: [
+      "🔊 Roleta e Luiz Slot ganharam som de verdade — a rodinha girando e a alavanca do caça-níquel.",
+      "🔢 Sudoku Diário: bordas dos quadrados 2x3 bem mais grossas e escuras — ficou fácil ver onde um quadrado termina e o outro começa.",
+      "🛒 Loja com visual novo: cartões com sombra e cantos arredondados, selo de \"desbloqueado\" e cabeçalho de saldo com mais destaque.",
+    ],
+  },
+  {
+    version: "2.20.0",
+    date: "25/07/2026",
+    isNew: false,
     title: "Novo jogo de cassino: Luiz Slot 🎰",
     items: [
       "🎰 Caça-níquel de 3 rolos chegou! Puxe a alavanca, escolha a ficha (5/15/30 LC) e alinhe 3 símbolos iguais na linha de pagamento.",

@@ -152,6 +152,7 @@ let rlBusy = false;
 let rlHistory = [];
 let rlLastResult = null;
 let rlCurrentRotation = 0;
+let rlSpinAudio = null;
 
 function openRouletteWindow() {
   openWindow("win-roulette");
@@ -232,9 +233,11 @@ async function spinRoulette() {
       return;
     }
 
+    rlSpinAudio = playAudioSfx("/assets/sounds/spinopel-spinning-roulette-wheel-429832.mp3", { volume: 0.45 });
     spinWheelTo(data.winningNumber, RL_SPIN_DURATION_MS);
 
     setTimeout(() => {
+      fadeOutAndStop(rlSpinAudio);
       rlBalance = data.balance ?? rlBalance;
       rlHistory = data.history || rlHistory;
       rlLastResult = {
@@ -252,6 +255,7 @@ async function spinRoulette() {
       renderRoulette();
     }, RL_SPIN_DURATION_MS + 150);
   } catch (e) {
+    fadeOutAndStop(rlSpinAudio);
     rlBusy = false;
     rlState = "idle";
     renderRoulette();
