@@ -38,18 +38,16 @@ describe("calcBalance — extrato da carteira (campos individuais via MGET)", ()
       "roulettelost:ronaldo": 25,
       "slotwon:ronaldo": 60,
       "slotlost:ronaldo": 7,
-      "title_owned:ronaldo": [{ titleId: "title_lenda", pricePaid: 100 }],
     });
     const users = [{ name: "Ronaldo", isHCM: false }];
 
     const result = await calcBalance(kv, users[0], users);
 
     assert.equal(result.earnedCoins, 40 + 15 + 5 + 60 + 60); // 180
-    assert.equal(result.spentCoins, 60 + 150 + 25 + 30 + 15 + 20 + 25 + 7 + 100); // 432
+    assert.equal(result.spentCoins, 60 + 150 + 25 + 30 + 15 + 20 + 25 + 7); // 332
     assert.deepEqual(result.purchases, ["color_rubi", "palinha"]);
     assert.deepEqual(result.emojiOwned, ["🔥", "🪙"]);
     assert.deepEqual(result.fontOwned, ["font_impact"]);
-    assert.deepEqual(result.titleOwned, ["title_lenda"]);
     assert.equal(result.gameCoins, 40);
   });
 
@@ -71,7 +69,7 @@ describe("calcBalance — extrato da carteira (campos individuais via MGET)", ()
     await calcBalance(kv, users[0], users);
 
     assert.equal(kv.mgetCalls.length, 1, "deveria ter feito exatamente 1 chamada de mget (sem dias úteis no índice)");
-    assert.equal(kv.mgetCalls[0].length, 14, "os 14 campos da carteira num único mget");
+    assert.equal(kv.mgetCalls[0].length, 13, "os 13 campos da carteira num único mget");
   });
 });
 

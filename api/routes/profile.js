@@ -8,9 +8,8 @@ const { getUsers } = require("../lib/users");
 const { userKey, parseRedisArray } = require("../lib/utils");
 const {
   emojiPriceForCount, EMOJI_REGEX, getCachedBalance, purchaseIds, emojiList,
-  getExclusiveColorIds, findNameColorItem, findEmojiFrameItem,
+  getExclusiveColorIds, findNameColorItem, findEmojiFrameItem, findTitleItem, findTeamIconItem,
   FONTS, FONT_IDS, fontPriceForCount, fontList,
-  TITLES, TITLE_IDS, titlePriceForCount, titleList,
 } = require("../lib/store-items");
 const { ACHIEVEMENT_DEFS } = require("../lib/achievement-defs");
 
@@ -69,6 +68,33 @@ router.post("/profile/frame", requireAuth, invalidatesCache("cache:profiles"), a
   }
 });
 
+// POST /api/profile/team — define qual emblema de time (já comprado) é exibido no ranking
+router.post("/profile/team", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
+  try {
+    const { teamId } = req.body;
+    const kv = getKV();
+    const users = await getUsers(kv);
+    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
+    if (!user) return res.status(401).json({ error: "Acesso negado." });
+
+    const activeKey = `team_active:${userKey(user.name)}`;
+    if (!teamId) {
+      await kv.del(activeKey);
+    } else {
+      const purchasesKey = `purchases:${userKey(user.name)}`;
+      const purchases = purchaseIds(parseRedisArray(await kv.get(purchasesKey)));
+      const item = findTeamIconItem(teamId);
+      if (!item || !purchases.includes(teamId))
+        return res.status(400).json({ error: "Você não possui esse emblema." });
+      await kv.set(activeKey, teamId);
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Emoji de ranking ────────────────────────────────────────────────────────
 // GET /api/profile/emoji — emojis comprados, emoji ativo, preço e limite
 router.get("/profile/emoji", requireAuth, async (req, res) => {
@@ -78,7 +104,7 @@ router.get("/profile/emoji", requireAuth, async (req, res) => {
     const rawOwned = parseRedisArray(await kv.get(`emoji_owned:${uk}`));
     const owned = emojiList(rawOwned);
     const active = (await kv.get(`emoji_active:${uk}`)) || null;
-    res.json({ owned, active, nextPrice: emojiPriceForCount(owned.length) });
+    res.json({ owned, active, nextPrice: emojiPriceForCount() });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -105,7 +131,7 @@ router.post("/profile/emoji/buy", requireAuth, invalidatesCache("cache:profiles"
       return res.status(400).json({ error: "Você já possui este emoji." });
 
     const balance = earnedCoins - spentCoins;
-    const price = emojiPriceForCount(emojiOwned.length);
+    const price = emojiPriceForCount();
     if (balance < price)
       return res.status(400).json({ error: "LuizCoins™ insuficientes." });
 
@@ -123,7 +149,7 @@ router.post("/profile/emoji/buy", requireAuth, invalidatesCache("cache:profiles"
       owned: emojiList(rawOwned),
       newBalance: balance - price,
       pricePaid: price,
-      nextPrice: emojiPriceForCount(rawOwned.length),
+      nextPrice: emojiPriceForCount(),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -212,17 +238,21 @@ router.get("/profiles", async (req, res) => {
 
         let activeTitle = null;
         const chosenTitleId = await kv.get(`title_active:${uk}`);
-        if (chosenTitleId) {
-          const titleDef = TITLES.find((t) => t.id === chosenTitleId);
-          const ownedTitles = titleList(parseRedisArray(await kv.get(`title_owned:${uk}`)));
-          if (titleDef && ownedTitles.includes(chosenTitleId)) {
-            activeTitle = { id: titleDef.id, label: titleDef.label };
-          }
+        if (chosenTitleId && purchases.includes(chosenTitleId)) {
+          const titleItem = findTitleItem(chosenTitleId);
+          if (titleItem) activeTitle = { id: chosenTitleId, label: titleItem.title };
+        }
+
+        let activeTeam = null;
+        const chosenTeamId = await kv.get(`team_active:${uk}`);
+        if (chosenTeamId && purchases.includes(chosenTeamId)) {
+          const teamItem = findTeamIconItem(chosenTeamId);
+          if (teamItem) activeTeam = { id: chosenTeamId, src: teamItem.src, title: teamItem.title };
         }
 
         computed[u.name] = {
           nameColor: activeColor, achievement: activeAchievement, emoji: activeEmoji,
-          font: activeFont, emojiFrame: activeFrame, title: activeTitle,
+          font: activeFont, emojiFrame: activeFrame, title: activeTitle, team: activeTeam,
         };
       }
 
@@ -245,7 +275,7 @@ router.get("/profile/font", requireAuth, async (req, res) => {
     const rawOwned = parseRedisArray(await kv.get(`font_owned:${uk}`));
     const owned = fontList(rawOwned);
     const active = (await kv.get(`font_active:${uk}`)) || null;
-    res.json({ owned, active, nextPrice: fontPriceForCount(owned.length), catalog: FONTS });
+    res.json({ owned, active, nextPrice: fontPriceForCount(), catalog: FONTS });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -273,7 +303,7 @@ router.post("/profile/font/buy", requireAuth, invalidatesCache("cache:profiles")
       return res.status(400).json({ error: "Você já possui esta fonte." });
 
     const balance = earnedCoins - spentCoins;
-    const price = fontPriceForCount(fontOwned.length);
+    const price = fontPriceForCount();
     if (balance < price)
       return res.status(400).json({ error: "LuizCoins™ insuficientes." });
 
@@ -288,7 +318,7 @@ router.post("/profile/font/buy", requireAuth, invalidatesCache("cache:profiles")
       owned: fontList(rawOwned),
       newBalance: balance - price,
       pricePaid: price,
-      nextPrice: fontPriceForCount(rawOwned.length),
+      nextPrice: fontPriceForCount(),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -319,64 +349,9 @@ router.post("/profile/font/set-active", requireAuth, invalidatesCache("cache:pro
 });
 
 // ─── Títulos ao lado do nome ──────────────────────────────────────────────────
-
-// GET /api/profile/title — títulos comprados, título ativo, próximo preço e catálogo
-router.get("/profile/title", requireAuth, async (req, res) => {
-  try {
-    const kv = getKV();
-    const uk = userKey(req.sessionName);
-    const rawOwned = parseRedisArray(await kv.get(`title_owned:${uk}`));
-    const owned = titleList(rawOwned);
-    const active = (await kv.get(`title_active:${uk}`)) || null;
-    res.json({ owned, active, nextPrice: titlePriceForCount(owned.length), catalog: TITLES });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// POST /api/profile/title/buy — compra um título do catálogo
-router.post("/profile/title/buy", requireAuth, invalidatesCache("cache:profiles"), invalidatesUserBalance(), async (req, res) => {
-  try {
-    const { titleId } = req.body;
-    if (!titleId || !TITLE_IDS.has(titleId))
-      return res.status(400).json({ error: "Título inválido." });
-
-    const kv = getKV();
-    const users = await getUsers(kv);
-    const user = users.find((u) => userKey(u.name) === userKey(req.sessionName));
-    if (!user) return res.status(401).json({ error: "Acesso negado." });
-
-    const uk = userKey(user.name);
-    const ownedKey = `title_owned:${uk}`;
-    // rawTitleOwned vem do mesmo calcBalance que calculou o saldo —
-    // evita TOCTOU de ler title_owned duas vezes com operações async no meio.
-    const { earnedCoins, spentCoins, titleOwned, rawTitleOwned } = await getCachedBalance(kv, user, users);
-
-    if (titleOwned.includes(titleId))
-      return res.status(400).json({ error: "Você já possui este título." });
-
-    const balance = earnedCoins - spentCoins;
-    const price = titlePriceForCount(titleOwned.length);
-    if (balance < price)
-      return res.status(400).json({ error: "LuizCoins™ insuficientes." });
-
-    const rawOwned = [...rawTitleOwned, { titleId, pricePaid: price }];
-    await kv.set(ownedKey, JSON.stringify(rawOwned));
-    if (rawOwned.length === 1) {
-      await kv.set(`title_active:${uk}`, titleId);
-    }
-
-    res.json({
-      success: true,
-      owned: titleList(rawOwned),
-      newBalance: balance - price,
-      pricePaid: price,
-      nextPrice: titlePriceForCount(rawOwned.length),
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
+// Compra é só pela Loja agora (STORE_ITEMS type "title", preço fixo — ver
+// lib/store-items.js) — aqui só sobra a escolha de qual título comprado
+// fica ativo, mesmo padrão de /profile/frame e /profile/team.
 
 // POST /api/profile/title/set-active — define qual título possuído é exibido no ranking
 router.post("/profile/title/set-active", requireAuth, invalidatesCache("cache:profiles"), async (req, res) => {
@@ -389,8 +364,10 @@ router.post("/profile/title/set-active", requireAuth, invalidatesCache("cache:pr
     if (!titleId) {
       await kv.del(activeKey);
     } else {
-      const owned = titleList(parseRedisArray(await kv.get(`title_owned:${uk}`)));
-      if (!owned.includes(titleId))
+      const purchasesKey = `purchases:${uk}`;
+      const purchases = purchaseIds(parseRedisArray(await kv.get(purchasesKey)));
+      const item = findTitleItem(titleId);
+      if (!item || !purchases.includes(titleId))
         return res.status(400).json({ error: "Você não possui este título." });
       await kv.set(activeKey, titleId);
     }

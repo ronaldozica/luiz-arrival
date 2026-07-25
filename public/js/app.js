@@ -172,6 +172,10 @@ function buildTitleBadgeHTML(profile) {
   if (!showDecorations || !profile.title) return "";
   return ` <span class="name-title-badge">${escHtml(profile.title.label)}</span>`;
 }
+function buildTeamBadgeHTML(profile) {
+  if (!showDecorations || !profile.team) return "";
+  return ` <img src="${profile.team.src}" class="profile-team-badge" title="${escHtml(profile.team.title)}">`;
+}
 
 function renderPlayerName(name, includeAchievement) {
   const profile = userProfiles[name] || {};
@@ -195,7 +199,8 @@ function renderPlayerName(name, includeAchievement) {
       : "";
   const emojiPrefix = buildEmojiPrefixHTML(profile);
   const titleBadge = buildTitleBadgeHTML(profile);
-  return `${emojiPrefix}<span class="${colorClass}" ${style}>${escHtml(name)}</span>${achievementBadge}${titleBadge}`;
+  const teamBadge = buildTeamBadgeHTML(profile);
+  return `${emojiPrefix}<span class="${colorClass}" ${style}>${escHtml(name)}</span>${achievementBadge}${titleBadge}${teamBadge}`;
 }
 
 function getFontFamily(fontId) {
@@ -1820,7 +1825,8 @@ function renderPlayerCell(r) {
       : "";
   const emojiPrefix = buildEmojiPrefixHTML(profile);
   const titleBadge = buildTitleBadgeHTML(profile);
-  return `${emojiPrefix}<span class="${nameColorClass}" ${nameStyle}>${escHtml(r.name)}</span>${hcmBadge}${achBadge}${titleBadge}`;
+  const teamBadge = buildTeamBadgeHTML(profile);
+  return `${emojiPrefix}<span class="${nameColorClass}" ${nameStyle}>${escHtml(r.name)}</span>${hcmBadge}${achBadge}${titleBadge}${teamBadge}`;
 }
 
 // Renderiza uma lista de jogadores (já ordenada) numa tabela win95.
@@ -2986,6 +2992,8 @@ async function loadStore() {
     const seedItems  = data.items.filter((i) => i.type === "farmseed");
     const frameItems  = data.items.filter((i) => i.type === "emojiframe");
     const cursorItems = data.items.filter((i) => i.type === "cursor");
+    const titleItems  = data.items.filter((i) => i.type === "title");
+    const teamItems   = data.items.filter((i) => i.type === "teamicon");
 
     let html = "";
 
@@ -3114,6 +3122,45 @@ async function loadStore() {
                  <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>`
               : `<div class="store-item-price" style="color:#006400">✅ Desbloqueado</div>
                  <div style="font-size:9px;color:#444;text-align:center">Ativa no Perfil → Cursor</div>`
+            }
+          </div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (titleItems.length > 0) {
+      html += `<div class="section-label" style="margin:16px 0 8px">🏷️ Títulos</div>`;
+      html += `<div class="store-grid">`;
+      titleItems.forEach((item) => {
+        const isUnlocked = data.purchases.includes(item.id);
+        html += `
+          <div class="${isUnlocked ? "store-item unlocked" : "store-item locked"}">
+            <div style="text-align:center;padding:10px 0"><span class="name-title-badge" style="margin-left:0">${escHtml(item.title)}</span></div>
+            ${!isUnlocked
+              ? `<div class="store-item-price"><img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}</div>
+                 <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>`
+              : `<div class="store-item-price" style="color:#006400">✅ Desbloqueado</div>
+                 <div style="font-size:9px;color:#444;text-align:center">Ativa no Perfil → Título</div>`
+            }
+          </div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (teamItems.length > 0) {
+      html += `<div class="section-label" style="margin:16px 0 8px">⚽ Times</div>`;
+      html += `<div class="store-grid">`;
+      teamItems.forEach((item) => {
+        const isUnlocked = data.purchases.includes(item.id);
+        html += `
+          <div class="${isUnlocked ? "store-item unlocked" : "store-item locked"}">
+            <div class="store-item-title">${escHtml(item.title)}</div>
+            <img src="${item.src}" class="store-item-preview" draggable="false" style="object-fit:contain;background:#fff" />
+            ${!isUnlocked
+              ? `<div class="store-item-price"><img src="/photos/luizCoinIcon.png" class="coin-icon"> ${item.price}</div>
+                 <button class="win95-action-btn" onclick="buyStoreItem('${item.id}', ${item.price}, ${safeBalance})">Comprar</button>`
+              : `<div class="store-item-price" style="color:#006400">✅ Desbloqueado</div>
+                 <div style="font-size:9px;color:#444;text-align:center">Ativa no Perfil → Time</div>`
             }
           </div>`;
       });
@@ -3357,6 +3404,7 @@ let profileEmojiData = null;
 let profileFontData = null;
 let profileFrameData = null;
 let profileTitleData = null;
+let profileTeamData = null;
 
 async function openProfileWindow() {
   if (!currentUser) {
@@ -3373,7 +3421,7 @@ function setProfileTab(tab) {
   document.querySelectorAll("#win-profile .rank-tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.profileTab === tab);
   });
-  ["color", "achievement", "emoji", "font", "frame", "title", "cursor", "wallpaper"].forEach((t) => {
+  ["color", "achievement", "emoji", "font", "frame", "title", "team", "cursor", "wallpaper"].forEach((t) => {
     document.getElementById(`profile-tab-${t}`).style.display = t === tab ? "block" : "none";
   });
   loadProfileTabData(tab);
@@ -3386,6 +3434,7 @@ function loadProfileTabData(tab) {
   else if (tab === "font") loadProfileFont();
   else if (tab === "frame") loadProfileFrame();
   else if (tab === "title") loadProfileTitle();
+  else if (tab === "team") loadProfileTeam();
   else if (tab === "cursor") loadProfileCursor();
   else if (tab === "wallpaper") loadProfileWallpaper();
 }
@@ -3778,12 +3827,15 @@ async function buyProfileFont(fontId) {
   }
 }
 
+// Compra é só pela Loja agora (preço fixo, item comum igual cor/moldura) —
+// aqui só sobra escolher qual título já comprado fica ativo, mesmo padrão
+// de loadProfileFrame/renderProfileFrame/selectProfileFrame.
 async function loadProfileTitle() {
   const result = document.getElementById("profile-title-result");
   const msg = document.getElementById("profile-title-msg");
   result.innerHTML = '<div class="loading">⏳ Carregando...</div>';
   try {
-    const res = await fetch(`${API}/profile/title`, { headers: authHeaders() });
+    const res = await fetch(`${API}/store`, { headers: authHeaders() });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     profileTitleData = data;
@@ -3796,33 +3848,20 @@ async function loadProfileTitle() {
 function renderProfileTitle() {
   const result = document.getElementById("profile-title-result");
   if (!profileTitleData) return;
-  const { owned, active, nextPrice, catalog } = profileTitleData;
-
-  let html = "";
-  if (owned.length > 0) {
-    html += `<div class="info-box" style="margin-bottom:8px">Títulos comprados: ${owned.length} — próximo custa <strong>${nextPrice} LuizCoins</strong></div>`;
+  const ownedTitles = profileTitleData.items.filter(
+    (i) => i.type === "title" && profileTitleData.purchases.includes(i.id),
+  );
+  if (ownedTitles.length === 0) {
+    result.innerHTML = '<div class="no-data">Você ainda não comprou nenhum título. Visite a Loja!</div>';
+    return;
   }
-
-  html += `<div style="display:flex;flex-direction:column;gap:6px">`;
-
-  const nenhum = !active;
-  html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border:1px solid #c0c0c0;background:${nenhum ? "#d4e8d4" : "#fff"}">
-    <span style="font-size:13px">Nenhum</span>
-    <button class="win95-action-btn" style="font-size:11px" onclick="selectProfileTitle(null)">${nenhum ? "✓ Ativo" : "Usar"}</button>
-  </div>`;
-
-  catalog.forEach((t) => {
-    const isOwned = owned.includes(t.id);
-    const isActive = active === t.id;
-    html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border:1px solid #c0c0c0;background:${isActive ? "#d4e8d4" : "#fff"}">
-      <span class="name-title-badge" style="margin-left:0">${escHtml(t.label)}</span>
-      ${isOwned
-        ? `<button class="win95-action-btn" style="font-size:11px" onclick="selectProfileTitle('${t.id}')">${isActive ? "✓ Ativo" : "Usar"}</button>`
-        : `<button class="win95-action-btn" style="font-size:11px" onclick="buyProfileTitle('${t.id}')">🛒 ${nextPrice} LC</button>`
-      }
-    </div>`;
+  const activeTitleId = profileTitleData.activeTitleId;
+  let html = `<div class="btn-row" style="flex-wrap:wrap">`;
+  html += `<button class="win95-action-btn${!activeTitleId ? " active" : ""}" onclick="selectProfileTitle(null)">Nenhum</button>`;
+  ownedTitles.forEach((t) => {
+    html += `<button class="win95-action-btn${activeTitleId === t.id ? " active" : ""}" onclick="selectProfileTitle('${t.id}')">
+      <span class="name-title-badge" style="margin-left:0">${escHtml(t.title)}</span></button>`;
   });
-
   html += `</div>`;
   result.innerHTML = html;
 }
@@ -3834,11 +3873,11 @@ async function selectProfileTitle(titleId) {
     const res = await fetch(`${API}/profile/title/set-active`, {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ titleId: titleId || null }),
+      body: JSON.stringify({ titleId }),
     });
     const data = await res.json();
     if (res.ok) {
-      profileTitleData.active = titleId || null;
+      profileTitleData.activeTitleId = titleId;
       renderProfileTitle();
       showMsg(msg, "✅ Título atualizado.", "ok");
       invalidateProfileCache();
@@ -3853,22 +3892,57 @@ async function selectProfileTitle(titleId) {
   }
 }
 
-async function buyProfileTitle(titleId) {
-  const msg = document.getElementById("profile-title-msg");
-  showLoading("Comprando título...");
+// ─── Emblema de time ──────────────────────────────────────────────────────────
+async function loadProfileTeam() {
+  const result = document.getElementById("profile-team-result");
+  const msg = document.getElementById("profile-team-msg");
+  result.innerHTML = '<div class="loading">⏳ Carregando...</div>';
   try {
-    const res = await fetch(`${API}/profile/title/buy`, {
+    const res = await fetch(`${API}/store`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    profileTeamData = data;
+    renderProfileTeam();
+  } catch (e) {
+    showMsg(msg, `Erro: ${e.message}`, "err");
+  }
+}
+
+function renderProfileTeam() {
+  const result = document.getElementById("profile-team-result");
+  if (!profileTeamData) return;
+  const ownedTeams = profileTeamData.items.filter(
+    (i) => i.type === "teamicon" && profileTeamData.purchases.includes(i.id),
+  );
+  if (ownedTeams.length === 0) {
+    result.innerHTML = '<div class="no-data">Você ainda não comprou nenhum emblema de time. Visite a Loja!</div>';
+    return;
+  }
+  const activeTeamId = profileTeamData.activeTeamId;
+  let html = `<div class="btn-row" style="flex-wrap:wrap">`;
+  html += `<button class="win95-action-btn${!activeTeamId ? " active" : ""}" onclick="selectProfileTeam(null)">Nenhum</button>`;
+  ownedTeams.forEach((t) => {
+    html += `<button class="win95-action-btn${activeTeamId === t.id ? " active" : ""}" onclick="selectProfileTeam('${t.id}')">
+      <img src="${t.src}" class="profile-team-badge" draggable="false"> ${escHtml(t.title)}</button>`;
+  });
+  html += `</div>`;
+  result.innerHTML = html;
+}
+
+async function selectProfileTeam(teamId) {
+  const msg = document.getElementById("profile-team-msg");
+  showLoading("Atualizando time...");
+  try {
+    const res = await fetch(`${API}/profile/team`, {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ titleId }),
+      body: JSON.stringify({ teamId }),
     });
     const data = await res.json();
     if (res.ok) {
-      profileTitleData.owned = data.owned;
-      profileTitleData.nextPrice = data.nextPrice;
-      profileTitleData.active = profileTitleData.active || titleId;
-      renderProfileTitle();
-      showMsg(msg, `✅ Título comprado por ${data.pricePaid} LuizCoins!`, "ok");
+      profileTeamData.activeTeamId = teamId;
+      renderProfileTeam();
+      showMsg(msg, "✅ Time atualizado.", "ok");
       invalidateProfileCache();
       loadProfiles();
     } else {
@@ -4049,9 +4123,20 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
-    version: "2.25.0",
+    version: "2.26.0",
     date: "25/07/2026",
     isNew: true,
+    title: "Títulos exclusivos, emblemas de time e preços fixos 🏷️⚽",
+    items: [
+      "🏷️ Títulos agora custam 500 LuizCoins fixos (eram escalonados a partir de 100) e passam a ser vendidos direto na Loja, na seção \"Títulos\" — a aba Título do Perfil virou só o seletor de qual já comprado fica ativo.",
+      "⚽ 4 emblemas de time novos na Loja: Cruzeiro, Atlético Mineiro, América e Atlético de Guanambi (100 LuizCoins cada) — ativa na nova aba \"Time\" do Perfil e aparece ao lado do nome nos rankings.",
+      "🔓 Emojis e fontes de ranking não sobem mais de preço a cada compra — preço fixo pra sempre, igual todo o resto da loja agora.",
+    ],
+  },
+  {
+    version: "2.25.0",
+    date: "25/07/2026",
+    isNew: false,
     title: "2 wallpapers novos na loja 🖼️",
     items: [
       "🖼️ LuizScream e LuizRadio chegaram na Loja, na seção \"Planos de fundo\" — 50 LuizCoins cada, igual aos outros dois.",

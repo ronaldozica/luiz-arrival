@@ -50,11 +50,19 @@ router.get("/store", requireAuth, async (req, res) => {
       if (item.type === "cursor") {
         return { ...base, emoji: item.emoji };
       }
+      if (item.type === "title") {
+        return base;
+      }
+      if (item.type === "teamicon") {
+        return { ...base, src: item.src };
+      }
       return { ...base, src: isUnlocked ? item.src : null, ...(item.wpKey ? { wpKey: item.wpKey } : {}) };
     });
 
     const activeColorId = (await kv.get(`color_active:${userKey(user.name)}`)) || null;
     const activeFrameId = (await kv.get(`frame_active:${userKey(user.name)}`)) || null;
+    const activeTitleId = (await kv.get(`title_active:${userKey(user.name)}`)) || null;
+    const activeTeamId = (await kv.get(`team_active:${userKey(user.name)}`)) || null;
 
     // Cores exclusivas (ex.: "Coração") não entram em STORE_ITEMS — não são
     // compráveis e não devem aparecer na vitrine da loja. Mas se o jogador
@@ -73,6 +81,8 @@ router.get("/store", requireAuth, async (req, res) => {
       exclusiveColors,
       activeColorId,
       activeFrameId,
+      activeTitleId,
+      activeTeamId,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

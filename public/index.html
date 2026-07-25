@@ -1122,6 +1122,7 @@
         <button class="rank-tab" data-profile-tab="font" onclick="setProfileTab('font')">🔤 Fonte</button>
         <button class="rank-tab" data-profile-tab="frame" onclick="setProfileTab('frame')">🖼️ Moldura</button>
         <button class="rank-tab" data-profile-tab="title" onclick="setProfileTab('title')">🏷️ Título</button>
+        <button class="rank-tab" data-profile-tab="team" onclick="setProfileTab('team')">⚽ Time</button>
         <button class="rank-tab" data-profile-tab="cursor" onclick="setProfileTab('cursor')">🖱️ Cursor</button>
         <button class="rank-tab" data-profile-tab="wallpaper" onclick="setProfileTab('wallpaper')">🖼️ Papel de Parede</button>
       </div>
@@ -1170,9 +1171,16 @@
 
       <div id="profile-tab-title" style="display:none">
         <p><strong>Título exibido ao lado do seu nome</strong></p>
-        <div class="info-box">O primeiro custa 100 LuizCoins e cada novo título custa 100 LuizCoins a mais que o anterior.</div>
+        <div class="info-box">Escolha entre os títulos que você já comprou na Loja (seção "🏷️ Títulos").</div>
         <div id="profile-title-result" style="margin-top:8px"></div>
         <div class="win95-msg" id="profile-title-msg"></div>
+      </div>
+
+      <div id="profile-tab-team" style="display:none">
+        <p><strong>Emblema de time exibido ao lado do seu nome</strong></p>
+        <div class="info-box">Escolha entre os emblemas que você já comprou na Loja (seção "⚽ Times").</div>
+        <div id="profile-team-result" style="margin-top:8px"></div>
+        <div class="win95-msg" id="profile-team-msg"></div>
       </div>
 
       <div id="profile-tab-cursor" style="display:none">

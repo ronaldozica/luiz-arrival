@@ -6,20 +6,14 @@ const {
   emojiPriceForCount,
   fontPriceForCount,
   EMOJI_BASE_PRICE,
-  EMOJI_PRICE_STEP,
   FONT_BASE_PRICE,
-  FONT_PRICE_STEP,
   EMOJI_REGEX,
   purchaseIds,
   emojiList,
   STORE_ITEMS,
   findEmojiFrameItem,
-  TITLES,
-  TITLE_IDS,
-  TITLE_BASE_PRICE,
-  TITLE_PRICE_STEP,
-  titlePriceForCount,
-  titleList,
+  findTitleItem,
+  findTeamIconItem,
 } = require("../../api/lib/store-items");
 
 describe("coinsForGuess", () => {
@@ -64,16 +58,18 @@ describe("coinsForGuess", () => {
   });
 });
 
-describe("preço escalonado de emoji/fonte", () => {
-  test("emojiPriceForCount cresce EMOJI_PRICE_STEP a cada compra", () => {
+describe("preço fixo de emoji/fonte (escalonamento removido)", () => {
+  test("emojiPriceForCount sempre retorna EMOJI_BASE_PRICE, não importa quantos já foram comprados", () => {
+    assert.equal(emojiPriceForCount(), EMOJI_BASE_PRICE);
     assert.equal(emojiPriceForCount(0), EMOJI_BASE_PRICE);
-    assert.equal(emojiPriceForCount(1), EMOJI_BASE_PRICE + EMOJI_PRICE_STEP);
-    assert.equal(emojiPriceForCount(4), EMOJI_BASE_PRICE + 4 * EMOJI_PRICE_STEP);
+    assert.equal(emojiPriceForCount(1), EMOJI_BASE_PRICE);
+    assert.equal(emojiPriceForCount(50), EMOJI_BASE_PRICE);
   });
 
-  test("fontPriceForCount cresce FONT_PRICE_STEP a cada compra", () => {
+  test("fontPriceForCount sempre retorna FONT_BASE_PRICE, não importa quantas já foram compradas", () => {
+    assert.equal(fontPriceForCount(), FONT_BASE_PRICE);
     assert.equal(fontPriceForCount(0), FONT_BASE_PRICE);
-    assert.equal(fontPriceForCount(3), FONT_BASE_PRICE + 3 * FONT_PRICE_STEP);
+    assert.equal(fontPriceForCount(3), FONT_BASE_PRICE);
   });
 });
 
@@ -147,23 +143,43 @@ describe("cursores (STORE_ITEMS type cursor)", () => {
   });
 });
 
-describe("títulos curados (TITLES / titlePriceForCount / titleList)", () => {
-  test("TITLE_IDS contém todos os ids de TITLES, sem duplicados", () => {
-    assert.equal(TITLE_IDS.size, TITLES.length);
-    for (const t of TITLES) assert.ok(TITLE_IDS.has(t.id));
+describe("títulos (STORE_ITEMS type title, preço fixo de 500 LC, exclusividade)", () => {
+  const TITLE_IDS = [
+    "title_lenda", "title_rei", "title_sortudo", "title_imbativel",
+    "title_highroller", "title_mestre", "title_maquina", "title_vidente",
+  ];
+
+  test("os 8 títulos existem em STORE_ITEMS como type title, custando 500 LC cada", () => {
+    for (const id of TITLE_IDS) {
+      const item = STORE_ITEMS.find((i) => i.id === id);
+      assert.ok(item, `${id} deveria existir em STORE_ITEMS`);
+      assert.equal(item.type, "title");
+      assert.equal(item.price, 500);
+    }
   });
 
-  test("titlePriceForCount cresce TITLE_PRICE_STEP a cada compra, a partir de TITLE_BASE_PRICE", () => {
-    assert.equal(titlePriceForCount(0), TITLE_BASE_PRICE);
-    assert.equal(titlePriceForCount(1), TITLE_BASE_PRICE + TITLE_PRICE_STEP);
-    assert.equal(titlePriceForCount(3), TITLE_BASE_PRICE + 3 * TITLE_PRICE_STEP);
+  test("findTitleItem encontra um título pelo id e devolve undefined pra id de outro tipo", () => {
+    assert.equal(findTitleItem("title_lenda").title, "Lenda");
+    assert.equal(findTitleItem("color_rubi"), undefined);
+    assert.equal(findTitleItem("title_inexistente"), undefined);
+  });
+});
+
+describe("emblemas de time (STORE_ITEMS type teamicon)", () => {
+  const TEAM_IDS = ["team_cruzeiro", "team_atletico", "team_america", "team_guanambi"];
+
+  test("os 4 times existem em STORE_ITEMS como type teamicon, com src de imagem", () => {
+    for (const id of TEAM_IDS) {
+      const item = STORE_ITEMS.find((i) => i.id === id);
+      assert.ok(item, `${id} deveria existir em STORE_ITEMS`);
+      assert.equal(item.type, "teamicon");
+      assert.ok(item.src && item.src.startsWith("/"), `${id} deveria ter um src de imagem`);
+    }
   });
 
-  test("titleList extrai titleId de cada entrada comprada", () => {
-    assert.deepEqual(
-      titleList([{ titleId: "title_lenda", pricePaid: 100 }, { titleId: "title_rei", pricePaid: 200 }]),
-      ["title_lenda", "title_rei"],
-    );
-    assert.deepEqual(titleList([]), []);
+  test("findTeamIconItem encontra um time pelo id e devolve undefined pra id de outro tipo", () => {
+    assert.equal(findTeamIconItem("team_cruzeiro").title, "Cruzeiro");
+    assert.equal(findTeamIconItem("color_rubi"), undefined);
+    assert.equal(findTeamIconItem("team_inexistente"), undefined);
   });
 });

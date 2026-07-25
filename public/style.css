@@ -2342,7 +2342,7 @@ body.cursor-wait * {
   50%       { box-shadow: 0 0 8px #ffca28, 0 0 16px #ff4500; }
 }
 
-/* ─── Badge de título (compráveis no Perfil) ──────────────── */
+/* ─── Badge de título (compráveis na Loja) ──────────────── */
 .name-title-badge {
   display: inline-block;
   font-size: 9px;
@@ -2355,6 +2355,17 @@ body.cursor-wait * {
   vertical-align: middle;
   box-shadow: var(--shadow-out);
   white-space: nowrap;
+}
+
+/* ─── Emblema de time (compráveis na Loja) ──────────────── */
+.profile-team-badge {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  vertical-align: middle;
+  object-fit: contain;
+  cursor: default;
 }
 
 /* Rank toggle button */

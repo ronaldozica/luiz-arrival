@@ -42,6 +42,21 @@ const STORE_ITEMS = [
   { id: "farmseed_strawberry", price: 60,  type: "farmseed", seedKey: "strawberry", icon: "🍓", title: "Semente de Morango",  desc: "Plante morangos na fazenda (1h · +10🪙 · limite diário = parcelas desbloqueadas)" },
   { id: "farmseed_orange",     price: 120, type: "farmseed", seedKey: "orange",     icon: "🍊", title: "Semente de Laranja",  desc: "Plante laranjas na fazenda (12h · +60🪙 · limite diário = parcelas desbloqueadas)" },
   { id: "farmseed_pineapple",  price: 300, type: "farmseed", seedKey: "pineapple",  icon: "🍍", title: "Semente de Abacaxi", desc: "Plante abacaxis na fazenda (3 dias · +324🪙 · limite diário = parcelas desbloqueadas)" },
+  // Títulos ao lado do nome — preço fixo alto (exclusividade), mesmo mecanismo
+  // de compra dos outros itens (purchases:<uKey>), sem escalonamento.
+  { id: "title_lenda",      price: 500, type: "title", title: "Lenda" },
+  { id: "title_rei",        price: 500, type: "title", title: "Rei dos Jogos" },
+  { id: "title_sortudo",    price: 500, type: "title", title: "Sortudo" },
+  { id: "title_imbativel",  price: 500, type: "title", title: "Imbatível" },
+  { id: "title_highroller", price: 500, type: "title", title: "High Roller" },
+  { id: "title_mestre",     price: 500, type: "title", title: "Mestre dos Baralhos" },
+  { id: "title_maquina",    price: 500, type: "title", title: "Máquina de LuizCoins" },
+  { id: "title_vidente",    price: 500, type: "title", title: "Vidente do Luiz" },
+  // Emblemas de time — exibidos ao lado do nome, mesma ideia da moldura/emoji.
+  { id: "team_cruzeiro", price: 100, type: "teamicon", src: "/photos/cruzeiro.png", title: "Cruzeiro" },
+  { id: "team_atletico", price: 100, type: "teamicon", src: "/photos/atletico.png", title: "Atlético Mineiro" },
+  { id: "team_america",  price: 100, type: "teamicon", src: "/photos/america.png",  title: "América" },
+  { id: "team_guanambi", price: 100, type: "teamicon", src: "/photos/guanambi.png", title: "Atlético de Guanambi" },
 ];
 
 // ─── Cores exclusivas (fora da loja) ────────────────────────────────────────
@@ -71,40 +86,23 @@ function findEmojiFrameItem(id) {
   return STORE_ITEMS.find((i) => i.id === id && i.type === "emojiframe");
 }
 
-// ─── Títulos ao lado do nome (lista curada, compra escalona igual fonte/emoji) ─
-const TITLES = [
-  { id: "title_lenda",      label: "Lenda" },
-  { id: "title_rei",        label: "Rei dos Jogos" },
-  { id: "title_sortudo",    label: "Sortudo" },
-  { id: "title_imbativel",  label: "Imbatível" },
-  { id: "title_highroller", label: "High Roller" },
-  { id: "title_mestre",     label: "Mestre dos Baralhos" },
-  { id: "title_maquina",    label: "Máquina de LuizCoins" },
-  { id: "title_vidente",    label: "Vidente do Luiz" },
-];
-const TITLE_IDS = new Set(TITLES.map((t) => t.id));
-const TITLE_BASE_PRICE = 100;
-const TITLE_PRICE_STEP = 100;
-function titlePriceForCount(ownedCount) {
-  return TITLE_BASE_PRICE + TITLE_PRICE_STEP * ownedCount;
+function findTitleItem(id) {
+  return STORE_ITEMS.find((i) => i.id === id && i.type === "title");
 }
-// Títulos: formato `{ titleId, pricePaid }` — sem legado (feature nova).
-function titleList(rawOwned) {
-  return rawOwned.map((t) => t.titleId);
-}
-function titleSpent(rawOwned) {
-  return rawOwned.reduce((sum, t) => sum + (t.pricePaid || 0), 0);
+
+function findTeamIconItem(id) {
+  return STORE_ITEMS.find((i) => i.id === id && i.type === "teamicon");
 }
 
 // ─── Emoji de ranking (compra livre, não é um item fixo da loja) ────────────
-// Sem limite de quantidade; cada emoji novo custa 125 LuizCoins mais que o anterior.
+// Sem limite de quantidade; preço fixo por emoji (o escalonamento por
+// quantidade comprada foi removido — todo mundo paga sempre o mesmo).
 const EMOJI_BASE_PRICE = 25;
-const EMOJI_PRICE_STEP = 25;
-function emojiPriceForCount(ownedCount) {
-  return EMOJI_BASE_PRICE + EMOJI_PRICE_STEP * ownedCount;
+function emojiPriceForCount() {
+  return EMOJI_BASE_PRICE;
 }
 
-// ─── Fontes de ranking (catálogo fixo, compra escalona igual ao emoji) ───────
+// ─── Fontes de ranking (catálogo fixo, preço fixo por fonte) ────────────────
 const FONTS = [
   { id: "font_comic_sans",     label: "Comic Sans"       },
   { id: "font_impact",         label: "Impact"           },
@@ -118,13 +116,12 @@ const FONTS = [
 ];
 const FONT_IDS = new Set(FONTS.map((f) => f.id));
 const FONT_BASE_PRICE = 25;
-const FONT_PRICE_STEP = 25;
-function fontPriceForCount(ownedCount) {
-  return FONT_BASE_PRICE + FONT_PRICE_STEP * ownedCount;
+function fontPriceForCount() {
+  return FONT_BASE_PRICE;
 }
 
 // ─── Preço pago "congelado" (compras passadas não mudam de valor) ──────────
-// Mudar STORE_ITEMS.price ou EMOJI_BASE_PRICE/EMOJI_PRICE_STEP daqui para
+// Mudar STORE_ITEMS.price ou EMOJI_BASE_PRICE daqui para
 // frente só afeta NOVAS compras: cada compra nova é guardada como
 // `{ id/emoji, pricePaid }`, não apenas o id/emoji. Assim o valor gasto fica
 // fixo no momento da compra, independente de o item mudar de preço depois.
@@ -242,7 +239,7 @@ function coinsForGuess(rankingEntry) {
 const WALLET_FIELDS = [
   "gamecoins", "farmcoins", "bjwon", "purchases", "emoji_owned", "font_owned",
   "farmspent", "bjlost", "gamespent", "roulettewon", "roulettelost",
-  "slotwon", "slotlost", "title_owned",
+  "slotwon", "slotlost",
 ];
 
 // Cada chamada de calcBalance rodava ~40 comandos Redis (1 GET por dia de
@@ -289,7 +286,7 @@ async function calcBalance(kv, user, users) {
   const [
     gameCoinsRaw, farmCoinsRaw, bjWonRaw, purchasesRaw, emojiOwnedRaw, fontOwnedRaw,
     farmSpentRaw, bjLostRaw, gameSpentRaw, rouletteWonRaw, rouletteLostRaw,
-    slotWonRaw, slotLostRaw, titleOwnedRaw,
+    slotWonRaw, slotLostRaw,
   ] = await kv.mget(WALLET_FIELDS.map((field) => `${field}:${uKey}`));
 
   const gameCoins = parseRedisNumber(gameCoinsRaw);
@@ -334,11 +331,7 @@ async function calcBalance(kv, user, users) {
   const slotLost = parseRedisNumber(slotLostRaw);
   spentCoins += slotLost;
 
-  const rawTitleOwned = parseRedisArray(titleOwnedRaw);
-  const titleOwned = titleList(rawTitleOwned);
-  spentCoins += titleSpent(rawTitleOwned);
-
-  return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned, fontOwned, rawFontOwned, titleOwned, rawTitleOwned };
+  return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned, fontOwned, rawFontOwned };
 }
 
 // Cache por usuário do resultado de calcBalance (chave `balance:<uKey>`,
@@ -360,20 +353,14 @@ module.exports = {
   getExclusiveColorIds,
   findNameColorItem,
   findEmojiFrameItem,
-  TITLES,
-  TITLE_IDS,
-  TITLE_BASE_PRICE,
-  TITLE_PRICE_STEP,
-  titlePriceForCount,
-  titleList,
+  findTitleItem,
+  findTeamIconItem,
   EMOJI_BASE_PRICE,
-  EMOJI_PRICE_STEP,
   emojiPriceForCount,
   EMOJI_REGEX,
   FONTS,
   FONT_IDS,
   FONT_BASE_PRICE,
-  FONT_PRICE_STEP,
   fontPriceForCount,
   fontList,
   PRECISION_BANDS,
