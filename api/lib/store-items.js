@@ -14,6 +14,7 @@ const STORE_ITEMS = [
   { id: "wp_luizbliss",  price: 50, type: "wallpaper", src: "/assets/wallpapers/luizBliss.jpg",  title: "LuizBliss",  wpKey: "luizbliss"  },
   { id: "wp_luizscream", price: 50, type: "wallpaper", src: "/assets/wallpapers/luizScream.jpg", title: "LuizScream", wpKey: "luizscream" },
   { id: "wp_luizradio",  price: 50, type: "wallpaper", src: "/assets/wallpapers/luizRadio.png",  title: "LuizRadio",  wpKey: "luizradio"  },
+  { id: "wp_luizhcm",  price: 50, type: "wallpaper", src: "/assets/wallpapers/luizHcm.png",  title: "LuizHCM",  wpKey: "luizhcm"  },
   { id: "palinha", price: 15, src: "/photos/palinha.gif", title: "Luiz dando uma palinha" },
   { id: "baixista", price: 15, src: "/photos/baixista.gif", title: "Luiz Fernando baixista" },
   { id: "confusp", price: 20, src: "/photos/confuso.gif", title: "Luiz confuso" },
@@ -56,7 +57,7 @@ const STORE_ITEMS = [
   { id: "team_cruzeiro", price: 100, type: "teamicon", src: "/photos/cruzeiro.png", title: "Cruzeiro" },
   { id: "team_atletico", price: 100, type: "teamicon", src: "/photos/atletico.png", title: "Atlético Mineiro" },
   { id: "team_america",  price: 100, type: "teamicon", src: "/photos/america.png",  title: "América" },
-  { id: "team_guanambi", price: 100, type: "teamicon", src: "/photos/guanambi.png", title: "Atlético de Guanambi" },
+  { id: "team_guanambi", price: 100, type: "teamicon", src: "/photos/guanambi.png", title: "Flamengo de Guanambi" },
 ];
 
 // ─── Cores exclusivas (fora da loja) ────────────────────────────────────────

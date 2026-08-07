@@ -901,6 +901,7 @@ const WALLPAPERS = {
   luizbliss:   { label: "LuizBliss",    type: "image", value: "/assets/wallpapers/luizBliss.jpg" },
   luizscream:  { label: "LuizScream",   type: "image", value: "/assets/wallpapers/luizScream.jpg" },
   luizradio:   { label: "LuizRadio",    type: "image", value: "/assets/wallpapers/luizRadio.png" },
+  luizhcm:     { label: "LuizHCM",      type: "image", value: "/assets/wallpapers/luizHcm.png" },
   custom:      { label: "Personalizado", type: "color", value: "#008080" },
 };
 
