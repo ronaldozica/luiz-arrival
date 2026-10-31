@@ -240,7 +240,7 @@ body {
 }
 
 .start-menu:not(.searching) .start-menu-items > button[data-pinned],
-.start-menu:not(.searching) .start-menu-items > button:has(.sdd-badge-dot.show, .tdd-badge-dot.show),
+.start-menu:not(.searching) .start-menu-items > button:has(.sdd-badge-dot.show, .tdd-badge-dot.show, .bicho-badge-dot.show),
 .start-menu.show-all:not(.searching) .start-menu-items > button,
 .start-menu.searching .start-menu-items > button.match {
   display: block;
@@ -1964,7 +1964,8 @@ body.cursor-wait * {
 .tdd-result-lose { border-color: #b5182b !important; background: #fbeaea; }
 
 /* Bolinha "ainda não fez o Termo de hoje" — idêntica à do Sudoku Diário. */
-.tdd-badge-dot {
+.tdd-badge-dot,
+.bicho-badge-dot {
   display: none;
   width: 8px;
   height: 8px;
@@ -1973,9 +1974,11 @@ body.cursor-wait * {
   margin-left: 6px;
   vertical-align: middle;
 }
-.tdd-badge-dot.show { display: inline-block; }
+.tdd-badge-dot.show,
+.bicho-badge-dot.show { display: inline-block; }
 
-.tdd-badge-corner {
+.tdd-badge-corner,
+.bicho-badge-corner {
   display: none;
   position: absolute;
   top: 2px;
@@ -1987,7 +1990,8 @@ body.cursor-wait * {
   border: 1px solid #fff;
   box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
 }
-.tdd-badge-corner.show { display: block; }
+.tdd-badge-corner.show,
+.bicho-badge-corner.show { display: block; }
 
 /* Calculadora: .win95-action-btn tem min-width:90px por padrão (pensado pra
    botões isolados), o que não cabe em 4 colunas numa janela pequena — sem

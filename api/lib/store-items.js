@@ -240,7 +240,7 @@ function coinsForGuess(rankingEntry) {
 const WALLET_FIELDS = [
   "gamecoins", "farmcoins", "bjwon", "purchases", "emoji_owned", "font_owned",
   "farmspent", "bjlost", "gamespent", "roulettewon", "roulettelost",
-  "slotwon", "slotlost",
+  "slotwon", "slotlost", "bichowon", "bicholost",
 ];
 
 // Cada chamada de calcBalance rodava ~40 comandos Redis (1 GET por dia de
@@ -287,7 +287,7 @@ async function calcBalance(kv, user, users) {
   const [
     gameCoinsRaw, farmCoinsRaw, bjWonRaw, purchasesRaw, emojiOwnedRaw, fontOwnedRaw,
     farmSpentRaw, bjLostRaw, gameSpentRaw, rouletteWonRaw, rouletteLostRaw,
-    slotWonRaw, slotLostRaw,
+    slotWonRaw, slotLostRaw, bichoWonRaw, bichoLostRaw,
   ] = await kv.mget(WALLET_FIELDS.map((field) => `${field}:${uKey}`));
 
   const gameCoins = parseRedisNumber(gameCoinsRaw);
@@ -331,6 +331,12 @@ async function calcBalance(kv, user, users) {
 
   const slotLost = parseRedisNumber(slotLostRaw);
   spentCoins += slotLost;
+
+  const bichoWon = parseRedisNumber(bichoWonRaw);
+  earnedCoins += bichoWon;
+
+  const bichoLost = parseRedisNumber(bichoLostRaw);
+  spentCoins += bichoLost;
 
   return { earnedCoins, spentCoins, purchases, gameCoins, emojiOwned, fontOwned, rawFontOwned };
 }
