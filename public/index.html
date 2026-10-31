@@ -100,6 +100,7 @@
         <button onclick="openBlackjackWindow(); closeStartMenu()">🃏 Luiz21</button>
         <button onclick="openRouletteWindow(); closeStartMenu()">🎡 Roleta</button>
         <button onclick="openSlotWindow(); closeStartMenu()">🎰 Luiz Slot</button>
+        <button onclick="openBichoWindow(); closeStartMenu()">🐯 Luiz Bicho<span class="bicho-badge-dot"></span></button>
         <div class="start-menu-section">Jogos</div>
         <button onclick="openFarmWindow(); closeStartMenu()">🌾 LuizFarm 95</button>
         <button onclick="openWindow('win-snake'); initSnakeGame(); closeStartMenu()">🐍 Snake 95</button>
@@ -188,6 +189,11 @@
     <div class="appgrid-icon" onclick="openSlotWindow()">
       <div class="icon-img">🎰</div>
       <div class="icon-label">Luiz Slot</div>
+    </div>
+    <div class="appgrid-icon" onclick="openBichoWindow()">
+      <div class="icon-img">🐯</div>
+      <span class="bicho-badge-corner"></span>
+      <div class="icon-label">Luiz Bicho</div>
     </div>
     <div class="appgrid-icon" onclick="openWindow('win-snake'); initSnakeGame()">
       <div class="icon-img">🐍</div>
@@ -1193,6 +1199,8 @@
           onclick="loadGameRank('roulette'); setGameRankTabActive('roulette')">🎡 Roleta</button>
         <button class="rank-tab" data-tab="slot"
           onclick="loadGameRank('slot'); setGameRankTabActive('slot')">🎰 Luiz Slot</button>
+        <button class="rank-tab" data-tab="bicho"
+          onclick="loadGameRank('bicho'); setGameRankTabActive('bicho')">🐯 Luiz Bicho</button>
         <button class="rank-tab" data-tab="top1"
           onclick="loadGameRank('top1'); setGameRankTabActive('top1')">🏅 Top 1</button>
         <button class="rank-tab" data-tab="achievements"
@@ -1504,6 +1512,11 @@
           <div class="icon-img">🎰</div>
           <div class="icon-label">Luiz Slot</div>
         </div>
+        <div class="folder-icon" ondblclick="openBichoWindow()">
+          <div class="icon-img">🐯</div>
+          <span class="bicho-badge-corner"></span>
+          <div class="icon-label">Luiz Bicho</div>
+        </div>
         <div class="folder-icon" ondblclick="openWindow('win-snake'); initSnakeGame()">
           <div class="icon-img">🐍</div>
           <div class="icon-label">Snake 95</div>
@@ -1663,6 +1676,20 @@
     </div>
   </div>
 
+  <!-- ══ WINDOW: LUIZ BICHO ══ -->
+  <div class="win95-window" id="win-bicho" style="left:165px;top:45px;width:500px;display:none">
+    <div class="win95-titlebar" onmousedown="startDrag(event,'win-bicho')">
+      <span class="win95-title">🐯 Luiz Bicho — Banca Oficial</span>
+      <div class="win95-controls">
+        <button class="win95-btn-ctrl" onclick="minimizeWindow('win-bicho')">_</button>
+        <button class="win95-btn-ctrl" onclick="closeWindow('win-bicho')">✕</button>
+      </div>
+    </div>
+    <div class="win95-body" style="padding:0;overflow:hidden">
+      <div id="bicho-root" style="display:flex;flex-direction:column;min-height:490px"></div>
+    </div>
+  </div>
+
   <div class="win95-window" id="win-farm" style="left:100px;top:60px;width:560px;display:none">
     <div class="win95-titlebar" onmousedown="startDrag(event,'win-farm')">
       <span class="win95-title">🌾 LuizFarm 95</span>
@@ -1741,6 +1768,7 @@
   <script src="js/blackjack.js"></script>
   <script src="js/roulette.js"></script>
   <script src="js/slot.js"></script>
+  <script src="js/bicho.js"></script>
   <script src="js/requests.js"></script>
   <script src="js/notepad.js"></script>
   <script src="js/calculator.js"></script>

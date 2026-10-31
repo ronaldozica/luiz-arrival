@@ -2586,6 +2586,10 @@ function renderGameRank() {
     container.innerHTML = buildSlRankTable(data["default"] || []);
     return;
   }
+  if (game === "bicho") {
+    container.innerHTML = buildBichoRankTable(data["default"] || []);
+    return;
+  }
   const gameLabel = getGameLabel(game);
   const diffs = GAME_RANK_DIFFICULTIES[game];
   let html = "";
@@ -2639,6 +2643,12 @@ async function loadGameRank(game) {
     }
     if (game === "slot") {
       const data = await cachedFetchJSON("sl_rank", `${API}/slot/rank`, 30 * 1000);
+      currentGameRankCache = { game, data: { default: data || [] } };
+      renderGameRank();
+      return;
+    }
+    if (game === "bicho") {
+      const data = await cachedFetchJSON("bicho_rank", `${API}/bicho/rank`, 30 * 1000);
       currentGameRankCache = { game, data: { default: data || [] } };
       renderGameRank();
       return;
@@ -2812,7 +2822,7 @@ function getDifficultyLabel(diff) {
 }
 
 function getGameLabel(game) {
-  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider", luizjack: "🃏 Luiz21", "2048": "🧩 2048", roulette: "🎡 Roleta", slot: "🎰 Luiz Slot" }[game] || game);
+  return ({ snake: "🐍 Snake 95", minesweeper: "💣 Campo Minado", sudoku: "🔢 Sudoku", aimtrainer: "🎯 Aim Trainer", spider: "🕷️ Paciência Spider", luizjack: "🃏 Luiz21", "2048": "🧩 2048", roulette: "🎡 Roleta", slot: "🎰 Luiz Slot", bicho: "🐯 Luiz Bicho" }[game] || game);
 }
 
 function buildBjRankTable(entries) {
@@ -2847,6 +2857,18 @@ function buildSlRankTable(entries) {
     </tr></thead><tbody>`;
   entries.forEach((e, i) => {
     html += `<tr class="${rankMedalClass(i)}"><td>${i + 1}º</td><td>${renderPlayerName(e.name, true)}</td><td><strong>${e.coinsWon} LC</strong></td><td>${e.spinsPlayed}</td></tr>`;
+  });
+  return html + "</tbody></table>";
+}
+
+function buildBichoRankTable(entries) {
+  if (entries.length === 0) return '<div class="no-data">Nenhuma fézinha registrada ainda. Seja o primeiro!</div>';
+  let html = `<div class="section-label">🐯 Luiz Bicho — Maiores Ganhadores</div>
+    <table class="win95-table"><thead><tr>
+      <th>#</th><th>Jogador</th><th>LC Ganhos</th><th>Acertos</th><th>Fézinhas</th>
+    </tr></thead><tbody>`;
+  entries.forEach((e, i) => {
+    html += `<tr class="${rankMedalClass(i)}"><td>${i + 1}º</td><td>${renderPlayerName(e.name, true)}</td><td><strong>${e.coinsWon} LC</strong></td><td>${e.wins}</td><td>${e.betsPlayed}</td></tr>`;
   });
   return html + "</tbody></table>";
 }
@@ -4182,9 +4204,20 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.32.0",
+    date: "31/10/2026",
+    isNew: true,
+    title: "Novo jogo diário: Luiz Bicho 🐯📝",
+    items: [
+      "🐯 Chegou a Banca do Luiz (Jogo do Bicho Diário): todo dia há uma extração única com 5 prêmios de milhar ('Deu no Poste'), igual para todos os jogadores.",
+      "💰 Aposte fichas de 5, 15 ou 30 LuizCoins™ nas modalidades Grupo na Cabeça (18x), Grupo Cercado do 1º ao 5º prêmio (4x) ou Dezena Seca na Cabeça (60x).",
+      "🏆 4 conquistas novas e ranking dedicado tanto dentro da janela da Banca quanto na aba '🐯 Luiz Bicho' em Rank Jogos.",
+    ],
+  },
+  {
     version: "2.31.0",
     date: "30/10/2026",
-    isNew: true,
+    isNew: false,
     title: "Novo jogo clássico: Pokémon FireRed (PT-BR) 🐉",
     items: [
       "🐉 Pokémon FireRed Version (GBA) completo e traduzido em Português (PT-BR) agora roda direto numa janela do LuizOS 95 via WebAssembly (mGBA).",
