@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Pokémon FireRed (PT-BR)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: Tahoma, "MS Sans Serif", sans-serif;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #canvas {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+      border: 0 none;
+      background-color: #000;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="240" height="160" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+  <script type="module">
+    import mGBA from "./mgba.js";
+
+    const ROM_URL = "/assets/pokemon/firered.zip";
+    const ROM_FS_PATH = "/data/games/firered.zip";
+    const SAVE_FS_PATH = "/data/saves/firered.sav";
+    const STATE_FS_PATH = "/data/states/firered.ss1";
+
+    const LS_SRAM_KEY = "luizos_pokemon_firered_sram_v1";
+    const LS_META_KEY = "luizos_pokemon_firered_meta_v1";
+
+    let emulator = null;
+    let gameLoaded = false;
+    let currentSpeed = 1;
+    let isMuted = false;
+
+    function notifyParent(type, payload = {}) {
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage(Object.assign({ type }, payload), "*");
+        }
+      } catch {}
+    }
+
+    function notifyStatus(text, ready = false) {
+      notifyParent("pokemon-status", { text: text || "", ready: !!ready });
+    }
+
+    function uint8ToBase64(bytes) {
+      if (!bytes || !bytes.length) return "";
+      let binary = "";
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const sub = bytes.subarray(i, i + chunkSize);
+        binary += String.fromCharCode.apply(null, sub);
+      }
+      return btoa(binary);
+    }
+
+    function base64ToUint8(b64) {
+      if (!b64) return null;
+      const binary = atob(b64);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    function saveSramToLocalStorage(source = "auto") {
+      if (!emulator || !gameLoaded) return false;
+      try {
+        let sram = null;
+        try {
+          sram = emulator.getSave();
+        } catch {
+          if (emulator.FS.analyzePath(SAVE_FS_PATH).exists) {
+            sram = emulator.FS.readFile(SAVE_FS_PATH);
+          }
+        }
+        if (sram && sram.length > 0) {
+          const b64 = uint8ToBase64(sram);
+          localStorage.setItem(LS_SRAM_KEY, b64);
+          const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          localStorage.setItem(LS_META_KEY, JSON.stringify({ updatedAt: Date.now(), timeStr: now, source }));
+          emulator.FSSync().catch(() => {});
+          notifyParent("pokemon-saved", { source, timeStr: now });
+          return true;
+        }
+      } catch (e) {
+        console.warn("Erro ao salvar SRAM no localStorage:", e);
+      }
+      return false;
+    }
+
+    function restoreSramFromLocalStorage() {
+      if (!emulator) return false;
+      try {
+        const b64 = localStorage.getItem(LS_SRAM_KEY);
+        if (!b64) return false;
+        const bytes = base64ToUint8(b64);
+        if (bytes && bytes.length > 0) {
+          emulator.FS.writeFile(SAVE_FS_PATH, bytes);
+          return true;
+        }
+      } catch (e) {
+        console.warn("Erro ao restaurar SRAM do localStorage:", e);
+      }
+      return false;
+    }
+
+    async function saveQuickState() {
+      if (!emulator || !gameLoaded) return;
+      try {
+        const ok = emulator.saveState(1);
+        saveSramToLocalStorage("manual");
+        await emulator.FSSync();
+        const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        notifyParent("pokemon-toast", {
+          text: ok
+            ? `💾 Progresso salvo no navegador (${now})!`
+            : `💾 Bateria salva no localStorage (${now})!`,
+        });
+      } catch (e) {
+        notifyParent("pokemon-toast", { text: "❌ Erro ao salvar estado rápido." });
+      }
+    }
+
+    async function loadQuickState() {
+      if (!emulator || !gameLoaded) return;
+      try {
+        const hasSlot = emulator.FS.analyzePath(STATE_FS_PATH).exists;
+        if (hasSlot && emulator.loadState(1)) {
+          notifyParent("pokemon-toast", { text: "📂 Estado rápido carregado!" });
+          return;
+        }
+        if (restoreSramFromLocalStorage()) {
+          emulator.quickReload();
+          notifyParent("pokemon-toast", { text: "📂 Save do cartucho restaurado do localStorage!" });
+        } else {
+          notifyParent("pokemon-toast", { text: "ℹ️ Nenhum save encontrado ainda." });
+        }
+      } catch (e) {
+        notifyParent("pokemon-toast", { text: "❌ Erro ao carregar save." });
+      }
+    }
+
+    function resumeAudioIfNeeded() {
+      try {
+        if (emulator && emulator.SDL2 && emulator.SDL2.audioContext && emulator.SDL2.audioContext.state === "suspended") {
+          emulator.SDL2.audioContext.resume();
+        }
+      } catch {}
+    }
+
+    // Mapeamento de teclado amigável para PC + controles virtuais mobile via postMessage
+    const KEY_TO_GBA = {
+      ArrowUp: "up",
+      KeyW: "up",
+      ArrowDown: "down",
+      KeyS: "down",
+      ArrowLeft: "left",
+      KeyA: "left",
+      ArrowRight: "right",
+      KeyD: "right",
+      KeyZ: "a",
+      KeyJ: "a",
+      KeyX: "b",
+      KeyK: "b",
+      Enter: "start",
+      ShiftLeft: "select",
+      ShiftRight: "select",
+      Backspace: "select",
+      KeyQ: "l",
+      KeyU: "l",
+      KeyE: "r",
+      KeyI: "r",
+    };
+
+    const pressedKeys = new Set();
+
+    function handleKey(e, isDown) {
+      if (!emulator || !gameLoaded) return;
+      resumeAudioIfNeeded();
+
+      const btn = KEY_TO_GBA[e.code];
+      if (!btn) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (isDown) {
+        if (!pressedKeys.has(btn)) {
+          pressedKeys.add(btn);
+          emulator.buttonPress(btn);
+        }
+      } else {
+        pressedKeys.delete(btn);
+        emulator.buttonUnpress(btn);
+      }
+    }
+
+    window.addEventListener("keydown", (e) => handleKey(e, true), true);
+    window.addEventListener("keyup", (e) => handleKey(e, false), true);
+    window.addEventListener("blur", () => {
+      if (!emulator || !gameLoaded) return;
+      for (const btn of pressedKeys) {
+        try { emulator.buttonUnpress(btn); } catch {}
+      }
+      pressedKeys.clear();
+    });
+
+    // Repassa ponteiro para a janela pai (Modo Escuro / Lanterna e foco da janela)
+    window.addEventListener("pointermove", (e) => {
+      try {
+        if (window.parent && window.parent !== window && window.frameElement) {
+          const rect = window.frameElement.getBoundingClientRect();
+          window.parent.document.dispatchEvent(new PointerEvent("pointermove", {
+            clientX: rect.left + e.clientX,
+            clientY: rect.top + e.clientY,
+            bubbles: true,
+          }));
+        }
+      } catch {}
+    }, { passive: true });
+
+    window.addEventListener("pointerdown", () => {
+      try {
+        resumeAudioIfNeeded();
+        window.focus();
+        const c = document.getElementById("canvas");
+        if (c) c.focus();
+        notifyParent("pokemon-focus");
+      } catch {}
+    }, { passive: true });
+
+    // Comandos vindos da janela do LuizOS (botões touch de celular, salvar, turbo, som, etc.)
+    window.addEventListener("message", (e) => {
+      const data = e && e.data;
+      if (!data || typeof data !== "object") return;
+      if (!emulator || !gameLoaded) return;
+
+      resumeAudioIfNeeded();
+
+      switch (data.type) {
+        case "pokemon-btn": {
+          const btn = String(data.button || "").toLowerCase();
+          if (!btn) break;
+          if (data.pressed) {
+            emulator.buttonPress(btn);
+          } else {
+            emulator.buttonUnpress(btn);
+          }
+          break;
+        }
+        case "pokemon-save-state":
+          saveQuickState();
+          break;
+        case "pokemon-load-state":
+          loadQuickState();
+          break;
+        case "pokemon-toggle-speed": {
+          currentSpeed = currentSpeed === 1 ? 2 : currentSpeed === 2 ? 3 : 1;
+          emulator.setFastForwardMultiplier(currentSpeed);
+          notifyParent("pokemon-speed-changed", { speed: currentSpeed });
+          break;
+        }
+        case "pokemon-toggle-mute": {
+          isMuted = !isMuted;
+          emulator.setVolume(isMuted ? 0 : 1);
+          notifyParent("pokemon-mute-changed", { muted: isMuted });
+          break;
+        }
+        case "pokemon-flush-save":
+          saveSramToLocalStorage("close");
+          break;
+      }
+    });
+
+    window.addEventListener("pagehide", () => saveSramToLocalStorage("pagehide"));
+    window.addEventListener("beforeunload", () => saveSramToLocalStorage("unload"));
+
+    async function boot() {
+      try {
+        notifyStatus("⏳ Inicializando Game Boy Advance (mGBA)...", false);
+        const canvas = document.getElementById("canvas");
+        emulator = await mGBA({ canvas });
+        await emulator.FSInit();
+
+        // Desativa captura direta de teclado do SDL para usarmos nosso mapeamento limpo
+        try {
+          emulator.toggleInput(false);
+        } catch {}
+
+        // Sincroniza automaticamente sempre que o jogo salvar no cartucho (START -> SALVAR)
+        try {
+          emulator.addCoreCallbacks({
+            saveDataUpdatedCallback: () => {
+              saveSramToLocalStorage("ingame");
+            },
+          });
+        } catch {}
+
+        // Restaura save do localStorage antes de carregar a ROM (garante persistência mesmo se IndexedDB limpar)
+        const restoredFromLS = restoreSramFromLocalStorage();
+
+        // Verifica se a ROM já está no FS ou baixa do servidor
+        const romExists = emulator.FS.analyzePath(ROM_FS_PATH).exists;
+        if (!romExists) {
+          notifyStatus("⏳ Baixando Pokémon FireRed (PT-BR)...", false);
+          const res = await fetch(ROM_URL);
+          if (!res.ok) throw new Error("Falha ao baixar ROM (" + res.status + ")");
+          const buf = await res.arrayBuffer();
+          emulator.FS.writeFile(ROM_FS_PATH, new Uint8Array(buf));
+        }
+
+        notifyStatus("⏳ Iniciando Pokémon FireRed...", false);
+        const started = emulator.loadGame(ROM_FS_PATH);
+        if (!started) {
+          throw new Error("Não foi possível carregar a ROM do Pokémon FireRed.");
+        }
+
+        gameLoaded = true;
+        emulator.setVolume(1);
+        notifyStatus("", true);
+
+        try {
+          const metaRaw = localStorage.getItem(LS_META_KEY);
+          if (metaRaw) {
+            const meta = JSON.parse(metaRaw);
+            if (meta && meta.timeStr) {
+              notifyParent("pokemon-saved", { source: "restored", timeStr: meta.timeStr });
+            }
+          } else if (restoredFromLS) {
+            notifyParent("pokemon-saved", { source: "restored", timeStr: "salvo" });
+          }
+        } catch {}
+
+        canvas.focus();
+      } catch (err) {
+        console.error("Erro ao iniciar Pokémon FireRed:", err);
+        notifyStatus("❌ " + (err && err.message ? err.message : "Erro ao iniciar o emulador."), false);
+      }
+    }
+
+    boot();
+  </script>
+</body>
+</html>

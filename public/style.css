@@ -1369,6 +1369,216 @@ body.cursor-wait * {
   outline: none;
 }
 
+/* ─── POKÉMON FIRERED (GBA) ─────────────── */
+.pokemon-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.pokemon-toolbar .win95-action-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.pokemon-save-badge {
+  margin-left: auto;
+  font-size: 10px;
+  color: #1b5e20;
+  background: #e8f5e9;
+  border: 1px solid #81c784;
+  padding: 2px 6px;
+  font-family: "Courier New", monospace;
+  white-space: nowrap;
+}
+
+.canvas-container.pokemon-container {
+  width: 484px;
+  height: 324px;
+  max-width: 100%;
+  aspect-ratio: 3 / 2;
+  background: #000;
+  overflow: hidden;
+  position: relative;
+  margin: 0 auto;
+}
+
+.pokemon-iframe {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  border: 0;
+  outline: none;
+}
+
+/* Gamepad Touch Virtual (visível em telas touch / celulares) */
+.pokemon-touch-controls {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 8px;
+  background: #b0b3b8;
+  border: 2px solid var(--win-white);
+  border-right-color: var(--win-black);
+  border-bottom-color: var(--win-black);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+@media (pointer: coarse), (max-width: 640px) {
+  .pokemon-touch-controls {
+    display: flex;
+  }
+  .canvas-container.pokemon-container {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+  }
+}
+
+.gba-shoulders-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 2px;
+}
+
+.gba-btn {
+  font-family: "MS Sans Serif", Tahoma, sans-serif;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  border: 2px solid #fff;
+  border-right-color: #222;
+  border-bottom-color: #222;
+  background: #d4d0c8;
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gba-btn.pressed,
+.gba-btn:active {
+  border-color: #222;
+  border-right-color: #fff;
+  border-bottom-color: #fff;
+  transform: translateY(1px);
+  filter: brightness(0.9);
+}
+
+.gba-shoulder {
+  width: 76px;
+  height: 28px;
+  border-radius: 6px 6px 2px 2px;
+  background: #7c828d;
+  color: #fff;
+  font-size: 13px;
+}
+
+.gba-main-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 8px;
+}
+
+.gba-dpad {
+  display: grid;
+  grid-template-columns: 38px 38px 38px;
+  grid-template-rows: 38px 38px 38px;
+  width: 114px;
+  height: 114px;
+}
+
+.gba-dpad-up {
+  grid-column: 2;
+  grid-row: 1;
+  background: #333;
+  color: #fff;
+  border-radius: 4px 4px 0 0;
+}
+
+.gba-dpad-left {
+  grid-column: 1;
+  grid-row: 2;
+  background: #333;
+  color: #fff;
+  border-radius: 4px 0 0 4px;
+}
+
+.gba-dpad-center {
+  grid-column: 2;
+  grid-row: 2;
+  background: #333;
+}
+
+.gba-dpad-right {
+  grid-column: 3;
+  grid-row: 2;
+  background: #333;
+  color: #fff;
+  border-radius: 0 4px 4px 0;
+}
+
+.gba-dpad-down {
+  grid-column: 2;
+  grid-row: 3;
+  background: #333;
+  color: #fff;
+  border-radius: 0 0 4px 4px;
+}
+
+.gba-ab-group {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  transform: rotate(-18deg);
+  padding-right: 4px;
+}
+
+.gba-btn-a,
+.gba-btn-b {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  font-size: 16px;
+  color: #fff;
+  box-shadow: 1px 2px 0 #222;
+}
+
+.gba-btn-a {
+  background: #c62828;
+}
+
+.gba-btn-b {
+  background: #ad1457;
+  margin-top: 16px;
+}
+
+.gba-meta-row {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 2px;
+}
+
+.gba-meta-btn {
+  width: 68px;
+  height: 22px;
+  border-radius: 10px;
+  font-size: 10px;
+  background: #555;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
 #at-canvas {
   background-color: var(--win-black);
   /* Mira pequena estilo FPS (cruz fina com vão no centro) no lugar do

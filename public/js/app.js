@@ -4182,9 +4182,20 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.31.0",
+    date: "30/10/2026",
+    isNew: true,
+    title: "Novo jogo clássico: Pokémon FireRed (PT-BR) 🐉",
+    items: [
+      "🐉 Pokémon FireRed Version (GBA) completo e traduzido em Português (PT-BR) agora roda direto numa janela do LuizOS 95 via WebAssembly (mGBA).",
+      "💾 Progresso salvo automaticamente no localStorage do navegador (tanto ao salvar pelo menu START → SALVAR do jogo quanto pelos botões rápidos de 💾 Salvar / 📂 Carregar na barra da janela).",
+      "📱 Totalmente compatível com celular: inclui controles touch estilo Game Boy Advance (D-Pad, A, B, L, R, Start, Select) e modo Turbo (1x/2x/3x).",
+    ],
+  },
+  {
     version: "2.30.0",
     date: "26/10/2026",
-    isNew: true,
+    isNew: false,
     title: "Novo jogo clássico: 3D Pinball Space Cadet 🛸",
     items: [
       "🛸 O clássico 3D Pinball for Windows - Space Cadet (original do Windows XP / Plus!) agora roda completo dentro do LuizOS 95, com física, trilha sonora e efeitos originais.",
