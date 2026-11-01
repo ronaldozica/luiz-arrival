@@ -30,16 +30,6 @@ function installPokemonMessageListener() {
       if (win && typeof bringToFront === "function") {
         bringToFront(win);
       }
-    } else if (data.type === "pokemon-saved") {
-      const badge = document.getElementById("pokemon-save-indicator");
-      if (badge) {
-        badge.textContent = data.timeStr
-          ? `💾 Salvo (${data.timeStr})`
-          : "💾 Salvo no navegador";
-      }
-      if (data.source === "ingame") {
-        showPokemonToast("💾 Jogo salvo automaticamente no localStorage!");
-      }
     } else if (data.type === "pokemon-toast") {
       if (data.text) showPokemonToast(data.text);
     } else if (data.type === "pokemon-speed-changed") {
@@ -160,17 +150,6 @@ function initPokemonGame() {
   const wrap = document.getElementById("pokemon-container");
   const statusEl = document.getElementById("pokemon-status");
   if (!wrap) return;
-
-  try {
-    const metaRaw = localStorage.getItem("luizos_pokemon_firered_meta_v1");
-    const badge = document.getElementById("pokemon-save-indicator");
-    if (badge && metaRaw) {
-      const meta = JSON.parse(metaRaw);
-      if (meta && meta.timeStr) {
-        badge.textContent = `💾 Salvo (${meta.timeStr})`;
-      }
-    }
-  } catch {}
 
   if (pokemonRunning && document.getElementById("pokemon-iframe")) {
     setTimeout(focusPokemonIframe, 50);
