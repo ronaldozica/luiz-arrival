@@ -1017,11 +1017,10 @@
     </div>
     <div class="win95-body">
       <div class="pokemon-toolbar">
-        <button class="win95-action-btn" onclick="pokemonSaveState()" title="Salvar estado rápido e bateria no navegador">💾 Salvar</button>
-        <button class="win95-action-btn" onclick="pokemonLoadState()" title="Carregar último save salvo no navegador">📂 Carregar</button>
+        <button class="win95-action-btn" onclick="pokemonSaveState()" title="Salvar estado rápido no navegador">💾 Salvar</button>
+        <button class="win95-action-btn" onclick="pokemonLoadState()" title="Carregar último estado salvo no navegador">📂 Carregar</button>
         <button class="win95-action-btn" id="pokemon-speed-btn" onclick="pokemonToggleSpeed()" title="Alternar velocidade (1x / 2x / 3x)">⏩ 1x</button>
         <button class="win95-action-btn" id="pokemon-mute-btn" onclick="pokemonToggleMute()" title="Ligar/Desligar som">🔊 Som</button>
-        <span id="pokemon-save-indicator" class="pokemon-save-badge">💾 Auto-save ativo</span>
       </div>
       <div id="pokemon-status" class="info-box" style="font-size:12px;margin-bottom:6px;text-align:center;display:none"></div>
       <div class="canvas-container pokemon-container" id="pokemon-container"></div>
@@ -1053,7 +1052,7 @@
 
       <div class="info-box pokemon-controls-hint" style="font-size:11px;margin-top:6px">
         <strong>Teclado:</strong> Setas / WASD = Mover | <strong>Z</strong> ou <strong>J</strong> = A | <strong>X</strong> ou <strong>K</strong> = B | <strong>ENTER</strong> = Start | <strong>SHIFT</strong> = Select | <strong>Q / E</strong> = L / R.<br />
-        💾 Salvar pelo menu do jogo (<strong>START → SALVAR</strong>) ou no botão <strong>💾 Salvar</strong> grava seu progresso no <code>localStorage</code>.
+        💾 Use os botões <strong>💾 Salvar</strong> e <strong>📂 Carregar</strong> na barra acima para gravar e restaurar seu progresso.
       </div>
     </div>
   </div>

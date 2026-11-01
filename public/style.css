@@ -1383,17 +1383,6 @@ body.cursor-wait * {
   font-size: 11px;
 }
 
-.pokemon-save-badge {
-  margin-left: auto;
-  font-size: 10px;
-  color: #1b5e20;
-  background: #e8f5e9;
-  border: 1px solid #81c784;
-  padding: 2px 6px;
-  font-family: "Courier New", monospace;
-  white-space: nowrap;
-}
-
 .canvas-container.pokemon-container {
   width: 484px;
   height: 324px;
@@ -1403,6 +1392,22 @@ body.cursor-wait * {
   overflow: hidden;
   position: relative;
   margin: 0 auto;
+}
+
+#win-pokemon.maximized .win95-body {
+  display: flex;
+  flex-direction: column;
+}
+
+#win-pokemon.maximized .canvas-container.pokemon-container {
+  flex: 1 1 auto;
+  width: auto;
+  height: 100%;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 3 / 2;
+  align-self: center;
 }
 
 .pokemon-iframe {
