@@ -4204,9 +4204,20 @@ function showAchievementToast(achievementIds) {
 const RELEASE_NOTES_SEEN_KEY = "luizos_release_notes_seen";
 const RELEASE_NOTES = [
   {
+    version: "2.32.1",
+    date: "01/11/2026",
+    isNew: true,
+    title: "Melhorias no Pokémon FireRed 🐉",
+    items: [
+      "🖥️ Tela ampliada ao maximizar: a tela do Game Boy Advance agora expande automaticamente ocupando a janela inteira quando maximizada (□).",
+      "⏱️ Velocidade corrigida no Windows: trava em 60 FPS reais do GBA em monitores de alta taxa de atualização (120Hz/144Hz/240Hz), evitando que o modo 1x rode acelerado.",
+      "💾 Ajuste na barra de ferramentas: o auto-save foi removido pois não funcionava direito; use os botões 💾 Salvar e 📂 Carregar para gravar e retomar seu progresso.",
+    ],
+  },
+  {
     version: "2.32.0",
     date: "31/10/2026",
-    isNew: true,
+    isNew: false,
     title: "Novo jogo diário: Luiz Bicho 🐯📝",
     items: [
       "🐯 Chegou a Banca do Luiz (Jogo do Bicho Diário): todo dia há uma extração única com 5 prêmios de milhar ('Deu no Poste'), igual para todos os jogadores.",
@@ -4221,7 +4232,7 @@ const RELEASE_NOTES = [
     title: "Novo jogo clássico: Pokémon FireRed (PT-BR) 🐉",
     items: [
       "🐉 Pokémon FireRed Version (GBA) completo e traduzido em Português (PT-BR) agora roda direto numa janela do LuizOS 95 via WebAssembly (mGBA).",
-      "💾 Progresso salvo automaticamente no localStorage do navegador (tanto ao salvar pelo menu START → SALVAR do jogo quanto pelos botões rápidos de 💾 Salvar / 📂 Carregar na barra da janela).",
+      "💾 Botões rápidos de 💾 Salvar e 📂 Carregar estado direto na barra da janela para guardar e retomar seu progresso.",
       "📱 Totalmente compatível com celular: inclui controles touch estilo Game Boy Advance (D-Pad, A, B, L, R, Start, Select) e modo Turbo (1x/2x/3x).",
     ],
   },

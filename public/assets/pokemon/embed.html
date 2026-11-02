@@ -41,6 +41,36 @@
 </head>
 <body>
   <canvas id="canvas" width="240" height="160" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+  <script>
+    // Trava o requestAnimationFrame em ~59.73 FPS (taxa real do Game Boy Advance).
+    // No Windows com monitores de 120Hz/144Hz/165Hz/240Hz, o navegador dispara o
+    // rAF na frequência do monitor e faria o mGBA rodar acelerado (2x–4x) mesmo em 1x.
+    (function lockGbaFrameRateTo60Fps() {
+      if (typeof window.requestAnimationFrame !== "function") return;
+      const nativeRAF = window.requestAnimationFrame.bind(window);
+      const GBA_FRAME_MS = 1000 / 59.7275; // ~16.7427ms
+      let nextFrameTime = 0;
+
+      window.requestAnimationFrame = function (callback) {
+        return nativeRAF(function tick(now) {
+          if (nextFrameTime === 0) {
+            nextFrameTime = now + GBA_FRAME_MS;
+            callback(now);
+            return;
+          }
+          if (now + 1.5 < nextFrameTime) {
+            nativeRAF(tick);
+            return;
+          }
+          nextFrameTime += GBA_FRAME_MS;
+          if (now - nextFrameTime > GBA_FRAME_MS * 2) {
+            nextFrameTime = now + GBA_FRAME_MS;
+          }
+          callback(now);
+        });
+      };
+    })();
+  </script>
   <script type="module">
     import mGBA from "./mgba.js";
 
@@ -108,7 +138,6 @@
           const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
           localStorage.setItem(LS_META_KEY, JSON.stringify({ updatedAt: Date.now(), timeStr: now, source }));
           emulator.FSSync().catch(() => {});
-          notifyParent("pokemon-saved", { source, timeStr: now });
           return true;
         }
       } catch (e) {
@@ -347,18 +376,6 @@
         gameLoaded = true;
         emulator.setVolume(1);
         notifyStatus("", true);
-
-        try {
-          const metaRaw = localStorage.getItem(LS_META_KEY);
-          if (metaRaw) {
-            const meta = JSON.parse(metaRaw);
-            if (meta && meta.timeStr) {
-              notifyParent("pokemon-saved", { source: "restored", timeStr: meta.timeStr });
-            }
-          } else if (restoredFromLS) {
-            notifyParent("pokemon-saved", { source: "restored", timeStr: "salvo" });
-          }
-        } catch {}
 
         canvas.focus();
       } catch (err) {
